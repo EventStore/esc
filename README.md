@@ -1,1 +1,1 @@
-# EvenStoreDB CLI
+# EvenStoreDB Cloud CLI
