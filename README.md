@@ -1,0 +1,1 @@
+# EvenStoreDB CLI
