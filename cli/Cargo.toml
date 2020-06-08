@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 esc-api = { path = "../api"}
-
+structopt = "0.3"
