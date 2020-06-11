@@ -1,11 +1,15 @@
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate lazy_static;
+
 mod constants;
 mod store;
 
 use crate::store::{Auth, TokenStore};
 use esc_api::{Client, ClientId, GroupId, OrgId};
+use std::collections::HashMap;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -30,6 +34,9 @@ struct Opt {
     #[structopt(long)]
     debug: bool,
 
+    #[structopt(long)]
+    json: bool,
+
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -37,6 +44,7 @@ struct Opt {
 #[derive(StructOpt, Debug)]
 enum Command {
     Access(Access),
+    Infra(Infra),
 }
 
 #[derive(StructOpt, Debug)]
@@ -124,6 +132,137 @@ struct DeleteGroup {
     org_id: String,
 }
 
+#[derive(StructOpt, Debug)]
+#[structopt(about = "API infra calls")]
+struct Infra {
+    #[structopt(subcommand)]
+    infra_command: InfraCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum InfraCommand {
+    Networks(Networks),
+}
+
+#[derive(StructOpt, Debug)]
+struct Networks {
+    #[structopt(subcommand)]
+    networks_command: NetworksCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum NetworksCommand {
+    Create(CreateNetwork),
+    Delete(DeleteNetwork),
+    Get(GetNetwork),
+    List(ListNetworks),
+    Update(UpdateNetwork),
+}
+
+#[derive(StructOpt, Debug)]
+struct CreateNetwork {
+    #[structopt(long, parse(try_from_str = parse_org_id))]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id))]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, parse(try_from_str = parse_provider))]
+    provider: esc_api::Provider,
+
+    #[structopt(long)]
+    cidr_block: String,
+
+    #[structopt(long)]
+    description: String,
+
+    #[structopt(long)]
+    region: String,
+}
+
+#[derive(StructOpt, Debug)]
+struct DeleteNetwork {
+    #[structopt(long, parse(try_from_str = parse_org_id))]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id))]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_network_id))]
+    id: esc_api::NetworkId,
+}
+
+#[derive(StructOpt, Debug)]
+struct GetNetwork {
+    #[structopt(long, parse(try_from_str = parse_org_id))]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id))]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_network_id))]
+    id: esc_api::NetworkId,
+}
+
+#[derive(StructOpt, Debug)]
+struct ListNetworks {
+    #[structopt(long, parse(try_from_str = parse_org_id))]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id))]
+    project_id: esc_api::ProjectId,
+}
+
+#[derive(StructOpt, Debug)]
+struct UpdateNetwork {
+    #[structopt(long, parse(try_from_str = parse_org_id))]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id))]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_network_id))]
+    id: esc_api::NetworkId,
+
+    #[structopt(long)]
+    description: String,
+}
+
+lazy_static! {
+    static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
+        let mut map = HashMap::new();
+        map.insert("aws", esc_api::Provider::AWS);
+        map.insert("gcp", esc_api::Provider::GCP);
+        map.insert("azure", esc_api::Provider::AZURE);
+        map
+    };
+}
+
+fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
+    Ok(esc_api::OrgId(src.to_string()))
+}
+
+fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
+    Ok(esc_api::ProjectId(src.to_string()))
+}
+
+fn parse_network_id(src: &str) -> Result<esc_api::NetworkId, String> {
+    Ok(esc_api::NetworkId(src.to_string()))
+}
+
+fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
+    match PROVIDERS.get(src) {
+        Some(p) => Ok(*p),
+        None => {
+            let supported: Vec<&&str> = PROVIDERS.keys().collect();
+            Err(format!(
+                "Unsupported provider: \"{}\". Supported values: {:?}",
+                src, supported
+            ))
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
@@ -156,7 +295,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.name, OrgId(params.org_id), params.members)
                         .await?;
 
-                    println!("{}", group_id);
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;
+                    } else {
+                        println!("{}", group_id);
+                    }
                 }
 
                 GroupsCommand::Update(params) => {
@@ -167,10 +310,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     update_group.set_name(params.name);
                     update_group.set_members(params.members);
-
-                    let group_id = update_group.execute().await?;
-
-                    println!("group-id {} updated", group_id);
+                    update_group.execute().await?;
                 }
 
                 GroupsCommand::Delete(params) => {
@@ -179,8 +319,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .groups(&token)
                         .delete(GroupId(params.id), OrgId(params.org_id))
                         .await?;
-
-                    println!("group deleted");
                 }
             },
 
@@ -188,6 +326,79 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("$> {:?}", ignored);
                 unimplemented!()
             }
+        },
+
+        Command::Infra(infra) => match infra.infra_command {
+            InfraCommand::Networks(networks) => match networks.networks_command {
+                NetworksCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let create_params = esc_api::command::networks::CreateNetworkParams {
+                        provider: params.provider,
+                        cidr_block: params.cidr_block,
+                        description: params.description,
+                        region: params.region,
+                    };
+                    let network_id = client
+                        .networks(&token)
+                        .create(params.org_id, params.project_id, create_params)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &network_id)?;
+                    } else {
+                        println!("{}", network_id);
+                    }
+                }
+
+                NetworksCommand::Update(params) => {
+                    let token = store.access().await?;
+                    let update_params = esc_api::command::networks::UpdateNetworkParams {
+                        description: params.description,
+                    };
+                    client
+                        .networks(&token)
+                        .update(params.org_id, params.project_id, params.id, update_params)
+                        .await?;
+                }
+
+                NetworksCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .networks(&token)
+                        .delete(params.org_id, params.project_id, params.id)
+                        .await?;
+                }
+
+                NetworksCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let network = client
+                        .networks(&token)
+                        .get(params.org_id, params.project_id, params.id)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &network)?;
+                    } else {
+                        println!("{:?}", network);
+                    }
+                }
+
+                NetworksCommand::List(params) => {
+                    let token = store.access().await?;
+                    let networks = client
+                        .networks(&token)
+                        .list(params.org_id, params.project_id)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &networks)?;
+                    } else {
+                        for network in networks.into_iter() {
+                            println!("{:?}", network);
+                        }
+                    }
+                }
+            },
         },
     };
 

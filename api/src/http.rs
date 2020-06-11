@@ -62,3 +62,19 @@ pub fn authenticated_request(token: &Token, uri: Uri) -> http::request::Builder 
         format!("{} {}", token.token_type, token.access_token),
     )
 }
+
+pub async fn resp_json_payload<A>(resp: &mut hyper::Response<Body>) -> crate::Result<A>
+where
+    A: serde::de::DeserializeOwned,
+{
+    let bytes = resp
+        .body_mut()
+        .data()
+        .await
+        .transpose()?
+        .unwrap_or_default();
+
+    let value = serde_json::from_reader(std::io::Cursor::new(bytes))?;
+
+    Ok(value)
+}
