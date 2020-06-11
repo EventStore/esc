@@ -52,4 +52,8 @@ impl Client {
     pub fn tokens(&self) -> command::tokens::Tokens {
         command::tokens::Tokens::new(&self)
     }
+
+    pub fn networks<'a>(&'a self, token: &'a Token) -> command::networks::Networks<'a> {
+        command::networks::Networks::new(&self, token)
+    }
 }

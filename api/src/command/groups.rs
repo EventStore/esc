@@ -34,7 +34,7 @@ impl<'a> Groups<'a> {
         )
         .parse()?;
         let payload = serde_json::to_vec(&json!({
-            "org_id": org_id.0,
+            "orgId": org_id.0,
             "name": name,
             "members": members,
         }))?;

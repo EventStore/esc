@@ -1,6 +1,6 @@
 use serde::export::Formatter;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
 pub struct GroupId(pub String);
 
 impl std::fmt::Display for GroupId {
@@ -33,6 +33,36 @@ impl AsRef<str> for ClientId {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ProjectId(pub String);
+
+impl std::fmt::Display for ProjectId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for ProjectId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct NetworkId(pub String);
+
+impl std::fmt::Display for NetworkId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for NetworkId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
@@ -57,6 +87,26 @@ impl Token {
             ..self
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Provider {
+    AWS,
+    GCP,
+    AZURE,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Network {
+    pub project_id: ProjectId,
+    pub network_id: NetworkId,
+    pub provider: Provider,
+    pub region: String,
+    pub cidr_block: String,
+    pub description: String,
+    pub provisioning_state: String,
 }
 
 pub type Result<A> = std::result::Result<A, Box<dyn std::error::Error>>;
