@@ -4,6 +4,10 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate serde_derive;
+
+mod config;
 mod constants;
 mod store;
 
@@ -45,6 +49,7 @@ struct Opt {
 enum Command {
     Access(Access),
     Infra(Infra),
+    Context(Context),
 }
 
 #[derive(StructOpt, Debug)]
@@ -101,8 +106,8 @@ struct CreateGroup {
     #[structopt(long, short)]
     name: String,
 
-    #[structopt(long, short)]
-    org_id: String,
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
 
     #[structopt(long, short)]
     members: Vec<String>,
@@ -116,8 +121,8 @@ struct UpdateGroup {
     #[structopt(long, short)]
     name: Option<String>,
 
-    #[structopt(long, short)]
-    org_id: String,
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
 
     #[structopt(long, short)]
     members: Option<Vec<String>>,
@@ -128,8 +133,8 @@ struct DeleteGroup {
     #[structopt(long, short)]
     id: String,
 
-    #[structopt(long, short)]
-    org_id: String,
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -161,10 +166,10 @@ enum NetworksCommand {
 
 #[derive(StructOpt, Debug)]
 struct CreateNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id))]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id))]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
     project_id: esc_api::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_provider))]
@@ -182,10 +187,10 @@ struct CreateNetwork {
 
 #[derive(StructOpt, Debug)]
 struct DeleteNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id))]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id))]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
     project_id: esc_api::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id))]
@@ -194,10 +199,10 @@ struct DeleteNetwork {
 
 #[derive(StructOpt, Debug)]
 struct GetNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id))]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id))]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
     project_id: esc_api::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id))]
@@ -206,19 +211,19 @@ struct GetNetwork {
 
 #[derive(StructOpt, Debug)]
 struct ListNetworks {
-    #[structopt(long, parse(try_from_str = parse_org_id))]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id))]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
     project_id: esc_api::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
 struct UpdateNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id))]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id))]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
     project_id: esc_api::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id))]
@@ -226,6 +231,41 @@ struct UpdateNetwork {
 
     #[structopt(long)]
     description: String,
+}
+
+#[derive(StructOpt, Debug)]
+struct Context {
+    #[structopt(subcommand)]
+    context_command: ContextCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum ContextCommand {
+    Set(ContextProp),
+    Get(NamedProp),
+    Delete(NamedProp),
+    List,
+}
+
+#[derive(StructOpt, Debug)]
+struct ContextProp {
+    #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
+    name: ContextPropName,
+
+    #[structopt(long, short)]
+    value: String,
+}
+
+#[derive(StructOpt, Debug)]
+struct NamedProp {
+    #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
+    name: ContextPropName,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum ContextPropName {
+    OrgId,
+    ProjectId,
 }
 
 lazy_static! {
@@ -238,11 +278,44 @@ lazy_static! {
     };
 }
 
+lazy_static! {
+    static ref CONTEXT_PROP_NAMES: HashMap<&'static str, ContextPropName> = {
+        let mut map = HashMap::new();
+        map.insert("project-id", ContextPropName::ProjectId);
+        map.insert("org-id", ContextPropName::OrgId);
+        map
+    };
+}
+
 fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
+    if src.trim().is_empty() {
+        if let Some(value) = crate::config::SETTINGS
+            .context
+            .as_ref()
+            .and_then(|c| c.org_id.as_ref())
+        {
+            return Ok(value.clone());
+        }
+
+        return Err("Not provided and you don't have an org-id property set in the [context] section of your settings.toml file".to_string());
+    }
+
     Ok(esc_api::OrgId(src.to_string()))
 }
 
 fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
+    if src.trim().is_empty() {
+        if let Some(value) = crate::config::SETTINGS
+            .context
+            .as_ref()
+            .and_then(|c| c.project_id.as_ref())
+        {
+            return Ok(value.clone());
+        }
+
+        return Err("Not provided and you don't have an project-id property set in the [context] section of your settings.toml file".to_string());
+    }
+
     Ok(esc_api::ProjectId(src.to_string()))
 }
 
@@ -262,6 +335,30 @@ fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
         }
     }
 }
+
+fn parse_context_prop_name(src: &str) -> Result<ContextPropName, String> {
+    match CONTEXT_PROP_NAMES.get(src) {
+        Some(p) => Ok(*p),
+        None => {
+            let supported: Vec<&&str> = CONTEXT_PROP_NAMES.keys().collect();
+            Err(format!(
+                "Unsupported context property name: \"{}\". Supported values: {:?}",
+                src, supported
+            ))
+        }
+    }
+}
+
+#[derive(Debug)]
+struct StringError(String);
+
+impl std::fmt::Display for StringError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for StringError {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -292,7 +389,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let group_id = client
                         .groups(&token)
-                        .create(params.name, OrgId(params.org_id), params.members)
+                        .create(params.name, params.org_id, params.members)
                         .await?;
 
                     if opt.json {
@@ -306,7 +403,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let mut update_group = client
                         .groups(&token)
-                        .update(GroupId(params.id), OrgId(params.org_id));
+                        .update(GroupId(params.id), params.org_id);
 
                     update_group.set_name(params.name);
                     update_group.set_members(params.members);
@@ -317,7 +414,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     client
                         .groups(&token)
-                        .delete(GroupId(params.id), OrgId(params.org_id))
+                        .delete(GroupId(params.id), params.org_id)
                         .await?;
                 }
             },
@@ -399,6 +496,85 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             },
+        },
+
+        Command::Context(context) => match context.context_command {
+            ContextCommand::Set(prop) => {
+                let mut settings = crate::config::SETTINGS.clone();
+                let mut context = settings.context.unwrap_or_default();
+
+                match prop.name {
+                    ContextPropName::OrgId => {
+                        context.org_id = Some(OrgId(prop.value));
+                    }
+
+                    ContextPropName::ProjectId => {
+                        context.project_id = Some(esc_api::ProjectId(prop.value));
+                    }
+                }
+
+                settings.context = Some(context);
+                settings.persist().await?;
+            }
+
+            ContextCommand::Get(prop) => {
+                let settings = crate::config::SETTINGS.clone();
+                let context = settings.context.unwrap_or_default();
+
+                match prop.name {
+                    ContextPropName::OrgId => {
+                        if let Some(value) = context.org_id {
+                            println!("{}", value);
+                        }
+
+                        return Err(StringError("Not set".to_string()).into());
+                    }
+
+                    ContextPropName::ProjectId => {
+                        if let Some(value) = context.project_id {
+                            println!("{}", value);
+                        }
+
+                        return Err(StringError("Not set".to_string()).into());
+                    }
+                }
+            }
+
+            ContextCommand::Delete(prop) => {
+                let mut settings = crate::config::SETTINGS.clone();
+                let mut context = settings.context.unwrap_or_default();
+
+                match prop.name {
+                    ContextPropName::OrgId => {
+                        context.org_id = None;
+                    }
+
+                    ContextPropName::ProjectId => {
+                        context.project_id = None;
+                    }
+                }
+
+                settings.context = Some(context);
+                settings.persist().await?;
+            }
+
+            ContextCommand::List => {
+                let settings = crate::config::SETTINGS.clone();
+                let context = settings.context.unwrap_or_default();
+
+                if opt.json {
+                    serde_json::to_writer_pretty(std::io::stdout(), &context)?;
+                    return Ok(());
+                }
+
+                if let Some(value) = context.project_id {
+                    println!("project-id = {}", value);
+                }
+
+                if let Some(value) = context.org_id {
+                    println!("org-id = {}", value);
+                }
+            }
         },
     };
 
