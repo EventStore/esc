@@ -21,8 +21,7 @@ pub struct TokenStore<'a> {
 
 impl<'a> TokenStore<'a> {
     pub fn new(auth: Auth, tokens: Tokens<'a>) -> Self {
-        let home_dir = dirs::home_dir().expect("Not supported platform: can't find home directory");
-        let path = Path::new(&home_dir).join(".esc").join("tokens");
+        let path = Path::new(crate::config::ESC_DIR.as_path()).join("tokens");
         //let key = jsonwebtoken::DecodingKey::from_rsa_pem(JWT_PUBLIC_KEY).unwrap();//.expect("Impossible, it's a valid RSA PEM key");
         //let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
 
