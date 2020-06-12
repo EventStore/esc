@@ -1,5 +1,6 @@
 use esc_api::{command::tokens::Tokens, ClientId, StandardClaims, Token};
 use hyper::Uri;
+use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -14,18 +15,28 @@ pub struct Auth {
 pub struct TokenStore<'a> {
     auth: Auth,
     tokens: Tokens<'a>,
-    //validation: jsonwebtoken::Validation,
-    //key: jsonwebtoken::DecodingKey<'a>,
+    validation: jsonwebtoken::Validation,
+    key: DecodingKey<'a>,
     path: PathBuf,
 }
 
 impl<'a> TokenStore<'a> {
     pub fn new(auth: Auth, tokens: Tokens<'a>) -> Self {
         let path = Path::new(crate::config::ESC_DIR.as_path()).join("tokens");
-        //let key = jsonwebtoken::DecodingKey::from_rsa_pem(JWT_PUBLIC_KEY).unwrap();//.expect("Impossible, it's a valid RSA PEM key");
-        //let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
+        let key = DecodingKey::from_rsa_pem(JWT_PUBLIC_KEY)
+            .expect("Impossible, it's a valid RSA PEM key");
+        let validation = Validation {
+            algorithms: vec![Algorithm::RS256],
+            ..Validation::default()
+        };
 
-        TokenStore { tokens, auth, path } //, validation, key }
+        TokenStore {
+            tokens,
+            auth,
+            path,
+            key,
+            validation,
+        }
     }
 
     pub async fn access(&mut self) -> Result<Token, Box<dyn Error>> {
@@ -103,17 +114,13 @@ impl<'a> TokenStore<'a> {
         fs::create_dir_all(&self.path).await
     }
 
-    // FIXME - Use safe version where we verify the token signature.
     fn parse_token_claims(&self, token: &Token) -> jsonwebtoken::errors::Result<StandardClaims> {
-        //frank_jwt::decode(token.access_token(), &String::from_utf8(JWT_PUBLIC_KEY.to_owned()).unwrap(), frank_jwt::Algorithm::RS256, &frank_jwt::ValidationOptions::new()).unwrap();
-        //let header = jsonwebtoken::decode_header(token.access_token())?;
-        // let key = jsonwebtoken::DecodingKey::from_rsa_components(header["n"], header["e"]);
-        // let validaton = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
-        // let container = jsonwebtoken::decode(token.access_token(), &self.key, &self.validation)?;
-        let container = jsonwebtoken::dangerous_unsafe_decode(token.access_token())?;
-
-        Ok(container.claims)
-        //panic!("Header: {:?}", header)
+        let token = jsonwebtoken::decode::<StandardClaims>(
+            token.access_token(),
+            &self.key,
+            &self.validation,
+        )?;
+        Ok(token.claims)
     }
 
     fn build_audience_str(uri: &Uri) -> String {
@@ -133,5 +140,4 @@ fn validate_claims(claims: &StandardClaims) -> bool {
     result
 }
 
-static _JWT_PUBLIC_KEY: &[u8] = include_bytes!("../key.pem");
-static _JWT_PUBLIC_CERT: &[u8] = include_bytes!("../cert.pem");
+static JWT_PUBLIC_KEY: &[u8] = include_bytes!("../key.pem");
