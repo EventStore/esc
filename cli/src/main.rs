@@ -9,6 +9,7 @@ extern crate serde_derive;
 
 mod config;
 mod constants;
+mod script;
 mod store;
 
 use crate::store::{Auth, TokenStore};
@@ -22,7 +23,7 @@ use structopt::StructOpt;
     about = "EventStoreDB Cloud tool.",
     author = "Event Store Limited <ops@eventstore.com>"
 )]
-struct Opt {
+pub struct Opt {
     #[structopt(long, short, env = "ESC_USERNAME", default_value = "")]
     username: String,
 
@@ -50,6 +51,7 @@ enum Command {
     Access(Access),
     Infra(Infra),
     Context(Context),
+    Script(Script),
 }
 
 #[derive(StructOpt, Debug)]
@@ -268,6 +270,12 @@ enum ContextPropName {
     ProjectId,
 }
 
+#[derive(Debug, StructOpt)]
+struct Script {
+    #[structopt(long, short, parse(try_from_str = parse_command_script))]
+    script: script::Script,
+}
+
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
         let mut map = HashMap::new();
@@ -349,6 +357,12 @@ fn parse_context_prop_name(src: &str) -> Result<ContextPropName, String> {
     }
 }
 
+fn parse_command_script(src: &str) -> Result<script::Script, Box<dyn std::error::Error>> {
+    let bytes = std::fs::read(src)?;
+    let script = toml::from_slice(bytes.as_slice())?;
+    Ok(script)
+}
+
 #[derive(Debug)]
 struct StringError(String);
 
@@ -366,8 +380,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let audience = constants::ES_CLOUD_API_AUDIENCE.parse()?;
     let auth = Auth {
         id: ClientId(constants::ES_CLIENT_ID.to_owned()),
-        username: opt.username,
-        password: opt.password,
+        username: opt.username.clone(),
+        password: opt.password.clone(),
         audience,
     };
     let client = Client::new(
@@ -382,203 +396,232 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env_logger::init();
     }
 
-    match opt.cmd {
-        Command::Access(access) => match access.access_command {
-            AccessCommand::Groups(groups) => match groups.groups_command {
-                GroupsCommand::Create(params) => {
-                    let token = store.access().await?;
-                    let create_params = esc_api::command::groups::CreateGroupParams {
-                        org_id: params.org_id,
-                        name: params.name,
-                        members: params.members,
-                    };
-                    let group_id = client.groups(&token).create(create_params).await?;
+    let mut work_items: Box<dyn Iterator<Item = Opt>> = Box::new(std::iter::once(opt));
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;
-                    } else {
-                        println!("{}", group_id);
-                    }
-                }
+    loop {
+        if let Some(opt) = work_items.next() {
+            match opt.cmd {
+                Command::Access(access) => {
+                    match access.access_command {
+                        AccessCommand::Groups(groups) => match groups.groups_command {
+                            GroupsCommand::Create(params) => {
+                                let token = store.access().await?;
+                                let create_params = esc_api::command::groups::CreateGroupParams {
+                                    org_id: params.org_id,
+                                    name: params.name,
+                                    members: params.members,
+                                };
+                                let group_id = client.groups(&token).create(create_params).await?;
 
-                GroupsCommand::Update(params) => {
-                    let token = store.access().await?;
-                    let mut update_group = client
-                        .groups(&token)
-                        .update(GroupId(params.id), params.org_id);
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;
+                                } else {
+                                    println!("{}", group_id);
+                                }
+                            }
 
-                    update_group.set_name(params.name);
-                    update_group.set_members(params.members);
-                    update_group.execute().await?;
-                }
+                            GroupsCommand::Update(params) => {
+                                let token = store.access().await?;
+                                let mut update_group = client
+                                    .groups(&token)
+                                    .update(GroupId(params.id), params.org_id);
 
-                GroupsCommand::Delete(params) => {
-                    let token = store.access().await?;
-                    client
-                        .groups(&token)
-                        .delete(GroupId(params.id), params.org_id)
-                        .await?;
-                }
-            },
+                                update_group.set_name(params.name);
+                                update_group.set_members(params.members);
+                                update_group.execute().await?;
+                            }
 
-            ignored => {
-                println!("$> {:?}", ignored);
-                unimplemented!()
-            }
-        },
+                            GroupsCommand::Delete(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .groups(&token)
+                                    .delete(GroupId(params.id), params.org_id)
+                                    .await?;
+                            }
+                        },
 
-        Command::Infra(infra) => match infra.infra_command {
-            InfraCommand::Networks(networks) => match networks.networks_command {
-                NetworksCommand::Create(params) => {
-                    let token = store.access().await?;
-                    let create_params = esc_api::command::networks::CreateNetworkParams {
-                        provider: params.provider,
-                        cidr_block: params.cidr_block,
-                        description: params.description,
-                        region: params.region,
-                    };
-                    let network_id = client
-                        .networks(&token)
-                        .create(params.org_id, params.project_id, create_params)
-                        .await?;
-
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &network_id)?;
-                    } else {
-                        println!("{}", network_id);
-                    }
-                }
-
-                NetworksCommand::Update(params) => {
-                    let token = store.access().await?;
-                    let update_params = esc_api::command::networks::UpdateNetworkParams {
-                        description: params.description,
-                    };
-                    client
-                        .networks(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
-                }
-
-                NetworksCommand::Delete(params) => {
-                    let token = store.access().await?;
-                    client
-                        .networks(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
-                }
-
-                NetworksCommand::Get(params) => {
-                    let token = store.access().await?;
-                    let network = client
-                        .networks(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &network)?;
-                    } else {
-                        println!("{:?}", network);
-                    }
-                }
-
-                NetworksCommand::List(params) => {
-                    let token = store.access().await?;
-                    let networks = client
-                        .networks(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &networks)?;
-                    } else {
-                        for network in networks.into_iter() {
-                            println!("{:?}", network);
+                        ignored => {
+                            println!("$> {:?}", ignored);
+                            unimplemented!()
                         }
                     }
-                }
-            },
-        },
 
-        Command::Context(context) => match context.context_command {
-            ContextCommand::Set(prop) => {
-                let mut settings = crate::config::SETTINGS.clone();
-                let mut context = settings.context.unwrap_or_default();
-
-                match prop.name {
-                    ContextPropName::OrgId => {
-                        context.org_id = Some(OrgId(prop.value));
-                    }
-
-                    ContextPropName::ProjectId => {
-                        context.project_id = Some(esc_api::ProjectId(prop.value));
-                    }
+                    break;
                 }
 
-                settings.context = Some(context);
-                settings.persist().await?;
-            }
+                Command::Infra(infra) => {
+                    match infra.infra_command {
+                        InfraCommand::Networks(networks) => match networks.networks_command {
+                            NetworksCommand::Create(params) => {
+                                let token = store.access().await?;
+                                let create_params =
+                                    esc_api::command::networks::CreateNetworkParams {
+                                        provider: params.provider,
+                                        cidr_block: params.cidr_block,
+                                        description: params.description,
+                                        region: params.region,
+                                    };
+                                let network_id = client
+                                    .networks(&token)
+                                    .create(params.org_id, params.project_id, create_params)
+                                    .await?;
 
-            ContextCommand::Get(prop) => {
-                let settings = crate::config::SETTINGS.clone();
-                let context = settings.context.unwrap_or_default();
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &network_id)?;
+                                } else {
+                                    println!("{}", network_id);
+                                }
+                            }
 
-                match prop.name {
-                    ContextPropName::OrgId => {
-                        if let Some(value) = context.org_id {
-                            println!("{}", value);
+                            NetworksCommand::Update(params) => {
+                                let token = store.access().await?;
+                                let update_params =
+                                    esc_api::command::networks::UpdateNetworkParams {
+                                        description: params.description,
+                                    };
+                                client
+                                    .networks(&token)
+                                    .update(
+                                        params.org_id,
+                                        params.project_id,
+                                        params.id,
+                                        update_params,
+                                    )
+                                    .await?;
+                            }
+
+                            NetworksCommand::Delete(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .networks(&token)
+                                    .delete(params.org_id, params.project_id, params.id)
+                                    .await?;
+                            }
+
+                            NetworksCommand::Get(params) => {
+                                let token = store.access().await?;
+                                let network = client
+                                    .networks(&token)
+                                    .get(params.org_id, params.project_id, params.id)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &network)?;
+                                } else {
+                                    println!("{:?}", network);
+                                }
+                            }
+
+                            NetworksCommand::List(params) => {
+                                let token = store.access().await?;
+                                let networks = client
+                                    .networks(&token)
+                                    .list(params.org_id, params.project_id)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &networks)?;
+                                } else {
+                                    for network in networks.into_iter() {
+                                        println!("{:?}", network);
+                                    }
+                                }
+                            }
+                        },
+                    }
+
+                    break;
+                }
+
+                Command::Context(context) => {
+                    match context.context_command {
+                        ContextCommand::Set(prop) => {
+                            let mut settings = crate::config::SETTINGS.clone();
+                            let mut context = settings.context.unwrap_or_default();
+
+                            match prop.name {
+                                ContextPropName::OrgId => {
+                                    context.org_id = Some(OrgId(prop.value));
+                                }
+
+                                ContextPropName::ProjectId => {
+                                    context.project_id = Some(esc_api::ProjectId(prop.value));
+                                }
+                            }
+
+                            settings.context = Some(context);
+                            settings.persist().await?;
                         }
 
-                        return Err(StringError("Not set".to_string()).into());
-                    }
+                        ContextCommand::Get(prop) => {
+                            let settings = crate::config::SETTINGS.clone();
+                            let context = settings.context.unwrap_or_default();
 
-                    ContextPropName::ProjectId => {
-                        if let Some(value) = context.project_id {
-                            println!("{}", value);
+                            match prop.name {
+                                ContextPropName::OrgId => {
+                                    if let Some(value) = context.org_id {
+                                        println!("{}", value);
+                                    }
+
+                                    return Err(StringError("Not set".to_string()).into());
+                                }
+
+                                ContextPropName::ProjectId => {
+                                    if let Some(value) = context.project_id {
+                                        println!("{}", value);
+                                    }
+
+                                    return Err(StringError("Not set".to_string()).into());
+                                }
+                            }
                         }
 
-                        return Err(StringError("Not set".to_string()).into());
+                        ContextCommand::Delete(prop) => {
+                            let mut settings = crate::config::SETTINGS.clone();
+                            let mut context = settings.context.unwrap_or_default();
+
+                            match prop.name {
+                                ContextPropName::OrgId => {
+                                    context.org_id = None;
+                                }
+
+                                ContextPropName::ProjectId => {
+                                    context.project_id = None;
+                                }
+                            }
+
+                            settings.context = Some(context);
+                            settings.persist().await?;
+                        }
+
+                        ContextCommand::List => {
+                            let settings = crate::config::SETTINGS.clone();
+                            let context = settings.context.unwrap_or_default();
+
+                            if opt.json {
+                                serde_json::to_writer_pretty(std::io::stdout(), &context)?;
+                                return Ok(());
+                            }
+
+                            if let Some(value) = context.project_id {
+                                println!("project-id = {}", value);
+                            }
+
+                            if let Some(value) = context.org_id {
+                                println!("org-id = {}", value);
+                            }
+                        }
                     }
-                }
-            }
 
-            ContextCommand::Delete(prop) => {
-                let mut settings = crate::config::SETTINGS.clone();
-                let mut context = settings.context.unwrap_or_default();
-
-                match prop.name {
-                    ContextPropName::OrgId => {
-                        context.org_id = None;
-                    }
-
-                    ContextPropName::ProjectId => {
-                        context.project_id = None;
-                    }
+                    break;
                 }
 
-                settings.context = Some(context);
-                settings.persist().await?;
-            }
-
-            ContextCommand::List => {
-                let settings = crate::config::SETTINGS.clone();
-                let context = settings.context.unwrap_or_default();
-
-                if opt.json {
-                    serde_json::to_writer_pretty(std::io::stdout(), &context)?;
-                    return Ok(());
+                Command::Script(params) => {
+                    work_items = Box::new(params.script.commands(opt.username, opt.password));
                 }
-
-                if let Some(value) = context.project_id {
-                    println!("project-id = {}", value);
-                }
-
-                if let Some(value) = context.org_id {
-                    println!("org-id = {}", value);
-                }
-            }
-        },
-    };
+            };
+        }
+    }
 
     Ok(())
 }
