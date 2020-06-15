@@ -387,10 +387,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             AccessCommand::Groups(groups) => match groups.groups_command {
                 GroupsCommand::Create(params) => {
                     let token = store.access().await?;
-                    let group_id = client
-                        .groups(&token)
-                        .create(params.name, params.org_id, params.members)
-                        .await?;
+                    let create_params = esc_api::command::groups::CreateGroupParams {
+                        org_id: params.org_id,
+                        name: params.name,
+                        members: params.members,
+                    };
+                    let group_id = client.groups(&token).create(create_params).await?;
 
                     if opt.json {
                         serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;

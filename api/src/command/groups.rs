@@ -7,6 +7,22 @@ pub struct Groups<'a> {
     token: &'a Token,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateGroupParams {
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub name: String,
+    pub members: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateGroupParams {
+    pub name: Option<String>,
+    pub members: Option<Vec<String>>,
+}
+
 #[derive(Debug, Deserialize)]
 struct CreateGroupResponse {
     id: String,
@@ -22,22 +38,13 @@ impl<'a> Groups<'a> {
         Groups { client, token }
     }
 
-    pub async fn create(
-        self,
-        name: String,
-        org_id: OrgId,
-        members: Vec<String>,
-    ) -> crate::Result<GroupId> {
+    pub async fn create(self, params: CreateGroupParams) -> crate::Result<GroupId> {
         let uri: Uri = format!(
             "{}/access/v1/organizations/{}/groups",
-            self.client.base_url, org_id
+            self.client.base_url, params.org_id
         )
         .parse()?;
-        let payload = serde_json::to_vec(&json!({
-            "orgId": org_id.0,
-            "name": name,
-            "members": members,
-        }))?;
+        let payload = serde_json::to_vec(&params)?;
 
         let req = authenticated_request(self.token, uri)
             .method("POST")
@@ -126,10 +133,11 @@ impl<'a> UpdateGroup<'a> {
             self.client.base_url, self.org_id, self.id
         )
         .parse()?;
-        let payload = serde_json::to_vec(&json!({
-            "name": self.name_opt,
-            "members": self.members_opt,
-        }))?;
+        let params = UpdateGroupParams {
+            name: self.name_opt,
+            members: self.members_opt,
+        };
+        let payload = serde_json::to_vec(&params)?;
 
         let req = authenticated_request(self.token, uri)
             .method("PUT")
