@@ -96,6 +96,7 @@ enum GroupsCommand {
     Create(CreateGroup),
     Update(UpdateGroup),
     Delete(DeleteGroup),
+    List(ListGroups),
 }
 
 #[derive(StructOpt, Debug)]
@@ -136,6 +137,12 @@ struct DeleteGroup {
     #[structopt(long, short)]
     id: String,
 
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+}
+
+#[derive(StructOpt, Debug)]
+struct ListGroups {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: OrgId,
 }
@@ -460,6 +467,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     .groups(&token)
                                     .delete(GroupId(params.id), params.org_id)
                                     .await?;
+                            }
+
+                            GroupsCommand::List(params) => {
+                                let token = store.access().await?;
+                                let groups = client.groups(&token).list(params.org_id).await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &groups)?;
+                                } else {
+                                    for group in groups {
+                                        println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
+                                    }
+                                }
                             }
                         },
 
