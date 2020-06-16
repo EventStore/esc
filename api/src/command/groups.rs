@@ -1,6 +1,6 @@
-use crate::http::{authenticated_request, default_error_handler};
+use crate::http::{authenticated_request, default_error_handler, resp_json_payload};
 use crate::{Client, GroupId, OrgId, Token};
-use hyper::{body::HttpBody, Body, Uri};
+use hyper::{Body, Uri};
 
 pub struct Groups<'a> {
     client: &'a Client,
@@ -25,12 +25,18 @@ pub struct UpdateGroupParams {
 
 #[derive(Debug, Deserialize)]
 struct CreateGroupResponse {
-    id: String,
+    id: GroupId,
 }
 
 #[derive(Debug, Deserialize)]
 struct UpdateGroupResponse {
-    id: String,
+    id: GroupId,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ListGroupsResponse {
+    groups: Vec<crate::Group>,
 }
 
 impl<'a> Groups<'a> {
@@ -38,7 +44,7 @@ impl<'a> Groups<'a> {
         Groups { client, token }
     }
 
-    pub async fn create(self, params: CreateGroupParams) -> crate::Result<GroupId> {
+    pub async fn create(&self, params: CreateGroupParams) -> crate::Result<GroupId> {
         let uri: Uri = format!(
             "{}/access/v1/organizations/{}/groups",
             self.client.base_url, params.org_id
@@ -54,16 +60,9 @@ impl<'a> Groups<'a> {
         let mut resp = self.client.inner.request(req).await?;
 
         default_error_handler(&mut resp).await?;
+        let result: CreateGroupResponse = resp_json_payload(&mut resp).await?;
 
-        let bytes = resp
-            .body_mut()
-            .data()
-            .await
-            .transpose()?
-            .unwrap_or_default();
-        let result: CreateGroupResponse = serde_json::from_slice(&bytes)?;
-
-        Ok(GroupId(result.id))
+        Ok(result.id)
     }
 
     pub async fn delete(self, id: GroupId, org_id: OrgId) -> crate::Result<()> {
@@ -83,7 +82,7 @@ impl<'a> Groups<'a> {
         Ok(())
     }
 
-    pub fn update(self, id: GroupId, org_id: OrgId) -> UpdateGroup<'a> {
+    pub fn update(&self, id: GroupId, org_id: OrgId) -> UpdateGroup<'a> {
         UpdateGroup {
             client: self.client,
             token: self.token,
@@ -92,6 +91,26 @@ impl<'a> Groups<'a> {
             name_opt: None,
             members_opt: None,
         }
+    }
+
+    pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<crate::Group>> {
+        let uri: Uri = format!(
+            "{}/access/v1/organizations/{}/groups",
+            self.client.base_url, org_id
+        )
+        .parse()?;
+
+        let req = authenticated_request(self.token, uri)
+            .method("GET")
+            .header("Accept", "application/json")
+            .body(Body::empty())?;
+
+        let mut resp = self.client.inner.request(req).await?;
+
+        default_error_handler(&mut resp).await?;
+        let result: ListGroupsResponse = resp_json_payload(&mut resp).await?;
+
+        Ok(result.groups)
     }
 }
 
@@ -147,15 +166,8 @@ impl<'a> UpdateGroup<'a> {
         let mut resp = self.client.inner.request(req).await?;
 
         default_error_handler(&mut resp).await?;
+        let result: UpdateGroupResponse = resp_json_payload(&mut resp).await?;
 
-        let bytes = resp
-            .body_mut()
-            .data()
-            .await
-            .transpose()?
-            .unwrap_or_default();
-        let result: UpdateGroupResponse = serde_json::from_slice(&bytes)?;
-
-        Ok(GroupId(result.id))
+        Ok(result.id)
     }
 }

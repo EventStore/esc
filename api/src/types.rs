@@ -142,3 +142,14 @@ pub struct Organization {
     pub name: String,
     pub created: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Group {
+    pub id: GroupId,
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub name: String,
+    pub created: String,
+    pub members: Vec<String>,
+}
