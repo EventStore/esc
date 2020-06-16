@@ -49,6 +49,7 @@ pub struct Opt {
 #[derive(StructOpt, Debug)]
 enum Command {
     Access(Access),
+    Resources(Resources),
     Infra(Infra),
     Context(Context),
     Script(Script),
@@ -274,6 +275,28 @@ enum ContextPropName {
 struct Script {
     #[structopt(long, short, parse(try_from_str = parse_command_script))]
     script: script::Script,
+}
+
+#[derive(Debug, StructOpt)]
+struct Resources {
+    #[structopt(subcommand)]
+    resources_command: ResourcesCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum ResourcesCommand {
+    Organizations(Organizations),
+}
+
+#[derive(Debug, StructOpt)]
+struct Organizations {
+    #[structopt(subcommand)]
+    organizations_command: OrganizationsCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum OrganizationsCommand {
+    List,
 }
 
 lazy_static! {
@@ -618,6 +641,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 Command::Script(params) => {
                     work_items = Box::new(params.script.commands(opt.username, opt.password));
+                }
+
+                Command::Resources(res) => {
+                    match res.resources_command {
+                        ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
+                            OrganizationsCommand::List => {
+                                let token = store.access().await?;
+                                let orgs = client.organizations(&token).list().await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &orgs)?;
+                                } else {
+                                    for org in orgs {
+                                        println!(
+                                            "id = {}; name = {}; created = {}",
+                                            org.id, org.name, org.created
+                                        );
+                                    }
+                                }
+                            }
+                        },
+                    }
+
+                    break;
                 }
             };
         }

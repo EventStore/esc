@@ -134,3 +134,11 @@ pub struct StandardClaims {
     #[serde(rename = "sub")]
     pub subject: Option<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Organization {
+    pub id: OrgId,
+    pub name: String,
+    pub created: String,
+}
