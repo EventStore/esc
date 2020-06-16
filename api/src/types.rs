@@ -153,3 +153,12 @@ pub struct Group {
     pub created: String,
     pub members: Vec<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Project {
+    pub id: ProjectId,
+    pub org_id: OrgId,
+    pub name: String,
+    pub created: String,
+}

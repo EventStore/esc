@@ -61,4 +61,8 @@ impl Client {
     ) -> command::organizations::Organizations<'a> {
         command::organizations::Organizations::new(&self, token)
     }
+
+    pub fn projects<'a>(&'a self, token: &'a Token) -> command::projects::Projects<'a> {
+        command::projects::Projects::new(&self, token)
+    }
 }
