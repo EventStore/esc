@@ -293,6 +293,7 @@ struct Resources {
 #[derive(Debug, StructOpt)]
 enum ResourcesCommand {
     Organizations(Organizations),
+    Projects(Projects),
 }
 
 #[derive(Debug, StructOpt)]
@@ -304,6 +305,23 @@ struct Organizations {
 #[derive(Debug, StructOpt)]
 enum OrganizationsCommand {
     List,
+}
+
+#[derive(Debug, StructOpt)]
+struct Projects {
+    #[structopt(subcommand)]
+    projects_command: ProjectsCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum ProjectsCommand {
+    List(ListProjects),
+}
+
+#[derive(Debug, StructOpt)]
+struct ListProjects {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
 }
 
 lazy_static! {
@@ -677,6 +695,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         println!(
                                             "id = {}; name = {}; created = {}",
                                             org.id, org.name, org.created
+                                        );
+                                    }
+                                }
+                            }
+                        },
+
+                        ResourcesCommand::Projects(projs) => match projs.projects_command {
+                            ProjectsCommand::List(params) => {
+                                let token = store.access().await?;
+                                let projs = client.projects(&token).list(params.org_id).await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &projs)?;
+                                } else {
+                                    for proj in projs {
+                                        println!(
+                                            "id = {}; name = {}; org-id = {}; created = {}",
+                                            proj.id, proj.name, proj.org_id, proj.created
                                         );
                                     }
                                 }
