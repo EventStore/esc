@@ -325,7 +325,50 @@ struct Projects {
 
 #[derive(Debug, StructOpt)]
 enum ProjectsCommand {
+    Create(CreateProject),
+    Update(UpdateProject),
+    Get(GetProject),
+    Delete(DeleteProject),
     List(ListProjects),
+}
+
+#[derive(Debug, StructOpt)]
+struct CreateProject {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, short)]
+    name: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct UpdateProject {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short)]
+    name: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct GetProject {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "")]
+    id: esc_api::ProjectId,
+}
+
+#[derive(Debug, StructOpt)]
+struct DeleteProject {
+    #[structopt(long, parse(try_from_str = parse_org_id))]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_project_id))]
+    id: esc_api::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -739,6 +782,62 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
 
                         ResourcesCommand::Projects(projs) => match projs.projects_command {
+                            ProjectsCommand::Create(params) => {
+                                let token = store.access().await?;
+                                let proj_id = client
+                                    .projects(&token)
+                                    .create(params.org_id, params.name)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &proj_id)?;
+                                } else {
+                                    println!("{}", proj_id);
+                                }
+                            }
+
+                            ProjectsCommand::Update(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .projects(&token)
+                                    .update(params.org_id, params.project_id, params.name)
+                                    .await?;
+                            }
+
+                            ProjectsCommand::Get(params) => {
+                                let token = store.access().await?;
+                                let project_opt = client
+                                    .projects(&token)
+                                    .get(params.org_id, params.id)
+                                    .await?;
+
+                                match project_opt {
+                                    Some(proj) => {
+                                        if opt.json {
+                                            serde_json::to_writer_pretty(std::io::stdout(), &proj)?;
+                                        } else {
+                                            println!(
+                                                "id = {}; name = {}; org-id = {}; created = {}",
+                                                proj.id, proj.name, proj.org_id, proj.created
+                                            );
+                                        }
+                                    }
+
+                                    _ => {
+                                        eprintln!("Project doesn't exists");
+                                        std::process::exit(-1);
+                                    }
+                                }
+                            }
+
+                            ProjectsCommand::Delete(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .projects(&token)
+                                    .delete(params.org_id, params.id)
+                                    .await?;
+                            }
+
                             ProjectsCommand::List(params) => {
                                 let token = store.access().await?;
                                 let projs = client.projects(&token).list(params.org_id).await?;
