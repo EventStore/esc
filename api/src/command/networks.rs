@@ -23,6 +23,12 @@ pub struct UpdateNetworkParams {
     pub description: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListNetworksResponse {
+    pub networks: Vec<Network>,
+}
+
 pub struct Networks<'a> {
     client: &'a Client,
     token: &'a Token,
@@ -149,8 +155,8 @@ impl<'a> Networks<'a> {
 
         default_error_handler(&mut resp).await?;
 
-        let result: Vec<Network> = resp_json_payload(&mut resp).await?;
+        let result: ListNetworksResponse = resp_json_payload(&mut resp).await?;
 
-        Ok(result)
+        Ok(result.networks)
     }
 }
