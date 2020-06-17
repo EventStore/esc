@@ -21,8 +21,12 @@ lazy_static! {
 }
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
+#[serde(rename_all = "kebab-case")]
 pub struct Settings {
-    pub context: Option<Context>,
+    pub default_profile: Option<String>,
+
+    #[serde(rename = "profile")]
+    pub profiles: Vec<Profile>,
 }
 
 impl Settings {
@@ -37,11 +41,55 @@ impl Settings {
 
         Ok(())
     }
+
+    pub fn get_current_profile(&self) -> Option<&Profile> {
+        let default_profile_name = self.default_profile.as_ref()?.as_str();
+
+        self.profiles
+            .iter()
+            .find(|profile| profile.name == default_profile_name)
+    }
+
+    pub fn get_profile(&self, name: &str) -> Option<&Profile> {
+        self.profiles.iter().find(|p| p.name == name)
+    }
+
+    pub fn get_profile_mut(&mut self, name: &str) -> &mut Profile {
+        let mut idx = 0;
+        let mut found = false;
+
+        for profile in self.profiles.iter() {
+            if profile.name == name {
+                found = true;
+                break;
+            }
+
+            idx += 1;
+        }
+
+        if found {
+            return self
+                .profiles
+                .get_mut(idx)
+                .expect("Impossible situation: we know idx is valid!");
+        }
+
+        self.profiles.push(Profile {
+            name: name.to_string(),
+            ..Default::default()
+        });
+
+        self.profiles
+            .last_mut()
+            .expect("Impossible situation: we just added a new profile!")
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
-pub struct Context {
+pub struct Profile {
+    pub name: String,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub org_id: Option<esc_api::OrgId>,
 
