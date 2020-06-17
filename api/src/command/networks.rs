@@ -14,13 +14,19 @@ pub struct CreateNetworkParams {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CreateNetworkResponse {
-    network_id: NetworkId,
+    id: NetworkId,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateNetworkParams {
     pub description: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetNetworksResponse {
+    pub network: Network,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,7 +69,7 @@ impl<'a> Networks<'a> {
 
         let resp: CreateNetworkResponse = resp_json_payload(&mut resp).await?;
 
-        Ok(resp.network_id)
+        Ok(resp.id)
     }
 
     pub async fn update(
@@ -135,9 +141,9 @@ impl<'a> Networks<'a> {
 
         default_error_handler(&mut resp).await?;
 
-        let result: Network = resp_json_payload(&mut resp).await?;
+        let result: GetNetworksResponse = resp_json_payload(&mut resp).await?;
 
-        Ok(result)
+        Ok(result.network)
     }
 
     pub async fn list(self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Network>> {
