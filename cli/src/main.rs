@@ -95,6 +95,7 @@ struct User {
 enum GroupsCommand {
     Create(CreateGroup),
     Update(UpdateGroup),
+    Get(GetGroup),
     Delete(DeleteGroup),
     List(ListGroups),
 }
@@ -119,8 +120,8 @@ struct CreateGroup {
 
 #[derive(StructOpt, Debug)]
 struct UpdateGroup {
-    #[structopt(long, short)]
-    id: String,
+    #[structopt(long, short, parse(try_from_str = parse_group_id))]
+    id: GroupId,
 
     #[structopt(long, short)]
     name: Option<String>,
@@ -133,9 +134,18 @@ struct UpdateGroup {
 }
 
 #[derive(StructOpt, Debug)]
+struct GetGroup {
+    #[structopt(long, short, parse(try_from_str = parse_group_id))]
+    id: GroupId,
+
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+}
+
+#[derive(StructOpt, Debug)]
 struct DeleteGroup {
-    #[structopt(long, short)]
-    id: String,
+    #[structopt(long, short, parse(try_from_str = parse_group_id))]
+    id: GroupId,
 
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: OrgId,
@@ -379,6 +389,10 @@ fn parse_network_id(src: &str) -> Result<esc_api::NetworkId, String> {
     Ok(esc_api::NetworkId(src.to_string()))
 }
 
+fn parse_group_id(src: &str) -> Result<esc_api::GroupId, String> {
+    Ok(esc_api::GroupId(src.to_string()))
+}
+
 fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
     match PROVIDERS.get(src) {
         Some(p) => Ok(*p),
@@ -470,20 +484,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                             GroupsCommand::Update(params) => {
                                 let token = store.access().await?;
-                                let mut update_group = client
-                                    .groups(&token)
-                                    .update(GroupId(params.id), params.org_id);
+                                let mut update_group =
+                                    client.groups(&token).update(params.id, params.org_id);
 
                                 update_group.set_name(params.name);
                                 update_group.set_members(params.members);
                                 update_group.execute().await?;
                             }
 
+                            GroupsCommand::Get(params) => {
+                                let token = store.access().await?;
+                                let group_id_opt =
+                                    client.groups(&token).get(params.id, params.org_id).await?;
+
+                                match group_id_opt {
+                                    Some(group) => {
+                                        if opt.json {
+                                            serde_json::to_writer_pretty(
+                                                std::io::stdout(),
+                                                &group,
+                                            )?;
+                                        } else {
+                                            println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
+                                        }
+                                    }
+
+                                    _ => {
+                                        eprintln!("Group doesn't exists");
+                                        std::process::exit(-1);
+                                    }
+                                }
+                            }
+
                             GroupsCommand::Delete(params) => {
                                 let token = store.access().await?;
                                 client
                                     .groups(&token)
-                                    .delete(GroupId(params.id), params.org_id)
+                                    .delete(params.id, params.org_id)
                                     .await?;
                             }
 
