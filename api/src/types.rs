@@ -101,12 +101,13 @@ pub enum Provider {
 #[serde(rename_all = "camelCase")]
 pub struct Network {
     pub project_id: ProjectId,
-    pub network_id: NetworkId,
+    #[serde(rename = "id")]
+    pub id: NetworkId,
     pub provider: Provider,
     pub region: String,
     pub cidr_block: String,
     pub description: String,
-    pub provisioning_state: String,
+    pub status: String,
 }
 
 pub type Result<A> = std::result::Result<A, Box<dyn std::error::Error>>;
