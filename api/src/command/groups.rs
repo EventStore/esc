@@ -29,14 +29,15 @@ struct CreateGroupResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct UpdateGroupResponse {
-    id: GroupId,
+#[serde(rename_all = "camelCase")]
+struct ListGroupsResponse {
+    groups: Vec<crate::Group>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ListGroupsResponse {
-    groups: Vec<crate::Group>,
+struct GetGroupResponse {
+    group: crate::Group,
 }
 
 impl<'a> Groups<'a> {
@@ -63,6 +64,28 @@ impl<'a> Groups<'a> {
         let result: CreateGroupResponse = resp_json_payload(&mut resp).await?;
 
         Ok(result.id)
+    }
+
+    pub async fn get(self, id: GroupId, org_id: OrgId) -> crate::Result<Option<crate::Group>> {
+        let uri: Uri = format!(
+            "{}/access/v1/organizations/{}/groups/{}",
+            self.client.base_url, org_id, id
+        )
+        .parse()?;
+        let req = authenticated_request(self.token, uri)
+            .method("GET")
+            .body(Body::empty())?;
+
+        let mut resp = self.client.inner.request(req).await?;
+
+        if resp.status().as_u16() == 404 {
+            return Ok(None);
+        }
+
+        default_error_handler(&mut resp).await?;
+        let result: GetGroupResponse = resp_json_payload(&mut resp).await?;
+
+        Ok(Some(result.group))
     }
 
     pub async fn delete(self, id: GroupId, org_id: OrgId) -> crate::Result<()> {
@@ -146,7 +169,7 @@ impl<'a> UpdateGroup<'a> {
         self.members_opt = members_opt;
     }
 
-    pub async fn execute(self) -> crate::Result<GroupId> {
+    pub async fn execute(self) -> crate::Result<()> {
         let uri: Uri = format!(
             "{}/access/v1/organizations/{}/groups/{}",
             self.client.base_url, self.org_id, self.id
@@ -166,8 +189,7 @@ impl<'a> UpdateGroup<'a> {
         let mut resp = self.client.inner.request(req).await?;
 
         default_error_handler(&mut resp).await?;
-        let result: UpdateGroupResponse = resp_json_payload(&mut resp).await?;
 
-        Ok(result.id)
+        Ok(())
     }
 }
