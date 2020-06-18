@@ -167,6 +167,7 @@ struct Infra {
 #[derive(StructOpt, Debug)]
 enum InfraCommand {
     Networks(Networks),
+    Peerings(Peerings),
 }
 
 #[derive(StructOpt, Debug)]
@@ -248,6 +249,96 @@ struct UpdateNetwork {
 
     #[structopt(long, short, parse(try_from_str = parse_network_id))]
     id: esc_api::NetworkId,
+
+    #[structopt(long)]
+    description: String,
+}
+
+#[derive(StructOpt, Debug)]
+struct Peerings {
+    #[structopt(subcommand)]
+    peerings_command: PeeringsCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum PeeringsCommand {
+    Create(CreatePeering),
+    Delete(DeletePeering),
+    Get(GetPeering),
+    List(ListPeerings),
+    Update(UpdatePeering),
+}
+
+#[derive(StructOpt, Debug)]
+struct CreatePeering {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, parse(try_from_str = parse_network_id), default_value = "")]
+    network_id: esc_api::NetworkId,
+
+    #[structopt(long)]
+    peer_account_id: String,
+
+    #[structopt(long)]
+    peer_network_id: String,
+
+    #[structopt(long)]
+    description: String,
+
+    #[structopt(long)]
+    peer_network_region: String,
+
+    #[structopt(long)]
+    routes: Vec<String>,
+}
+
+#[derive(StructOpt, Debug)]
+struct DeletePeering {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_peering_id))]
+    id: esc_api::PeeringId,
+}
+
+#[derive(StructOpt, Debug)]
+struct GetPeering {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_peering_id))]
+    id: esc_api::PeeringId,
+}
+
+#[derive(StructOpt, Debug)]
+struct ListPeerings {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+}
+
+#[derive(StructOpt, Debug)]
+struct UpdatePeering {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: esc_api::OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_peering_id))]
+    id: esc_api::PeeringId,
 
     #[structopt(long)]
     description: String,
@@ -464,6 +555,10 @@ fn parse_network_id(src: &str) -> Result<esc_api::NetworkId, String> {
 
 fn parse_group_id(src: &str) -> Result<esc_api::GroupId, String> {
     Ok(esc_api::GroupId(src.to_string()))
+}
+
+fn parse_peering_id(src: &str) -> Result<esc_api::PeeringId, String> {
+    Ok(esc_api::PeeringId(src.to_string()))
 }
 
 fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
@@ -695,6 +790,86 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 } else {
                                     for network in networks.into_iter() {
                                         println!("{:?}", network);
+                                    }
+                                }
+                            }
+                        },
+
+                        InfraCommand::Peerings(peerings) => match peerings.peerings_command {
+                            PeeringsCommand::Create(params) => {
+                                let token = store.access().await?;
+                                let create_params =
+                                    esc_api::command::peerings::CreatePeeringParams {
+                                        network_id: params.network_id,
+                                        description: params.description,
+                                        peer_account: params.peer_account_id,
+                                        peer_network: params.peer_network_id,
+                                        peer_network_region: params.peer_network_region,
+                                        routes: params.routes,
+                                    };
+                                let peering_id = client
+                                    .peerings(&token)
+                                    .create(params.org_id, params.project_id, create_params)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &peering_id)?;
+                                } else {
+                                    println!("{}", peering_id);
+                                }
+                            }
+
+                            PeeringsCommand::Update(params) => {
+                                let token = store.access().await?;
+                                let update_params =
+                                    esc_api::command::peerings::UpdatePeeringParams {
+                                        description: params.description,
+                                    };
+                                client
+                                    .peerings(&token)
+                                    .update(
+                                        params.org_id,
+                                        params.project_id,
+                                        params.id,
+                                        update_params,
+                                    )
+                                    .await?;
+                            }
+
+                            PeeringsCommand::Delete(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .peerings(&token)
+                                    .delete(params.org_id, params.project_id, params.id)
+                                    .await?;
+                            }
+
+                            PeeringsCommand::Get(params) => {
+                                let token = store.access().await?;
+                                let peering = client
+                                    .peerings(&token)
+                                    .get(params.org_id, params.project_id, params.id)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &peering)?;
+                                } else {
+                                    println!("{:?}", peering);
+                                }
+                            }
+
+                            PeeringsCommand::List(params) => {
+                                let token = store.access().await?;
+                                let peerings = client
+                                    .peerings(&token)
+                                    .list(params.org_id, params.project_id)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &peerings)?;
+                                } else {
+                                    for peering in peerings.into_iter() {
+                                        println!("{:?}", peering);
                                     }
                                 }
                             }

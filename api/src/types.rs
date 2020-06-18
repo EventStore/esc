@@ -63,6 +63,21 @@ impl AsRef<str> for NetworkId {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct PeeringId(pub String);
+
+impl std::fmt::Display for PeeringId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for PeeringId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
@@ -162,4 +177,19 @@ pub struct Project {
     pub org_id: OrgId,
     pub name: String,
     pub created: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Peering {
+    pub id: PeeringId,
+    pub project_id: ProjectId,
+    pub provider: Provider,
+    pub network_id: NetworkId,
+    pub description: String,
+    pub peer_account: String,
+    pub peer_network: String,
+    pub peer_network_region: String,
+    pub routes: Vec<String>,
+    pub status: String,
 }
