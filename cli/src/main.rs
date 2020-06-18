@@ -51,7 +51,7 @@ enum Command {
     Access(Access),
     Resources(Resources),
     Infra(Infra),
-    Context(Context),
+    Profiles(Profiles),
     Script(Script),
 }
 
@@ -254,23 +254,27 @@ struct UpdateNetwork {
 }
 
 #[derive(StructOpt, Debug)]
-struct Context {
+struct Profiles {
     #[structopt(subcommand)]
-    context_command: ContextCommand,
+    profiles_command: ProfilesCommand,
 }
 
 #[derive(StructOpt, Debug)]
-enum ContextCommand {
-    Set(ContextProp),
-    Get(NamedProp),
+enum ProfilesCommand {
+    Set(ProfileProp),
+    Get(OptionalNamedProp),
     Delete(NamedProp),
     List,
+    Default(ProfileDefault),
 }
 
 #[derive(StructOpt, Debug)]
-struct ContextProp {
+struct ProfileProp {
+    #[structopt(long, short)]
+    profile: String,
+
     #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
-    name: ContextPropName,
+    name: ProfilePropName,
 
     #[structopt(long, short)]
     value: String,
@@ -278,12 +282,42 @@ struct ContextProp {
 
 #[derive(StructOpt, Debug)]
 struct NamedProp {
+    #[structopt(long, short)]
+    profile: String,
+
     #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
-    name: ContextPropName,
+    name: ProfilePropName,
+}
+
+#[derive(StructOpt, Debug)]
+struct OptionalNamedProp {
+    #[structopt(long, short)]
+    profile: String,
+
+    #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
+    name: Option<ProfilePropName>,
+}
+
+#[derive(StructOpt, Debug)]
+struct ProfileDefault {
+    #[structopt(subcommand)]
+    default_command: ProfileDefaultCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum ProfileDefaultCommand {
+    Get,
+    Set(ProfileDefaultSet),
+}
+
+#[derive(StructOpt, Debug)]
+struct ProfileDefaultSet {
+    #[structopt(long, short)]
+    value: String,
 }
 
 #[derive(Debug, Copy, Clone)]
-enum ContextPropName {
+enum ProfilePropName {
     OrgId,
     ProjectId,
 }
@@ -388,21 +422,19 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref CONTEXT_PROP_NAMES: HashMap<&'static str, ContextPropName> = {
+    static ref CONTEXT_PROP_NAMES: HashMap<&'static str, ProfilePropName> = {
         let mut map = HashMap::new();
-        map.insert("project-id", ContextPropName::ProjectId);
-        map.insert("org-id", ContextPropName::OrgId);
+        map.insert("project-id", ProfilePropName::ProjectId);
+        map.insert("org-id", ProfilePropName::OrgId);
         map
     };
 }
 
 fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
     if src.trim().is_empty() {
-        if let Some(value) = crate::config::SETTINGS
-            .context
-            .as_ref()
-            .and_then(|c| c.org_id.as_ref())
-        {
+        let profile_opt = crate::config::SETTINGS.get_current_profile();
+
+        if let Some(value) = profile_opt.and_then(|p| p.org_id.as_ref()) {
             return Ok(value.clone());
         }
 
@@ -414,11 +446,9 @@ fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
 
 fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
     if src.trim().is_empty() {
-        if let Some(value) = crate::config::SETTINGS
-            .context
-            .as_ref()
-            .and_then(|c| c.project_id.as_ref())
-        {
+        let profile_opt = crate::config::SETTINGS.get_current_profile();
+
+        if let Some(value) = profile_opt.and_then(|p| p.project_id.as_ref()) {
             return Ok(value.clone());
         }
 
@@ -449,7 +479,7 @@ fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
     }
 }
 
-fn parse_context_prop_name(src: &str) -> Result<ContextPropName, String> {
+fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
     match CONTEXT_PROP_NAMES.get(src) {
         Some(p) => Ok(*p),
         None => {
@@ -674,84 +704,90 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     break;
                 }
 
-                Command::Context(context) => {
-                    match context.context_command {
-                        ContextCommand::Set(prop) => {
+                Command::Profiles(context) => {
+                    match context.profiles_command {
+                        ProfilesCommand::Set(params) => {
                             let mut settings = crate::config::SETTINGS.clone();
-                            let mut context = settings.context.unwrap_or_default();
+                            let profile = settings.get_profile_mut(&params.profile);
 
-                            match prop.name {
-                                ContextPropName::OrgId => {
-                                    context.org_id = Some(OrgId(prop.value));
+                            match params.name {
+                                ProfilePropName::ProjectId => {
+                                    profile.project_id = Some(esc_api::ProjectId(params.value));
                                 }
 
-                                ContextPropName::ProjectId => {
-                                    context.project_id = Some(esc_api::ProjectId(prop.value));
+                                ProfilePropName::OrgId => {
+                                    profile.org_id = Some(esc_api::OrgId(params.value));
                                 }
                             }
 
-                            settings.context = Some(context);
                             settings.persist().await?;
                         }
 
-                        ContextCommand::Get(prop) => {
-                            let settings = crate::config::SETTINGS.clone();
-                            let context = settings.context.unwrap_or_default();
+                        ProfilesCommand::Get(params) => {
+                            if let Some(profile) =
+                                crate::config::SETTINGS.get_profile(&params.profile)
+                            {
+                                if let Some(name) = params.name {
+                                    match name {
+                                        ProfilePropName::ProjectId => {
+                                            let default = Default::default();
+                                            let value =
+                                                profile.project_id.as_ref().unwrap_or(&default);
+                                            serde_json::to_writer_pretty(std::io::stdout(), value)?;
+                                        }
 
-                            match prop.name {
-                                ContextPropName::OrgId => {
-                                    if let Some(value) = context.org_id {
-                                        println!("{}", value);
+                                        ProfilePropName::OrgId => {
+                                            let default = Default::default();
+                                            let value = profile.org_id.as_ref().unwrap_or(&default);
+                                            serde_json::to_writer_pretty(std::io::stdout(), value)?;
+                                        }
                                     }
-
-                                    return Err(StringError("Not set".to_string()).into());
-                                }
-
-                                ContextPropName::ProjectId => {
-                                    if let Some(value) = context.project_id {
-                                        println!("{}", value);
-                                    }
-
-                                    return Err(StringError("Not set".to_string()).into());
+                                } else {
+                                    serde_json::to_writer_pretty(std::io::stdout(), profile)?;
                                 }
                             }
                         }
 
-                        ContextCommand::Delete(prop) => {
-                            let mut settings = crate::config::SETTINGS.clone();
-                            let mut context = settings.context.unwrap_or_default();
+                        ProfilesCommand::List => {
+                            serde_json::to_writer_pretty(
+                                std::io::stdout(),
+                                &crate::config::SETTINGS.profiles,
+                            )?;
+                        }
 
-                            match prop.name {
-                                ContextPropName::OrgId => {
-                                    context.org_id = None;
+                        ProfilesCommand::Delete(params) => {
+                            let mut settings = crate::config::SETTINGS.clone();
+                            let profile = settings.get_profile_mut(&params.profile);
+
+                            match params.name {
+                                ProfilePropName::ProjectId => {
+                                    profile.project_id = None;
                                 }
 
-                                ContextPropName::ProjectId => {
-                                    context.project_id = None;
+                                ProfilePropName::OrgId => {
+                                    profile.org_id = None;
                                 }
                             }
 
-                            settings.context = Some(context);
                             settings.persist().await?;
                         }
 
-                        ContextCommand::List => {
-                            let settings = crate::config::SETTINGS.clone();
-                            let context = settings.context.unwrap_or_default();
-
-                            if opt.json {
-                                serde_json::to_writer_pretty(std::io::stdout(), &context)?;
-                                return Ok(());
+                        ProfilesCommand::Default(default) => match default.default_command {
+                            ProfileDefaultCommand::Get => {
+                                match crate::config::SETTINGS.default_profile.as_ref() {
+                                    Some(value) => {
+                                        serde_json::to_writer_pretty(std::io::stdout(), value)?
+                                    }
+                                    _ => std::process::exit(-1),
+                                }
                             }
 
-                            if let Some(value) = context.project_id {
-                                println!("project-id = {}", value);
+                            ProfileDefaultCommand::Set(params) => {
+                                let mut settings = crate::config::SETTINGS.clone();
+                                settings.default_profile = Some(params.value);
+                                settings.persist().await?;
                             }
-
-                            if let Some(value) = context.org_id {
-                                println!("org-id = {}", value);
-                            }
-                        }
+                        },
                     }
 
                     break;

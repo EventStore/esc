@@ -9,7 +9,7 @@ impl std::fmt::Display for GroupId {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize, Default)]
 pub struct OrgId(pub String);
 
 impl std::fmt::Display for OrgId {
@@ -33,7 +33,7 @@ impl AsRef<str> for ClientId {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, Default)]
 pub struct ProjectId(pub String);
 
 impl std::fmt::Display for ProjectId {
