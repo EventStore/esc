@@ -65,4 +65,8 @@ impl Client {
     pub fn projects<'a>(&'a self, token: &'a Token) -> command::projects::Projects<'a> {
         command::projects::Projects::new(&self, token)
     }
+
+    pub fn peerings<'a>(&'a self, token: &'a Token) -> command::peerings::Peerings<'a> {
+        command::peerings::Peerings::new(&self, token)
+    }
 }
