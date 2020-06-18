@@ -45,9 +45,7 @@ impl Settings {
     pub fn get_current_profile(&self) -> Option<&Profile> {
         let default_profile_name = self.default_profile.as_ref()?.as_str();
 
-        self.profiles
-            .iter()
-            .find(|profile| profile.name == default_profile_name)
+        self.get_profile(default_profile_name)
     }
 
     pub fn get_profile(&self, name: &str) -> Option<&Profile> {
