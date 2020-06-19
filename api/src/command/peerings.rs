@@ -151,7 +151,7 @@ impl<'a> Peerings<'a> {
     pub async fn list(self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Peering>> {
         // TODO - Fix bespin backend to fix that URL path.
         let uri: Uri = format!(
-            "{}/infra/v1/organizations/{}/projects/{}/peering",
+            "{}/infra/v1/organizations/{}/projects/{}/peerings",
             self.client.base_url, org_id, project_id
         )
         .parse()?;
