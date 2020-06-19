@@ -1,3 +1,4 @@
+pub mod clusters;
 pub mod groups;
 pub mod networks;
 pub mod organizations;

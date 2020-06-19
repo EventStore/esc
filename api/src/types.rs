@@ -78,6 +78,21 @@ impl AsRef<str> for PeeringId {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ClusterId(pub String);
+
+impl std::fmt::Display for ClusterId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for ClusterId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
@@ -192,4 +207,31 @@ pub struct Peering {
     pub peer_network_region: String,
     pub routes: Vec<String>,
     pub status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub enum Topology {
+    SingleNode,
+    ThreeNodeMultiZone,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Cluster {
+    pub id: ClusterId,
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub project_id: ProjectId,
+    pub network_id: NetworkId,
+    pub description: String,
+    pub provider: Provider,
+    pub region: String,
+    pub topology: Topology,
+    pub instance_type: String,
+    pub disk_size_gb: usize,
+    pub disk_type: String,
+    pub server_version: String,
+    pub status: String,
+    pub created: String,
 }

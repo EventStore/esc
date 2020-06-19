@@ -69,4 +69,8 @@ impl Client {
     pub fn peerings<'a>(&'a self, token: &'a Token) -> command::peerings::Peerings<'a> {
         command::peerings::Peerings::new(&self, token)
     }
+
+    pub fn clusters<'a>(&'a self, token: &'a Token) -> command::clusters::Clusters<'a> {
+        command::clusters::Clusters::new(&self, token)
+    }
 }
