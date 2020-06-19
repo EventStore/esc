@@ -53,6 +53,7 @@ enum Command {
     Infra(Infra),
     Profiles(Profiles),
     Script(Script),
+    Mesdb(Mesdb),
 }
 
 #[derive(StructOpt, Debug)]
@@ -502,6 +503,107 @@ struct ListProjects {
     org_id: OrgId,
 }
 
+#[derive(Debug, StructOpt)]
+struct Mesdb {
+    #[structopt(subcommand)]
+    mesdb_command: MesdbCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum MesdbCommand {
+    Clusters(Clusters),
+}
+
+#[derive(Debug, StructOpt)]
+struct Clusters {
+    #[structopt(subcommand)]
+    clusters_command: ClustersCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum ClustersCommand {
+    Create(CreateCluster),
+    Get(GetCluster),
+    List(ListClusters),
+    Update(UpdateCluster),
+    Delete(DeleteCluster),
+}
+
+#[derive(Debug, StructOpt)]
+struct CreateCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, parse(try_from_str = parse_network_id))]
+    network_id: esc_api::NetworkId,
+
+    #[structopt(long)]
+    description: String,
+
+    #[structopt(long, parse(try_from_str = parse_topology))]
+    topology: esc_api::Topology,
+
+    #[structopt(long)]
+    instance_type: String,
+
+    #[structopt(long)]
+    disk_size_in_gb: usize,
+
+    #[structopt(long)]
+    disk_type: String,
+
+    #[structopt(long)]
+    server_version: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct GetCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id))]
+    id: esc_api::ClusterId,
+}
+
+#[derive(Debug, StructOpt)]
+struct ListClusters {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+}
+
+#[derive(Debug, StructOpt)]
+struct UpdateCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id))]
+    id: esc_api::ClusterId,
+}
+
+#[derive(Debug, StructOpt)]
+struct DeleteCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id))]
+    id: esc_api::ClusterId,
+}
+
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
         let mut map = HashMap::new();
@@ -517,6 +619,18 @@ lazy_static! {
         let mut map = HashMap::new();
         map.insert("project-id", ProfilePropName::ProjectId);
         map.insert("org-id", ProfilePropName::OrgId);
+        map
+    };
+}
+
+lazy_static! {
+    static ref CLUSTER_TOPOLOGIES: HashMap<&'static str, esc_api::Topology> = {
+        let mut map = HashMap::new();
+        map.insert("single-node", esc_api::Topology::SingleNode);
+        map.insert(
+            "three-node-multi-zone",
+            esc_api::Topology::ThreeNodeMultiZone,
+        );
         map
     };
 }
@@ -561,26 +675,29 @@ fn parse_peering_id(src: &str) -> Result<esc_api::PeeringId, String> {
     Ok(esc_api::PeeringId(src.to_string()))
 }
 
+fn parse_cluster_id(src: &str) -> Result<esc_api::ClusterId, String> {
+    Ok(esc_api::ClusterId(src.to_string()))
+}
+
 fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
-    match PROVIDERS.get(src) {
-        Some(p) => Ok(*p),
-        None => {
-            let supported: Vec<&&str> = PROVIDERS.keys().collect();
-            Err(format!(
-                "Unsupported provider: \"{}\". Supported values: {:?}",
-                src, supported
-            ))
-        }
-    }
+    parse_enum(&PROVIDERS, src)
 }
 
 fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
-    match CONTEXT_PROP_NAMES.get(src) {
+    parse_enum(&CONTEXT_PROP_NAMES, src)
+}
+
+fn parse_topology(src: &str) -> Result<esc_api::Topology, String> {
+    parse_enum(&CLUSTER_TOPOLOGIES, src)
+}
+
+fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
+    match env.get(src) {
         Some(p) => Ok(*p),
         None => {
-            let supported: Vec<&&str> = CONTEXT_PROP_NAMES.keys().collect();
+            let supported: Vec<&&str> = env.keys().collect();
             Err(format!(
-                "Unsupported context property name: \"{}\". Supported values: {:?}",
+                "Unsupported value: \"{}\". Supported values: {:?}",
                 src, supported
             ))
         }
@@ -712,7 +829,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
 
-                    break;
+                    continue;
                 }
 
                 Command::Infra(infra) => {
@@ -876,7 +993,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     }
 
-                    break;
+                    continue;
                 }
 
                 Command::Profiles(context) => {
@@ -965,11 +1082,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     }
 
-                    break;
+                    continue;
                 }
 
                 Command::Script(params) => {
                     work_items = Box::new(params.script.commands(opt.username, opt.password));
+                    continue;
                 }
 
                 Command::Resources(res) => {
@@ -1067,10 +1185,86 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     }
 
-                    break;
+                    continue;
+                }
+
+                Command::Mesdb(mesdb) => {
+                    let token = store.access().await?;
+                    match mesdb.mesdb_command {
+                        MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
+                            ClustersCommand::Create(params) => {
+                                let create_params =
+                                    esc_api::command::clusters::CreateClusterParams {
+                                        network_id: params.network_id,
+                                        description: params.description,
+                                        topology: params.topology,
+                                        instance_type: params.instance_type,
+                                        disk_size_gb: params.disk_size_in_gb,
+                                        disk_type: params.disk_type,
+                                        server_version: params.server_version,
+                                    };
+                                let cluster_id = client
+                                    .clusters(&token)
+                                    .create(params.org_id, params.project_id, create_params)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &cluster_id)?;
+                                } else {
+                                    println!("{}", cluster_id);
+                                }
+                            }
+
+                            ClustersCommand::Get(params) => {
+                                let cluster = client
+                                    .clusters(&token)
+                                    .get(params.org_id, params.project_id, params.id)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &cluster)?;
+                                } else {
+                                    println!("{:?}", cluster);
+                                }
+                            }
+
+                            ClustersCommand::Delete(params) => {
+                                client
+                                    .clusters(&token)
+                                    .delete(params.org_id, params.project_id, params.id)
+                                    .await?;
+                            }
+
+                            ClustersCommand::Update(params) => {
+                                client
+                                    .clusters(&token)
+                                    .update(params.org_id, params.project_id, params.id)
+                                    .await?;
+                            }
+
+                            ClustersCommand::List(params) => {
+                                let clusters = client
+                                    .clusters(&token)
+                                    .list(params.org_id, params.project_id)
+                                    .await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &clusters)?;
+                                } else {
+                                    for cluster in clusters {
+                                        println!("{:?}", cluster);
+                                    }
+                                }
+                            }
+                        },
+                    }
+
+                    continue;
                 }
             };
         }
+
+        break;
     }
 
     Ok(())
