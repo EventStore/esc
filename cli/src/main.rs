@@ -36,10 +36,10 @@ pub struct Opt {
     )]
     password: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Prints a verbose output during the program execution")]
     debug: bool,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Print a command output in pretty-printed JSON")]
     json: bool,
 
     #[structopt(subcommand)]
@@ -57,7 +57,7 @@ enum Command {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(about = "API access calls")]
+#[structopt(about = "Gathers groups, members, policies and settings management commands")]
 struct Access {
     #[structopt(subcommand)]
     access_command: AccessCommand,
@@ -81,6 +81,7 @@ enum TokensCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers groups management commands")]
 struct Groups {
     #[structopt(subcommand)]
     groups_command: GroupsCommand,
@@ -108,33 +109,36 @@ enum UserCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Create a group")]
 struct CreateGroup {
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "The group's name")]
     name: String,
 
-    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the group will relate to")]
     org_id: OrgId,
 
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "The members of the group")]
     members: Vec<String>,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Update a group")]
 struct UpdateGroup {
-    #[structopt(long, short, parse(try_from_str = parse_group_id))]
+    #[structopt(long, short, parse(try_from_str = parse_group_id), help = "The group's id")]
     id: GroupId,
 
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "The group's name")]
     name: Option<String>,
 
-    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the group will relate to")]
     org_id: OrgId,
 
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "The members of the group")]
     members: Option<Vec<String>>,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Read a group information")]
 struct GetGroup {
     #[structopt(long, short, parse(try_from_str = parse_group_id))]
     id: GroupId,
@@ -144,22 +148,24 @@ struct GetGroup {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Delete a group")]
 struct DeleteGroup {
-    #[structopt(long, short, parse(try_from_str = parse_group_id))]
+    #[structopt(long, short, parse(try_from_str = parse_group_id), help = "The group's id")]
     id: GroupId,
 
-    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the group will relate to")]
     org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "List groups")]
 struct ListGroups {
-    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the groups relate to")]
     org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(about = "API infra calls")]
+#[structopt(about = "Gathers networks and peering management commands")]
 struct Infra {
     #[structopt(subcommand)]
     infra_command: InfraCommand,
@@ -172,6 +178,7 @@ enum InfraCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers networks management commands")]
 struct Networks {
     #[structopt(subcommand)]
     networks_command: NetworksCommand,
@@ -187,75 +194,81 @@ enum NetworksCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Create a network")]
 struct CreateNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network will relate to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network will relate to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, parse(try_from_str = parse_provider))]
+    #[structopt(long, parse(try_from_str = parse_provider), help = "The cloud provider: aws, gcp or azure")]
     provider: esc_api::Provider,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Classless Inter-Domain Routing block (CIDR)")]
     cidr_block: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Human-readable description of the network")]
     description: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Cloud provider region")]
     region: String,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Delete a network")]
 struct DeleteNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_network_id))]
+    #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
     id: esc_api::NetworkId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Read a network information")]
 struct GetNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_network_id))]
+    #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
     id: esc_api::NetworkId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "List networks of an organization, given a project")]
 struct ListNetworks {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the networks relate to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the networks relate to")]
     project_id: esc_api::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Update network")]
 struct UpdateNetwork {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_network_id))]
+    #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
     id: esc_api::NetworkId,
 
-    #[structopt(long)]
+    #[structopt(long, help = "A human-readable network's description")]
     description: String,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers peering management commands")]
 struct Peerings {
     #[structopt(subcommand)]
     peerings_command: PeeringsCommand,
@@ -271,81 +284,87 @@ enum PeeringsCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Create a peering")]
 struct CreatePeering {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering will relate to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering will relate to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, parse(try_from_str = parse_network_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_network_id), default_value = "", help = "The network id the peering will relate to")]
     network_id: esc_api::NetworkId,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Your cloud provider account id")]
     peer_account_id: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Your cloud provider network id")]
     peer_network_id: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Human-readable description for your peering")]
     description: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Your cloud provider network region")]
     peer_network_region: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Your network routes")]
     routes: Vec<String>,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Delete a peering")]
 struct DeletePeering {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_peering_id))]
+    #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Read a peering information")]
 struct GetPeering {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_peering_id))]
+    #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "List all peering related an organization, given a project id")]
 struct ListPeerings {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peerings relate to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peerings relate to")]
     project_id: esc_api::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Update a peering")]
 struct UpdatePeering {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
     org_id: esc_api::OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_peering_id))]
+    #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
 
-    #[structopt(long)]
+    #[structopt(long, help = "A human-readable description for your peering")]
     description: String,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers ESC local profile management commands")]
 struct Profiles {
     #[structopt(subcommand)]
     profiles_command: ProfilesCommand,
@@ -361,36 +380,40 @@ enum ProfilesCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Set a local profile parameter value")]
 struct ProfileProp {
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "The profile's name")]
     profile: String,
 
-    #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
+    #[structopt(long, short, parse(try_from_str = parse_context_prop_name), help = "Name of the parameter")]
     name: ProfilePropName,
 
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "Parameter's value")]
     value: String,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Delete a profile parameter")]
 struct NamedProp {
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "Profile's name")]
     profile: String,
 
-    #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
+    #[structopt(long, short, parse(try_from_str = parse_context_prop_name), help = "Name of the parameter")]
     name: ProfilePropName,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Read a profile parameter(s)")]
 struct OptionalNamedProp {
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "Profile's name")]
     profile: String,
 
-    #[structopt(long, short, parse(try_from_str = parse_context_prop_name))]
+    #[structopt(long, short, parse(try_from_str = parse_context_prop_name), help = "Name of the parameter. If not mentioned, list all the profile's parameters")]
     name: Option<ProfilePropName>,
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers default profile commands")]
 struct ProfileDefault {
     #[structopt(subcommand)]
     default_command: ProfileDefaultCommand,
@@ -398,13 +421,18 @@ struct ProfileDefault {
 
 #[derive(StructOpt, Debug)]
 enum ProfileDefaultCommand {
-    Get,
+    Get(GetProfileDefault),
     Set(ProfileDefaultSet),
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Read the current default local profile name")]
+struct GetProfileDefault {}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Set default local profile")]
 struct ProfileDefaultSet {
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "Profile's name")]
     value: String,
 }
 
@@ -415,12 +443,14 @@ enum ProfilePropName {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Executes a command script file")]
 struct Script {
     #[structopt(long, short, parse(try_from_str = parse_command_script))]
     script: script::Script,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers organizations and projects management commands")]
 struct Resources {
     #[structopt(subcommand)]
     resources_command: ResourcesCommand,
@@ -433,6 +463,7 @@ enum ResourcesCommand {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers organizations management commands")]
 struct Organizations {
     #[structopt(subcommand)]
     organizations_command: OrganizationsCommand,
@@ -440,10 +471,15 @@ struct Organizations {
 
 #[derive(Debug, StructOpt)]
 enum OrganizationsCommand {
-    List,
+    List(ListOrganizations),
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "List organizations")]
+struct ListOrganizations {}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers projects management commands")]
 struct Projects {
     #[structopt(subcommand)]
     projects_command: ProjectsCommand,
@@ -459,51 +495,57 @@ enum ProjectsCommand {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Create a project")]
 struct CreateProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the project will relate to")]
     org_id: OrgId,
 
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "Project's name")]
     name: String,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Update a project")]
 struct UpdateProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the project is related to")]
     org_id: OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
-    project_id: esc_api::ProjectId,
+    #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to update")]
+    id: esc_api::ProjectId,
 
-    #[structopt(long, short)]
+    #[structopt(long, short, help = "New project's name")]
     name: String,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Get a project information")]
 struct GetProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the project is related to")]
     org_id: OrgId,
 
-    #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to read information from")]
     id: esc_api::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Delete a project")]
 struct DeleteProject {
-    #[structopt(long, parse(try_from_str = parse_org_id))]
+    #[structopt(long, parse(try_from_str = parse_org_id), help = "The organization id the project is related to")]
     org_id: OrgId,
 
-    #[structopt(long, short, parse(try_from_str = parse_project_id))]
+    #[structopt(long, short, parse(try_from_str = parse_project_id), help = "The id of the project you want to delete")]
     id: esc_api::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "List an organization's projects")]
 struct ListProjects {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "Organization's id")]
     org_id: OrgId,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers cluster management commands")]
 struct Mesdb {
     #[structopt(subcommand)]
     mesdb_command: MesdbCommand,
@@ -515,6 +557,7 @@ enum MesdbCommand {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers cluster management commands")]
 struct Clusters {
     #[structopt(subcommand)]
     clusters_command: ClustersCommand,
@@ -530,77 +573,88 @@ enum ClustersCommand {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Create a cluster")]
 struct CreateCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
     org_id: OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, parse(try_from_str = parse_network_id))]
+    #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
     network_id: esc_api::NetworkId,
 
-    #[structopt(long)]
+    #[structopt(long, help = "A human-readable description of the cluster")]
     description: String,
 
-    #[structopt(long, parse(try_from_str = parse_topology))]
+    #[structopt(long, parse(try_from_str = parse_topology), help = "Either single-node or three-node-multi-zone")]
     topology: esc_api::Topology,
 
-    #[structopt(long)]
+    #[structopt(
+        long,
+        help = "Type of instance, based on its hardware. For example, it could be F1 for a micro or C4 for a large instance"
+    )]
     instance_type: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "Total disk capacity in Gigabytes (GB)")]
     disk_size_in_gb: usize,
 
-    #[structopt(long)]
+    #[structopt(
+        long,
+        help = "Type of disk. For example, if you are using AWS as a provider, it could be GP2"
+    )]
     disk_type: String,
 
-    #[structopt(long)]
+    #[structopt(long, help = "EventStoreDB server version")]
     server_version: String,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Get a cluster information")]
 struct GetCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
     org_id: OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id))]
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Cluster's id")]
     id: esc_api::ClusterId,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "List all clusters of an organization, given a project id")]
 struct ListClusters {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "An organization's id")]
     org_id: OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
     project_id: esc_api::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Update a cluster")]
 struct UpdateCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
     org_id: OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id))]
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
     id: esc_api::ClusterId,
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "Delete a cluster")]
 struct DeleteCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
     org_id: OrgId,
 
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "")]
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
     project_id: esc_api::ProjectId,
 
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id))]
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to delete")]
     id: esc_api::ClusterId,
 }
 
@@ -1065,7 +1119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
 
                         ProfilesCommand::Default(default) => match default.default_command {
-                            ProfileDefaultCommand::Get => {
+                            ProfileDefaultCommand::Get(_) => {
                                 match crate::config::SETTINGS.default_profile.as_ref() {
                                     Some(value) => {
                                         serde_json::to_writer_pretty(std::io::stdout(), value)?
@@ -1093,7 +1147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Command::Resources(res) => {
                     match res.resources_command {
                         ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
-                            OrganizationsCommand::List => {
+                            OrganizationsCommand::List(_) => {
                                 let token = store.access().await?;
                                 let orgs = client.organizations(&token).list().await?;
 
@@ -1129,7 +1183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let token = store.access().await?;
                                 client
                                     .projects(&token)
-                                    .update(params.org_id, params.project_id, params.name)
+                                    .update(params.org_id, params.id, params.name)
                                     .await?;
                             }
 
