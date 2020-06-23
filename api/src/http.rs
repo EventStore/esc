@@ -2,6 +2,7 @@ use crate::Token;
 use http::{Request, Uri};
 use hyper::{body::HttpBody, Body};
 use serde::export::Formatter;
+use serde::Serialize;
 
 enum Failure {
     Client(String),
@@ -77,4 +78,9 @@ where
     let value = serde_json::from_reader(std::io::Cursor::new(bytes))?;
 
     Ok(value)
+}
+
+pub fn req_json_payload<A: Serialize>(payload: &A) -> crate::Result<Body> {
+    let bytes = serde_json::to_vec(payload)?;
+    Ok(Body::from(bytes))
 }
