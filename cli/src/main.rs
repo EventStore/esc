@@ -471,7 +471,42 @@ struct Organizations {
 
 #[derive(Debug, StructOpt)]
 enum OrganizationsCommand {
+    Create(CreateOrganization),
+    Update(UpdateOrganization),
+    Get(GetOrganization),
+    Delete(DeleteOrganization),
     List(ListOrganizations),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Create an organization")]
+struct CreateOrganization {
+    #[structopt(long, short)]
+    name: String,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Update an organization")]
+struct UpdateOrganization {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), help = "The id of the organization you want to update")]
+    id: OrgId,
+
+    #[structopt(long, short)]
+    name: String,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "read an organization's information")]
+struct GetOrganization {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read information from")]
+    id: OrgId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Delete an organization")]
+struct DeleteOrganization {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), help = "The id of the organization you want to delete")]
+    id: OrgId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1147,6 +1182,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Command::Resources(res) => {
                     match res.resources_command {
                         ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
+                            OrganizationsCommand::Create(params) => {
+                                let token = store.access().await?;
+                                let org_id =
+                                    client.organizations(&token).create(params.name).await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &org_id)?;
+                                } else {
+                                    println!("{}", org_id);
+                                }
+                            }
+
+                            OrganizationsCommand::Update(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .organizations(&token)
+                                    .update(params.id, params.name)
+                                    .await?;
+                            }
+
+                            OrganizationsCommand::Delete(params) => {
+                                let token = store.access().await?;
+                                client.organizations(&token).delete(params.id).await?;
+                            }
+
+                            OrganizationsCommand::Get(params) => {
+                                let token = store.access().await?;
+                                let org = client.organizations(&token).get(params.id).await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &org)?;
+                                } else {
+                                    println!(
+                                        "id = {}; name = {}; created = {}",
+                                        org.id, org.name, org.created
+                                    );
+                                }
+                            }
+
                             OrganizationsCommand::List(_) => {
                                 let token = store.access().await?;
                                 let orgs = client.organizations(&token).list().await?;
