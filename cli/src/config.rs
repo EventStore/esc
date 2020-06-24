@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 lazy_static! {
@@ -30,6 +32,24 @@ pub struct Settings {
 }
 
 impl Settings {
+    pub async fn configure() -> Result<(), Box<dyn std::error::Error>> {
+        if tokio::fs::metadata(ESC_DIR.as_path()).await.is_err() {
+            tokio::fs::create_dir_all(ESC_DIR.as_path()).await?;
+            tokio::fs::File::create(SETTINGS_FILE.as_path()).await?;
+
+            #[cfg(not(target_os = "windows"))]
+            {
+                let mut settings_file_permissions = tokio::fs::metadata(SETTINGS_FILE.as_path())
+                    .await?
+                    .permissions();
+
+                settings_file_permissions.set_mode(0o640);
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn persist(self) -> Result<(), Box<dyn std::error::Error>> {
         if tokio::fs::metadata(ESC_DIR.as_path()).await.is_err() {
             tokio::fs::create_dir_all(ESC_DIR.as_path()).await?;

@@ -824,6 +824,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         constants::ES_CLOUD_API_URL.to_string(),
         constants::ES_CLOUD_IDENTITY_URL.to_string(),
     );
+
+    config::Settings::configure().await?;
     let mut store = TokenStore::new(auth, client.tokens());
     store.configure().await?;
 

@@ -2,6 +2,8 @@ use esc_api::{command::tokens::Tokens, ClientId, StandardClaims, Token};
 use hyper::Uri;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use std::error::Error;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
@@ -111,7 +113,18 @@ impl<'a> TokenStore<'a> {
     }
 
     pub async fn configure(&self) -> std::io::Result<()> {
-        fs::create_dir_all(&self.path).await
+        fs::create_dir_all(self.path.as_path()).await?;
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let mut tokens_file_permissions = tokio::fs::metadata(self.path.as_path())
+                .await?
+                .permissions();
+
+            tokens_file_permissions.set_mode(0o750);
+        }
+
+        Ok(())
     }
 
     fn parse_token_claims(&self, token: &Token) -> jsonwebtoken::errors::Result<StandardClaims> {
