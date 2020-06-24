@@ -1,3 +1,4 @@
+use serde::export::Formatter;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -17,7 +18,17 @@ lazy_static! {
     pub static ref SETTINGS: Settings = {
         match load_settings() {
             Ok(settings) => settings,
-            _ => Default::default(),
+            Err(e) => {
+                if std::path::Path::new(SETTINGS_FILE.as_path()).exists() {
+                    eprintln!(
+                        "Error when parsing {}, fallback to default settings. Error: {}",
+                        SETTINGS_FILE.as_path().display(),
+                        e
+                    );
+                }
+
+                Default::default()
+            }
         }
     };
 }
@@ -113,6 +124,68 @@ pub struct Profile {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub project_id: Option<esc_api::ProjectId>,
+
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_url",
+        serialize_with = "serialize_url",
+        default
+    )]
+    pub api_base_url: Option<url::Url>,
+}
+
+struct InvalidUrl {}
+
+pub fn parse_url(str: &str) -> Result<url::Url, Box<dyn std::error::Error>> {
+    let url = url::Url::parse(str)?;
+
+    if url.scheme() != "http" && url.scheme() != "https" {
+        return Err(InvalidUrl {}.into());
+    }
+
+    if url.host().is_none() {
+        return Err(InvalidUrl {}.into());
+    }
+
+    Ok(url)
+}
+
+impl std::fmt::Display for InvalidUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Malformed URL. Expecting HTTP/HTTPS scheme, a valid host or IP"
+        )
+    }
+}
+
+impl std::fmt::Debug for InvalidUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Malformed URL. Expecting HTTP/HTTPS scheme, a valid host or IP"
+        )
+    }
+}
+
+impl std::error::Error for InvalidUrl {}
+
+fn deserialize_url<'de, D>(deserializer: D) -> Result<Option<url::Url>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    deserializer.deserialize_str(UrlVisitor {})
+}
+
+fn serialize_url<S>(url: &Option<url::Url>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    if let Some(url) = url {
+        return serializer.serialize_some(url.as_str());
+    }
+
+    serializer.serialize_none()
 }
 
 fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
@@ -120,4 +193,24 @@ fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
     let settings: Settings = toml::from_slice(&bytes)?;
 
     Ok(settings)
+}
+
+struct UrlVisitor {}
+
+impl<'a> serde::de::Visitor<'a> for UrlVisitor {
+    type Value = Option<url::Url>;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        write!(formatter, "a valid URL")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match parse_url(value) {
+            Ok(url) => Ok(Some(url)),
+            Err(e) => Err(serde::de::Error::custom(e)),
+        }
+    }
 }

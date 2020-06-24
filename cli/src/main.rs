@@ -440,6 +440,7 @@ struct ProfileDefaultSet {
 enum ProfilePropName {
     OrgId,
     ProjectId,
+    ApiBaseUrl,
 }
 
 #[derive(Debug, StructOpt)]
@@ -708,6 +709,7 @@ lazy_static! {
         let mut map = HashMap::new();
         map.insert("project-id", ProfilePropName::ProjectId);
         map.insert("org-id", ProfilePropName::OrgId);
+        map.insert("api-base-url", ProfilePropName::ApiBaseUrl);
         map
     };
 }
@@ -820,10 +822,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         password: opt.password.clone(),
         audience,
     };
-    let client = Client::new(
-        constants::ES_CLOUD_API_URL.to_string(),
-        constants::ES_CLOUD_IDENTITY_URL.to_string(),
-    );
+    let base_url = config::SETTINGS
+        .get_current_profile()
+        .and_then(|profile| {
+            profile.api_base_url.as_ref().map(|url| {
+                format!(
+                    "{}://{}",
+                    url.scheme(),
+                    url.host_str().expect("Pre-validated it has a host")
+                )
+            })
+        })
+        .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
+
+    let client = Client::new(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string());
 
     config::Settings::configure().await?;
     let mut store = TokenStore::new(auth, client.tokens());
@@ -1101,6 +1113,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 ProfilePropName::OrgId => {
                                     profile.org_id = Some(esc_api::OrgId(params.value));
                                 }
+
+                                ProfilePropName::ApiBaseUrl => {
+                                    let url = config::parse_url(params.value.as_str())?;
+                                    profile.api_base_url = Some(url);
+                                }
                             }
 
                             settings.persist().await?;
@@ -1123,6 +1140,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                             let default = Default::default();
                                             let value = profile.org_id.as_ref().unwrap_or(&default);
                                             serde_json::to_writer_pretty(std::io::stdout(), value)?;
+                                        }
+
+                                        ProfilePropName::ApiBaseUrl => {
+                                            if let Some(url) = profile.api_base_url.as_ref() {
+                                                serde_json::to_writer_pretty(
+                                                    std::io::stdout(),
+                                                    url.as_str(),
+                                                )?;
+                                            }
                                         }
                                     }
                                 } else {
@@ -1149,6 +1175,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                                 ProfilePropName::OrgId => {
                                     profile.org_id = None;
+                                }
+
+                                ProfilePropName::ApiBaseUrl => {
+                                    profile.api_base_url = None;
                                 }
                             }
 
