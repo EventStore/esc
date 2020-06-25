@@ -57,7 +57,7 @@ enum Command {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(about = "Gathers groups, members, policies and settings management commands")]
+#[structopt(about = "Gathers groups, members, invites, policies and settings management commands")]
 struct Access {
     #[structopt(subcommand)]
     access_command: AccessCommand,
@@ -67,6 +67,7 @@ struct Access {
 enum AccessCommand {
     Tokens(Tokens),
     Groups(Groups),
+    Invites(Invites),
 }
 
 #[derive(StructOpt, Debug)]
@@ -85,6 +86,13 @@ enum TokensCommand {
 struct Groups {
     #[structopt(subcommand)]
     groups_command: GroupsCommand,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers invites management commands")]
+struct Invites {
+    #[structopt(subcommand)]
+    invites_command: InvitesCommand,
 }
 
 #[derive(StructOpt, Debug)]
@@ -161,6 +169,60 @@ struct DeleteGroup {
 #[structopt(about = "List groups")]
 struct ListGroups {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the groups relate to")]
+    org_id: OrgId,
+}
+
+#[derive(StructOpt, Debug)]
+enum InvitesCommand {
+    Create(CreateInvite),
+    Update(UpdateInvite),
+    Get(GetInvite),
+    Delete(DeleteInvite),
+    List(ListInvites),
+}
+
+#[derive(StructOpt, Debug)]
+struct CreateInvite {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite will relate to")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
+    email: esc_api::Email,
+}
+
+#[derive(StructOpt, Debug)]
+struct UpdateInvite {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite will relate to")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
+    id: esc_api::InviteId,
+
+    #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
+    email: esc_api::Email,
+}
+
+#[derive(StructOpt, Debug)]
+struct GetInvite {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
+    id: esc_api::InviteId,
+}
+
+#[derive(StructOpt, Debug)]
+struct DeleteInvite {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
+    id: esc_api::InviteId,
+}
+
+#[derive(StructOpt, Debug)]
+struct ListInvites {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invites relate to")]
     org_id: OrgId,
 }
 
@@ -801,6 +863,18 @@ fn parse_command_script(src: &str) -> Result<script::Script, Box<dyn std::error:
     Ok(script)
 }
 
+fn parse_email(src: &str) -> Result<esc_api::Email, String> {
+    if let Some(email) = esc_api::Email::parse(src) {
+        return Ok(email);
+    }
+
+    Err("Invalid email".to_string())
+}
+
+fn parse_invite_id(src: &str) -> Result<esc_api::InviteId, String> {
+    Ok(esc_api::InviteId(src.to_string()))
+}
+
 #[derive(Debug)]
 struct StringError(String);
 
@@ -926,10 +1000,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         },
 
-                        ignored => {
-                            println!("$> {:?}", ignored);
-                            unimplemented!()
-                        }
+                        AccessCommand::Invites(invites) => match invites.invites_command {
+                            InvitesCommand::Create(params) => {
+                                let token = store.access().await?;
+                                let invite_id = client
+                                    .invites(&token)
+                                    .create(params.org_id, params.email)
+                                    .await?;
+
+                                println!("{}", invite_id)
+                            }
+
+                            InvitesCommand::Update(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .invites(&token)
+                                    .update(params.org_id, params.id, params.email)
+                                    .await?;
+                            }
+
+                            InvitesCommand::Get(params) => {
+                                let token = store.access().await?;
+                                let invite =
+                                    client.invites(&token).get(params.org_id, params.id).await?;
+
+                                if let Some(invite) = invite {
+                                    if opt.json {
+                                        serde_json::to_writer_pretty(std::io::stdout(), &invite)?;
+                                    } else {
+                                        println!("{:?}", invite);
+                                    }
+                                } else {
+                                    std::process::exit(-1);
+                                }
+                            }
+
+                            InvitesCommand::Delete(params) => {
+                                let token = store.access().await?;
+                                client
+                                    .invites(&token)
+                                    .delete(params.org_id, params.id)
+                                    .await?;
+                            }
+
+                            InvitesCommand::List(params) => {
+                                let token = store.access().await?;
+                                let invites = client.invites(&token).list(params.org_id).await?;
+
+                                if opt.json {
+                                    serde_json::to_writer_pretty(std::io::stdout(), &invites)?;
+                                } else {
+                                    for invite in invites {
+                                        println!("{:?}", invite);
+                                    }
+                                }
+                            }
+                        },
+
+                        _ => unimplemented!(),
                     }
 
                     continue;
