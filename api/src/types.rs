@@ -1,4 +1,4 @@
-use serde::export::Formatter;
+use std::fmt::Formatter;
 
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
 pub struct GroupId(pub String);
@@ -234,4 +234,95 @@ pub struct Cluster {
     pub server_version: String,
     pub status: String,
     pub created: String,
+}
+
+struct EmailVisitor {}
+
+impl<'de> serde::de::Visitor<'de> for EmailVisitor {
+    type Value = Email;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        write!(formatter, "a valid email")
+    }
+
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if validator::validate_email(v) {
+            return Ok(Email(v.to_string()));
+        }
+
+        Err(serde::de::Error::custom("Invalid email"))
+    }
+
+    fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_str(v.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+pub struct Email(String);
+
+impl AsRef<str> for Email {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl std::fmt::Display for Email {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.as_str())
+    }
+}
+
+impl Email {
+    pub fn parse(str: &str) -> Option<Self> {
+        if validator::validate_email(str) {
+            return Some(Email(str.to_string()));
+        }
+
+        None
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Email {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(EmailVisitor {})
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+pub struct InviteId(pub String);
+
+impl std::fmt::Display for InviteId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for InviteId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Invite {
+    pub id: InviteId,
+    pub org_id: OrgId,
+    pub email: Email,
+    pub accepted: bool,
+    pub created: String, // FIXME - Move to a proper date data-structure.
 }
