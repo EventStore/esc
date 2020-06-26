@@ -9,7 +9,6 @@ extern crate serde_derive;
 
 mod config;
 mod constants;
-mod script;
 mod store;
 
 use crate::store::{Auth, TokenStore};
@@ -40,7 +39,6 @@ enum Command {
     Resources(Resources),
     Infra(Infra),
     Profiles(Profiles),
-    Script(Script),
     Mesdb(Mesdb),
 }
 
@@ -504,13 +502,6 @@ enum ProfilePropName {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "Executes a command script file")]
-struct Script {
-    #[structopt(long, short, parse(try_from_str = parse_command_script))]
-    script: script::Script,
-}
-
-#[derive(Debug, StructOpt)]
 #[structopt(about = "Gathers organizations and projects management commands")]
 struct Resources {
     #[structopt(subcommand)]
@@ -855,12 +846,6 @@ fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Res
     }
 }
 
-fn parse_command_script(src: &str) -> Result<script::Script, Box<dyn std::error::Error>> {
-    let bytes = std::fs::read(src)?;
-    let script = toml::from_slice(bytes.as_slice())?;
-    Ok(script)
-}
-
 fn parse_email(src: &str) -> Result<esc_api::Email, String> {
     if let Some(email) = esc_api::Email::parse(src) {
         return Ok(email);
@@ -916,675 +901,617 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env_logger::init();
     }
 
-    let mut work_items: Box<dyn Iterator<Item = Opt>> = Box::new(std::iter::once(opt));
+    match opt.cmd {
+        Command::Access(access) => {
+            match access.access_command {
+                AccessCommand::Groups(groups) => {
+                    match groups.groups_command {
+                        GroupsCommand::Create(params) => {
+                            let token = store.access().await?;
+                            let create_params = esc_api::command::groups::CreateGroupParams {
+                                org_id: params.org_id,
+                                name: params.name,
+                                members: params.members,
+                            };
+                            let group_id = client.groups(&token).create(create_params).await?;
 
-    loop {
-        if let Some(opt) = work_items.next() {
-            match opt.cmd {
-                Command::Access(access) => {
-                    match access.access_command {
-                        AccessCommand::Groups(groups) => match groups.groups_command {
-                            GroupsCommand::Create(params) => {
-                                let token = store.access().await?;
-                                let create_params = esc_api::command::groups::CreateGroupParams {
-                                    org_id: params.org_id,
-                                    name: params.name,
-                                    members: params.members,
-                                };
-                                let group_id = client.groups(&token).create(create_params).await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;
-                                } else {
-                                    println!("{}", group_id);
-                                }
+                            if opt.json {
+                                serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;
+                            } else {
+                                println!("{}", group_id);
                             }
+                        }
 
-                            GroupsCommand::Update(params) => {
-                                let token = store.access().await?;
-                                let mut update_group =
-                                    client.groups(&token).update(params.id, params.org_id);
+                        GroupsCommand::Update(params) => {
+                            let token = store.access().await?;
+                            let mut update_group =
+                                client.groups(&token).update(params.id, params.org_id);
 
-                                update_group.set_name(params.name);
-                                update_group.set_members(params.members);
-                                update_group.execute().await?;
-                            }
+                            update_group.set_name(params.name);
+                            update_group.set_members(params.members);
+                            update_group.execute().await?;
+                        }
 
-                            GroupsCommand::Get(params) => {
-                                let token = store.access().await?;
-                                let group_id_opt =
-                                    client.groups(&token).get(params.id, params.org_id).await?;
+                        GroupsCommand::Get(params) => {
+                            let token = store.access().await?;
+                            let group_id_opt =
+                                client.groups(&token).get(params.id, params.org_id).await?;
 
-                                match group_id_opt {
-                                    Some(group) => {
-                                        if opt.json {
-                                            serde_json::to_writer_pretty(
-                                                std::io::stdout(),
-                                                &group,
-                                            )?;
-                                        } else {
-                                            println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
-                                        }
-                                    }
-
-                                    _ => {
-                                        eprintln!("Group doesn't exists");
-                                        std::process::exit(-1);
-                                    }
-                                }
-                            }
-
-                            GroupsCommand::Delete(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .groups(&token)
-                                    .delete(params.id, params.org_id)
-                                    .await?;
-                            }
-
-                            GroupsCommand::List(params) => {
-                                let token = store.access().await?;
-                                let groups = client.groups(&token).list(params.org_id).await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &groups)?;
-                                } else {
-                                    for group in groups {
+                            match group_id_opt {
+                                Some(group) => {
+                                    if opt.json {
+                                        serde_json::to_writer_pretty(std::io::stdout(), &group)?;
+                                    } else {
                                         println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
                                     }
                                 }
-                            }
-                        },
 
-                        AccessCommand::Invites(invites) => match invites.invites_command {
-                            InvitesCommand::Create(params) => {
-                                let token = store.access().await?;
-                                let invite_id = client
-                                    .invites(&token)
-                                    .create(params.org_id, params.email)
-                                    .await?;
-
-                                println!("{}", invite_id)
-                            }
-
-                            InvitesCommand::Update(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .invites(&token)
-                                    .update(params.org_id, params.id, params.email)
-                                    .await?;
-                            }
-
-                            InvitesCommand::Get(params) => {
-                                let token = store.access().await?;
-                                let invite =
-                                    client.invites(&token).get(params.org_id, params.id).await?;
-
-                                if let Some(invite) = invite {
-                                    if opt.json {
-                                        serde_json::to_writer_pretty(std::io::stdout(), &invite)?;
-                                    } else {
-                                        println!("{:?}", invite);
-                                    }
-                                } else {
+                                _ => {
+                                    eprintln!("Group doesn't exists");
                                     std::process::exit(-1);
                                 }
                             }
-
-                            InvitesCommand::Delete(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .invites(&token)
-                                    .delete(params.org_id, params.id)
-                                    .await?;
-                            }
-
-                            InvitesCommand::List(params) => {
-                                let token = store.access().await?;
-                                let invites = client.invites(&token).list(params.org_id).await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &invites)?;
-                                } else {
-                                    for invite in invites {
-                                        println!("{:?}", invite);
-                                    }
-                                }
-                            }
-                        },
-
-                        AccessCommand::Tokens(tokens) => match tokens.tokens_command {
-                            TokensCommand::Create(params) => {
-                                let password = if let Some(passw) = params.unsafe_password {
-                                    Ok(passw)
-                                } else {
-                                    rpassword::read_password_from_tty(Some("Password: "))
-                                }?;
-
-                                let audience = TokenStore::build_audience_str(&auth.audience);
-
-                                let token = client
-                                    .tokens()
-                                    .create(
-                                        &auth.id,
-                                        params.email.as_str(),
-                                        password.as_str(),
-                                        audience.as_str(),
-                                    )
-                                    .await?;
-
-                                let refresh = client
-                                    .tokens()
-                                    .refresh(&auth.id, token.refresh_token().unwrap().as_str())
-                                    .await?;
-
-                                let token = token.update_access_token(refresh.access_token());
-                                let new_token_bytes = serde_json::to_vec(&token)?;
-
-                                let token_path = TokenStore::token_dirs().join(
-                                    auth.audience.host().expect("We have a host in this URI"),
-                                );
-
-                                tokio::fs::write(&token_path, &new_token_bytes).await?;
-
-                                println!("Token is created for audience {}", audience.as_str());
-                            }
-                        },
-                    }
-
-                    continue;
-                }
-
-                Command::Infra(infra) => {
-                    match infra.infra_command {
-                        InfraCommand::Networks(networks) => match networks.networks_command {
-                            NetworksCommand::Create(params) => {
-                                let token = store.access().await?;
-                                let create_params =
-                                    esc_api::command::networks::CreateNetworkParams {
-                                        provider: params.provider,
-                                        cidr_block: params.cidr_block,
-                                        description: params.description,
-                                        region: params.region,
-                                    };
-                                let network_id = client
-                                    .networks(&token)
-                                    .create(params.org_id, params.project_id, create_params)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &network_id)?;
-                                } else {
-                                    println!("{}", network_id);
-                                }
-                            }
-
-                            NetworksCommand::Update(params) => {
-                                let token = store.access().await?;
-                                let update_params =
-                                    esc_api::command::networks::UpdateNetworkParams {
-                                        description: params.description,
-                                    };
-                                client
-                                    .networks(&token)
-                                    .update(
-                                        params.org_id,
-                                        params.project_id,
-                                        params.id,
-                                        update_params,
-                                    )
-                                    .await?;
-                            }
-
-                            NetworksCommand::Delete(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .networks(&token)
-                                    .delete(params.org_id, params.project_id, params.id)
-                                    .await?;
-                            }
-
-                            NetworksCommand::Get(params) => {
-                                let token = store.access().await?;
-                                let network = client
-                                    .networks(&token)
-                                    .get(params.org_id, params.project_id, params.id)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &network)?;
-                                } else {
-                                    println!("{:?}", network);
-                                }
-                            }
-
-                            NetworksCommand::List(params) => {
-                                let token = store.access().await?;
-                                let networks = client
-                                    .networks(&token)
-                                    .list(params.org_id, params.project_id)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &networks)?;
-                                } else {
-                                    for network in networks.into_iter() {
-                                        println!("{:?}", network);
-                                    }
-                                }
-                            }
-                        },
-
-                        InfraCommand::Peerings(peerings) => match peerings.peerings_command {
-                            PeeringsCommand::Create(params) => {
-                                let token = store.access().await?;
-                                let create_params =
-                                    esc_api::command::peerings::CreatePeeringParams {
-                                        network_id: params.network_id,
-                                        description: params.description,
-                                        peer_account: params.peer_account_id,
-                                        peer_network: params.peer_network_id,
-                                        peer_network_region: params.peer_network_region,
-                                        routes: params.routes,
-                                    };
-                                let peering_id = client
-                                    .peerings(&token)
-                                    .create(params.org_id, params.project_id, create_params)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &peering_id)?;
-                                } else {
-                                    println!("{}", peering_id);
-                                }
-                            }
-
-                            PeeringsCommand::Update(params) => {
-                                let token = store.access().await?;
-                                let update_params =
-                                    esc_api::command::peerings::UpdatePeeringParams {
-                                        description: params.description,
-                                    };
-                                client
-                                    .peerings(&token)
-                                    .update(
-                                        params.org_id,
-                                        params.project_id,
-                                        params.id,
-                                        update_params,
-                                    )
-                                    .await?;
-                            }
-
-                            PeeringsCommand::Delete(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .peerings(&token)
-                                    .delete(params.org_id, params.project_id, params.id)
-                                    .await?;
-                            }
-
-                            PeeringsCommand::Get(params) => {
-                                let token = store.access().await?;
-                                let peering = client
-                                    .peerings(&token)
-                                    .get(params.org_id, params.project_id, params.id)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &peering)?;
-                                } else {
-                                    println!("{:?}", peering);
-                                }
-                            }
-
-                            PeeringsCommand::List(params) => {
-                                let token = store.access().await?;
-                                let peerings = client
-                                    .peerings(&token)
-                                    .list(params.org_id, params.project_id)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &peerings)?;
-                                } else {
-                                    for peering in peerings.into_iter() {
-                                        println!("{:?}", peering);
-                                    }
-                                }
-                            }
-                        },
-                    }
-
-                    continue;
-                }
-
-                Command::Profiles(context) => {
-                    match context.profiles_command {
-                        ProfilesCommand::Set(params) => {
-                            let mut settings = crate::config::SETTINGS.clone();
-                            let profile = settings.get_profile_mut(&params.profile);
-
-                            match params.name {
-                                ProfilePropName::ProjectId => {
-                                    profile.project_id = Some(esc_api::ProjectId(params.value));
-                                }
-
-                                ProfilePropName::OrgId => {
-                                    profile.org_id = Some(esc_api::OrgId(params.value));
-                                }
-
-                                ProfilePropName::ApiBaseUrl => {
-                                    let url = config::parse_url(params.value.as_str())?;
-                                    profile.api_base_url = Some(url);
-                                }
-                            }
-
-                            settings.persist().await?;
                         }
 
-                        ProfilesCommand::Get(params) => {
-                            if let Some(profile) =
-                                crate::config::SETTINGS.get_profile(&params.profile)
-                            {
-                                if let Some(name) = params.name {
-                                    match name {
-                                        ProfilePropName::ProjectId => {
-                                            let default = Default::default();
-                                            let value =
-                                                profile.project_id.as_ref().unwrap_or(&default);
-                                            serde_json::to_writer_pretty(std::io::stdout(), value)?;
-                                        }
+                        GroupsCommand::Delete(params) => {
+                            let token = store.access().await?;
+                            client
+                                .groups(&token)
+                                .delete(params.id, params.org_id)
+                                .await?;
+                        }
 
-                                        ProfilePropName::OrgId => {
-                                            let default = Default::default();
-                                            let value = profile.org_id.as_ref().unwrap_or(&default);
-                                            serde_json::to_writer_pretty(std::io::stdout(), value)?;
-                                        }
+                        GroupsCommand::List(params) => {
+                            let token = store.access().await?;
+                            let groups = client.groups(&token).list(params.org_id).await?;
 
-                                        ProfilePropName::ApiBaseUrl => {
-                                            if let Some(url) = profile.api_base_url.as_ref() {
-                                                serde_json::to_writer_pretty(
-                                                    std::io::stdout(),
-                                                    url.as_str(),
-                                                )?;
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    serde_json::to_writer_pretty(std::io::stdout(), profile)?;
+                            if opt.json {
+                                serde_json::to_writer_pretty(std::io::stdout(), &groups)?;
+                            } else {
+                                for group in groups {
+                                    println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
                                 }
                             }
                         }
+                    }
+                }
 
-                        ProfilesCommand::List => {
-                            serde_json::to_writer_pretty(
-                                std::io::stdout(),
-                                &crate::config::SETTINGS.profiles,
-                            )?;
+                AccessCommand::Invites(invites) => match invites.invites_command {
+                    InvitesCommand::Create(params) => {
+                        let token = store.access().await?;
+                        let invite_id = client
+                            .invites(&token)
+                            .create(params.org_id, params.email)
+                            .await?;
+
+                        println!("{}", invite_id)
+                    }
+
+                    InvitesCommand::Update(params) => {
+                        let token = store.access().await?;
+                        client
+                            .invites(&token)
+                            .update(params.org_id, params.id, params.email)
+                            .await?;
+                    }
+
+                    InvitesCommand::Get(params) => {
+                        let token = store.access().await?;
+                        let invite = client.invites(&token).get(params.org_id, params.id).await?;
+
+                        if let Some(invite) = invite {
+                            if opt.json {
+                                serde_json::to_writer_pretty(std::io::stdout(), &invite)?;
+                            } else {
+                                println!("{:?}", invite);
+                            }
+                        } else {
+                            std::process::exit(-1);
                         }
+                    }
 
-                        ProfilesCommand::Delete(params) => {
-                            let mut settings = crate::config::SETTINGS.clone();
-                            let profile = settings.get_profile_mut(&params.profile);
+                    InvitesCommand::Delete(params) => {
+                        let token = store.access().await?;
+                        client
+                            .invites(&token)
+                            .delete(params.org_id, params.id)
+                            .await?;
+                    }
 
-                            match params.name {
-                                ProfilePropName::ProjectId => {
-                                    profile.project_id = None;
-                                }
+                    InvitesCommand::List(params) => {
+                        let token = store.access().await?;
+                        let invites = client.invites(&token).list(params.org_id).await?;
 
-                                ProfilePropName::OrgId => {
-                                    profile.org_id = None;
-                                }
-
-                                ProfilePropName::ApiBaseUrl => {
-                                    profile.api_base_url = None;
-                                }
+                        if opt.json {
+                            serde_json::to_writer_pretty(std::io::stdout(), &invites)?;
+                        } else {
+                            for invite in invites {
+                                println!("{:?}", invite);
                             }
-
-                            settings.persist().await?;
                         }
-
-                        ProfilesCommand::Default(default) => match default.default_command {
-                            ProfileDefaultCommand::Get(_) => {
-                                match crate::config::SETTINGS.default_profile.as_ref() {
-                                    Some(value) => {
-                                        serde_json::to_writer_pretty(std::io::stdout(), value)?
-                                    }
-                                    _ => std::process::exit(-1),
-                                }
-                            }
-
-                            ProfileDefaultCommand::Set(params) => {
-                                let mut settings = crate::config::SETTINGS.clone();
-                                settings.default_profile = Some(params.value);
-                                settings.persist().await?;
-                            }
-                        },
                     }
+                },
 
-                    continue;
-                }
+                AccessCommand::Tokens(tokens) => match tokens.tokens_command {
+                    TokensCommand::Create(params) => {
+                        let password = if let Some(passw) = params.unsafe_password {
+                            Ok(passw)
+                        } else {
+                            rpassword::read_password_from_tty(Some("Password: "))
+                        }?;
 
-                Command::Script(_) => {
-                    unimplemented!();
-                }
+                        let audience = TokenStore::build_audience_str(&auth.audience);
 
-                Command::Resources(res) => {
-                    match res.resources_command {
-                        ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
-                            OrganizationsCommand::Create(params) => {
-                                let token = store.access().await?;
-                                let org_id =
-                                    client.organizations(&token).create(params.name).await?;
+                        let token = client
+                            .tokens()
+                            .create(
+                                &auth.id,
+                                params.email.as_str(),
+                                password.as_str(),
+                                audience.as_str(),
+                            )
+                            .await?;
 
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &org_id)?;
-                                } else {
-                                    println!("{}", org_id);
-                                }
-                            }
+                        let refresh = client
+                            .tokens()
+                            .refresh(&auth.id, token.refresh_token().unwrap().as_str())
+                            .await?;
 
-                            OrganizationsCommand::Update(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .organizations(&token)
-                                    .update(params.id, params.name)
-                                    .await?;
-                            }
+                        let token = token.update_access_token(refresh.access_token());
+                        let new_token_bytes = serde_json::to_vec(&token)?;
 
-                            OrganizationsCommand::Delete(params) => {
-                                let token = store.access().await?;
-                                client.organizations(&token).delete(params.id).await?;
-                            }
+                        let token_path = TokenStore::token_dirs()
+                            .join(auth.audience.host().expect("We have a host in this URI"));
 
-                            OrganizationsCommand::Get(params) => {
-                                let token = store.access().await?;
-                                let org = client.organizations(&token).get(params.id).await?;
+                        tokio::fs::write(&token_path, &new_token_bytes).await?;
 
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &org)?;
-                                } else {
-                                    println!(
-                                        "id = {}; name = {}; created = {}",
-                                        org.id, org.name, org.created
-                                    );
-                                }
-                            }
-
-                            OrganizationsCommand::List(_) => {
-                                let token = store.access().await?;
-                                let orgs = client.organizations(&token).list().await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &orgs)?;
-                                } else {
-                                    for org in orgs {
-                                        println!(
-                                            "id = {}; name = {}; created = {}",
-                                            org.id, org.name, org.created
-                                        );
-                                    }
-                                }
-                            }
-                        },
-
-                        ResourcesCommand::Projects(projs) => match projs.projects_command {
-                            ProjectsCommand::Create(params) => {
-                                let token = store.access().await?;
-                                let proj_id = client
-                                    .projects(&token)
-                                    .create(params.org_id, params.name)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &proj_id)?;
-                                } else {
-                                    println!("{}", proj_id);
-                                }
-                            }
-
-                            ProjectsCommand::Update(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .projects(&token)
-                                    .update(params.org_id, params.id, params.name)
-                                    .await?;
-                            }
-
-                            ProjectsCommand::Get(params) => {
-                                let token = store.access().await?;
-                                let project_opt = client
-                                    .projects(&token)
-                                    .get(params.org_id, params.id)
-                                    .await?;
-
-                                match project_opt {
-                                    Some(proj) => {
-                                        if opt.json {
-                                            serde_json::to_writer_pretty(std::io::stdout(), &proj)?;
-                                        } else {
-                                            println!(
-                                                "id = {}; name = {}; org-id = {}; created = {}",
-                                                proj.id, proj.name, proj.org_id, proj.created
-                                            );
-                                        }
-                                    }
-
-                                    _ => {
-                                        eprintln!("Project doesn't exists");
-                                        std::process::exit(-1);
-                                    }
-                                }
-                            }
-
-                            ProjectsCommand::Delete(params) => {
-                                let token = store.access().await?;
-                                client
-                                    .projects(&token)
-                                    .delete(params.org_id, params.id)
-                                    .await?;
-                            }
-
-                            ProjectsCommand::List(params) => {
-                                let token = store.access().await?;
-                                let projs = client.projects(&token).list(params.org_id).await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &projs)?;
-                                } else {
-                                    for proj in projs {
-                                        println!(
-                                            "id = {}; name = {}; org-id = {}; created = {}",
-                                            proj.id, proj.name, proj.org_id, proj.created
-                                        );
-                                    }
-                                }
-                            }
-                        },
+                        println!("Token is created for audience {}", audience.as_str());
                     }
-
-                    continue;
-                }
-
-                Command::Mesdb(mesdb) => {
-                    let token = store.access().await?;
-                    match mesdb.mesdb_command {
-                        MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
-                            ClustersCommand::Create(params) => {
-                                let create_params =
-                                    esc_api::command::clusters::CreateClusterParams {
-                                        network_id: params.network_id,
-                                        description: params.description,
-                                        topology: params.topology,
-                                        instance_type: params.instance_type,
-                                        disk_size_gb: params.disk_size_in_gb,
-                                        disk_type: params.disk_type,
-                                        server_version: params.server_version,
-                                    };
-                                let cluster_id = client
-                                    .clusters(&token)
-                                    .create(params.org_id, params.project_id, create_params)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &cluster_id)?;
-                                } else {
-                                    println!("{}", cluster_id);
-                                }
-                            }
-
-                            ClustersCommand::Get(params) => {
-                                let cluster = client
-                                    .clusters(&token)
-                                    .get(params.org_id, params.project_id, params.id)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &cluster)?;
-                                } else {
-                                    println!("{:?}", cluster);
-                                }
-                            }
-
-                            ClustersCommand::Delete(params) => {
-                                client
-                                    .clusters(&token)
-                                    .delete(params.org_id, params.project_id, params.id)
-                                    .await?;
-                            }
-
-                            ClustersCommand::Update(params) => {
-                                client
-                                    .clusters(&token)
-                                    .update(params.org_id, params.project_id, params.id)
-                                    .await?;
-                            }
-
-                            ClustersCommand::List(params) => {
-                                let clusters = client
-                                    .clusters(&token)
-                                    .list(params.org_id, params.project_id)
-                                    .await?;
-
-                                if opt.json {
-                                    serde_json::to_writer_pretty(std::io::stdout(), &clusters)?;
-                                } else {
-                                    for cluster in clusters {
-                                        println!("{:?}", cluster);
-                                    }
-                                }
-                            }
-                        },
-                    }
-
-                    continue;
-                }
-            };
+                },
+            }
         }
 
-        break;
-    }
+        Command::Infra(infra) => match infra.infra_command {
+            InfraCommand::Networks(networks) => match networks.networks_command {
+                NetworksCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let create_params = esc_api::command::networks::CreateNetworkParams {
+                        provider: params.provider,
+                        cidr_block: params.cidr_block,
+                        description: params.description,
+                        region: params.region,
+                    };
+                    let network_id = client
+                        .networks(&token)
+                        .create(params.org_id, params.project_id, create_params)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &network_id)?;
+                    } else {
+                        println!("{}", network_id);
+                    }
+                }
+
+                NetworksCommand::Update(params) => {
+                    let token = store.access().await?;
+                    let update_params = esc_api::command::networks::UpdateNetworkParams {
+                        description: params.description,
+                    };
+                    client
+                        .networks(&token)
+                        .update(params.org_id, params.project_id, params.id, update_params)
+                        .await?;
+                }
+
+                NetworksCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .networks(&token)
+                        .delete(params.org_id, params.project_id, params.id)
+                        .await?;
+                }
+
+                NetworksCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let network = client
+                        .networks(&token)
+                        .get(params.org_id, params.project_id, params.id)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &network)?;
+                    } else {
+                        println!("{:?}", network);
+                    }
+                }
+
+                NetworksCommand::List(params) => {
+                    let token = store.access().await?;
+                    let networks = client
+                        .networks(&token)
+                        .list(params.org_id, params.project_id)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &networks)?;
+                    } else {
+                        for network in networks.into_iter() {
+                            println!("{:?}", network);
+                        }
+                    }
+                }
+            },
+
+            InfraCommand::Peerings(peerings) => match peerings.peerings_command {
+                PeeringsCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let create_params = esc_api::command::peerings::CreatePeeringParams {
+                        network_id: params.network_id,
+                        description: params.description,
+                        peer_account: params.peer_account_id,
+                        peer_network: params.peer_network_id,
+                        peer_network_region: params.peer_network_region,
+                        routes: params.routes,
+                    };
+                    let peering_id = client
+                        .peerings(&token)
+                        .create(params.org_id, params.project_id, create_params)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &peering_id)?;
+                    } else {
+                        println!("{}", peering_id);
+                    }
+                }
+
+                PeeringsCommand::Update(params) => {
+                    let token = store.access().await?;
+                    let update_params = esc_api::command::peerings::UpdatePeeringParams {
+                        description: params.description,
+                    };
+                    client
+                        .peerings(&token)
+                        .update(params.org_id, params.project_id, params.id, update_params)
+                        .await?;
+                }
+
+                PeeringsCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .peerings(&token)
+                        .delete(params.org_id, params.project_id, params.id)
+                        .await?;
+                }
+
+                PeeringsCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let peering = client
+                        .peerings(&token)
+                        .get(params.org_id, params.project_id, params.id)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &peering)?;
+                    } else {
+                        println!("{:?}", peering);
+                    }
+                }
+
+                PeeringsCommand::List(params) => {
+                    let token = store.access().await?;
+                    let peerings = client
+                        .peerings(&token)
+                        .list(params.org_id, params.project_id)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &peerings)?;
+                    } else {
+                        for peering in peerings.into_iter() {
+                            println!("{:?}", peering);
+                        }
+                    }
+                }
+            },
+        },
+
+        Command::Profiles(context) => match context.profiles_command {
+            ProfilesCommand::Set(params) => {
+                let mut settings = crate::config::SETTINGS.clone();
+                let profile = settings.get_profile_mut(&params.profile);
+
+                match params.name {
+                    ProfilePropName::ProjectId => {
+                        profile.project_id = Some(esc_api::ProjectId(params.value));
+                    }
+
+                    ProfilePropName::OrgId => {
+                        profile.org_id = Some(esc_api::OrgId(params.value));
+                    }
+
+                    ProfilePropName::ApiBaseUrl => {
+                        let url = config::parse_url(params.value.as_str())?;
+                        profile.api_base_url = Some(url);
+                    }
+                }
+
+                settings.persist().await?;
+            }
+
+            ProfilesCommand::Get(params) => {
+                if let Some(profile) = crate::config::SETTINGS.get_profile(&params.profile) {
+                    if let Some(name) = params.name {
+                        match name {
+                            ProfilePropName::ProjectId => {
+                                let default = Default::default();
+                                let value = profile.project_id.as_ref().unwrap_or(&default);
+                                serde_json::to_writer_pretty(std::io::stdout(), value)?;
+                            }
+
+                            ProfilePropName::OrgId => {
+                                let default = Default::default();
+                                let value = profile.org_id.as_ref().unwrap_or(&default);
+                                serde_json::to_writer_pretty(std::io::stdout(), value)?;
+                            }
+
+                            ProfilePropName::ApiBaseUrl => {
+                                if let Some(url) = profile.api_base_url.as_ref() {
+                                    serde_json::to_writer_pretty(std::io::stdout(), url.as_str())?;
+                                }
+                            }
+                        }
+                    } else {
+                        serde_json::to_writer_pretty(std::io::stdout(), profile)?;
+                    }
+                }
+            }
+
+            ProfilesCommand::List => {
+                serde_json::to_writer_pretty(std::io::stdout(), &crate::config::SETTINGS.profiles)?;
+            }
+
+            ProfilesCommand::Delete(params) => {
+                let mut settings = crate::config::SETTINGS.clone();
+                let profile = settings.get_profile_mut(&params.profile);
+
+                match params.name {
+                    ProfilePropName::ProjectId => {
+                        profile.project_id = None;
+                    }
+
+                    ProfilePropName::OrgId => {
+                        profile.org_id = None;
+                    }
+
+                    ProfilePropName::ApiBaseUrl => {
+                        profile.api_base_url = None;
+                    }
+                }
+
+                settings.persist().await?;
+            }
+
+            ProfilesCommand::Default(default) => match default.default_command {
+                ProfileDefaultCommand::Get(_) => {
+                    match crate::config::SETTINGS.default_profile.as_ref() {
+                        Some(value) => serde_json::to_writer_pretty(std::io::stdout(), value)?,
+                        _ => std::process::exit(-1),
+                    }
+                }
+
+                ProfileDefaultCommand::Set(params) => {
+                    let mut settings = crate::config::SETTINGS.clone();
+                    settings.default_profile = Some(params.value);
+                    settings.persist().await?;
+                }
+            },
+        },
+
+        Command::Resources(res) => match res.resources_command {
+            ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
+                OrganizationsCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let org_id = client.organizations(&token).create(params.name).await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &org_id)?;
+                    } else {
+                        println!("{}", org_id);
+                    }
+                }
+
+                OrganizationsCommand::Update(params) => {
+                    let token = store.access().await?;
+                    client
+                        .organizations(&token)
+                        .update(params.id, params.name)
+                        .await?;
+                }
+
+                OrganizationsCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client.organizations(&token).delete(params.id).await?;
+                }
+
+                OrganizationsCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let org = client.organizations(&token).get(params.id).await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &org)?;
+                    } else {
+                        println!(
+                            "id = {}; name = {}; created = {}",
+                            org.id, org.name, org.created
+                        );
+                    }
+                }
+
+                OrganizationsCommand::List(_) => {
+                    let token = store.access().await?;
+                    let orgs = client.organizations(&token).list().await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &orgs)?;
+                    } else {
+                        for org in orgs {
+                            println!(
+                                "id = {}; name = {}; created = {}",
+                                org.id, org.name, org.created
+                            );
+                        }
+                    }
+                }
+            },
+
+            ResourcesCommand::Projects(projs) => match projs.projects_command {
+                ProjectsCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let proj_id = client
+                        .projects(&token)
+                        .create(params.org_id, params.name)
+                        .await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &proj_id)?;
+                    } else {
+                        println!("{}", proj_id);
+                    }
+                }
+
+                ProjectsCommand::Update(params) => {
+                    let token = store.access().await?;
+                    client
+                        .projects(&token)
+                        .update(params.org_id, params.id, params.name)
+                        .await?;
+                }
+
+                ProjectsCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let project_opt = client
+                        .projects(&token)
+                        .get(params.org_id, params.id)
+                        .await?;
+
+                    match project_opt {
+                        Some(proj) => {
+                            if opt.json {
+                                serde_json::to_writer_pretty(std::io::stdout(), &proj)?;
+                            } else {
+                                println!(
+                                    "id = {}; name = {}; org-id = {}; created = {}",
+                                    proj.id, proj.name, proj.org_id, proj.created
+                                );
+                            }
+                        }
+
+                        _ => {
+                            eprintln!("Project doesn't exists");
+                            std::process::exit(-1);
+                        }
+                    }
+                }
+
+                ProjectsCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .projects(&token)
+                        .delete(params.org_id, params.id)
+                        .await?;
+                }
+
+                ProjectsCommand::List(params) => {
+                    let token = store.access().await?;
+                    let projs = client.projects(&token).list(params.org_id).await?;
+
+                    if opt.json {
+                        serde_json::to_writer_pretty(std::io::stdout(), &projs)?;
+                    } else {
+                        for proj in projs {
+                            println!(
+                                "id = {}; name = {}; org-id = {}; created = {}",
+                                proj.id, proj.name, proj.org_id, proj.created
+                            );
+                        }
+                    }
+                }
+            },
+        },
+
+        Command::Mesdb(mesdb) => {
+            let token = store.access().await?;
+            match mesdb.mesdb_command {
+                MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
+                    ClustersCommand::Create(params) => {
+                        let create_params = esc_api::command::clusters::CreateClusterParams {
+                            network_id: params.network_id,
+                            description: params.description,
+                            topology: params.topology,
+                            instance_type: params.instance_type,
+                            disk_size_gb: params.disk_size_in_gb,
+                            disk_type: params.disk_type,
+                            server_version: params.server_version,
+                        };
+                        let cluster_id = client
+                            .clusters(&token)
+                            .create(params.org_id, params.project_id, create_params)
+                            .await?;
+
+                        if opt.json {
+                            serde_json::to_writer_pretty(std::io::stdout(), &cluster_id)?;
+                        } else {
+                            println!("{}", cluster_id);
+                        }
+                    }
+
+                    ClustersCommand::Get(params) => {
+                        let cluster = client
+                            .clusters(&token)
+                            .get(params.org_id, params.project_id, params.id)
+                            .await?;
+
+                        if opt.json {
+                            serde_json::to_writer_pretty(std::io::stdout(), &cluster)?;
+                        } else {
+                            println!("{:?}", cluster);
+                        }
+                    }
+
+                    ClustersCommand::Delete(params) => {
+                        client
+                            .clusters(&token)
+                            .delete(params.org_id, params.project_id, params.id)
+                            .await?;
+                    }
+
+                    ClustersCommand::Update(params) => {
+                        client
+                            .clusters(&token)
+                            .update(params.org_id, params.project_id, params.id)
+                            .await?;
+                    }
+
+                    ClustersCommand::List(params) => {
+                        let clusters = client
+                            .clusters(&token)
+                            .list(params.org_id, params.project_id)
+                            .await?;
+
+                        if opt.json {
+                            serde_json::to_writer_pretty(std::io::stdout(), &clusters)?;
+                        } else {
+                            for cluster in clusters {
+                                println!("{:?}", cluster);
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    };
 
     Ok(())
 }
