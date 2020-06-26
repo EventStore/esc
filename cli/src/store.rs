@@ -1,4 +1,4 @@
-use esc_api::{command::tokens::Tokens, ClientId, StandardClaims, Token};
+use esc_api::{command::tokens::Tokens, ClientId, Email, StandardClaims, Token};
 use hyper::Uri;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use std::error::Error;
@@ -10,12 +10,10 @@ use tokio::fs;
 pub struct Auth {
     pub id: ClientId,
     pub audience: Uri,
-    pub username: String,
-    pub password: String,
 }
 
 pub struct TokenStore<'a> {
-    auth: Auth,
+    auth: &'a Auth,
     tokens: Tokens<'a>,
     validation: jsonwebtoken::Validation,
     key: DecodingKey<'a>,
@@ -23,8 +21,8 @@ pub struct TokenStore<'a> {
 }
 
 impl<'a> TokenStore<'a> {
-    pub fn new(auth: Auth, tokens: Tokens<'a>) -> Self {
-        let path = Path::new(crate::config::ESC_DIR.as_path()).join("tokens");
+    pub fn new(auth: &'a Auth, tokens: Tokens<'a>) -> Self {
+        let path = TokenStore::token_dirs();
         let key = DecodingKey::from_rsa_pem(JWT_PUBLIC_KEY)
             .expect("Impossible, it's a valid RSA PEM key");
         let validation = Validation {
@@ -39,6 +37,10 @@ impl<'a> TokenStore<'a> {
             key,
             validation,
         }
+    }
+
+    pub fn token_dirs() -> PathBuf {
+        Path::new(crate::config::ESC_DIR.as_path()).join("tokens")
     }
 
     pub async fn access(&mut self) -> Result<Token, Box<dyn Error>> {
@@ -78,13 +80,21 @@ impl<'a> TokenStore<'a> {
         }
 
         if token.is_none() {
+            let audience = TokenStore::build_audience_str(&self.auth.audience);
+
+            println!(
+                "You don't appear to have a token for accessing {}, let's create a new one:",
+                &self.auth.audience
+            );
+            let email = read_email_from_user()?;
+            let password = rpassword::read_password_from_tty(Some("Password: "))?;
             let new_token = self
                 .tokens
                 .create(
                     &self.auth.id,
-                    self.auth.username.as_ref(),
-                    self.auth.password.as_ref(),
-                    TokenStore::build_audience_str(&self.auth.audience).as_str(),
+                    email.as_str(),
+                    password.as_str(),
+                    audience.as_str(),
                 )
                 .await?;
 
@@ -136,7 +146,7 @@ impl<'a> TokenStore<'a> {
         Ok(token.claims)
     }
 
-    fn build_audience_str(uri: &Uri) -> String {
+    pub fn build_audience_str(uri: &Uri) -> String {
         format!("{}://{}", uri.scheme_str().unwrap(), uri.host().unwrap())
     }
 }
@@ -151,6 +161,17 @@ fn validate_claims(claims: &StandardClaims) -> bool {
     }
 
     result
+}
+
+fn read_email_from_user() -> Result<Email, Box<dyn std::error::Error>> {
+    let mut editor = rustyline::Editor::<()>::new();
+    let line = editor.readline("Email: ")?;
+
+    if let Some(email) = esc_api::Email::parse(line.as_str()) {
+        return Ok(email);
+    }
+
+    Err(crate::StringError("Invalid email".to_string()).into())
 }
 
 static JWT_PUBLIC_KEY: &[u8] = include_bytes!("../key.pem");

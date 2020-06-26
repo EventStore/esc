@@ -12,7 +12,7 @@ pub struct Script {
 
 impl Script {
     // TODO - Discuss if we inject contextual project and org-id value here.
-    pub fn commands(self, username: String, password: String) -> impl Iterator<Item = crate::Opt> {
+    pub fn _commands(self) -> impl Iterator<Item = crate::Opt> {
         let debug = self.debug;
         let json = self.json;
 
@@ -42,13 +42,7 @@ impl Script {
                 }),
             };
 
-            crate::Opt {
-                username: username.clone(),
-                password: password.clone(),
-                debug,
-                json,
-                cmd,
-            }
+            crate::Opt { debug, json, cmd }
         })
     }
 }

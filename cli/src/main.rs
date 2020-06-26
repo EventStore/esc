@@ -24,18 +24,6 @@ use structopt::StructOpt;
     author = "Event Store Limited <ops@eventstore.com>"
 )]
 pub struct Opt {
-    #[structopt(long, short, env = "ESC_USERNAME", default_value = "")]
-    username: String,
-
-    #[structopt(
-        long,
-        short,
-        env = "ESC_PASSWORD",
-        default_value = "",
-        hide_env_values = true
-    )]
-    password: String,
-
     #[structopt(long, help = "Prints a verbose output during the program execution")]
     debug: bool,
 
@@ -57,7 +45,9 @@ enum Command {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(about = "Gathers groups, members, invites, policies and settings management commands")]
+#[structopt(
+    about = "Gathers tokens, groups, members, invites, policies and settings management commands"
+)]
 struct Access {
     #[structopt(subcommand)]
     access_command: AccessCommand,
@@ -71,14 +61,28 @@ enum AccessCommand {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers tokens management commands")]
 struct Tokens {
     #[structopt(subcommand)]
-    token_command: TokensCommand,
+    tokens_command: TokensCommand,
 }
 
 #[derive(StructOpt, Debug)]
 enum TokensCommand {
-    User(User),
+    Create(CreateToken),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Create an access token")]
+struct CreateToken {
+    #[structopt(long, short, parse(try_from_str = parse_email), help = "The email you used to create an EventStoreDB Cloud")]
+    email: esc_api::Email,
+
+    #[structopt(
+        long,
+        help = "Set this parameter if you don't want to give your password safely (non-interactive)"
+    )]
+    unsafe_password: Option<String>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -93,12 +97,6 @@ struct Groups {
 struct Invites {
     #[structopt(subcommand)]
     invites_command: InvitesCommand,
-}
-
-#[derive(StructOpt, Debug)]
-struct User {
-    #[structopt(subcommand)]
-    user_command: UserCommand,
 }
 
 #[derive(StructOpt, Debug)]
@@ -892,8 +890,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let audience = constants::ES_CLOUD_API_AUDIENCE.parse()?;
     let auth = Auth {
         id: ClientId(constants::ES_CLIENT_ID.to_owned()),
-        username: opt.username.clone(),
-        password: opt.password.clone(),
         audience,
     };
     let base_url = config::SETTINGS
@@ -912,7 +908,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string());
 
     config::Settings::configure().await?;
-    let mut store = TokenStore::new(auth, client.tokens());
+    let mut store = TokenStore::new(&auth, client.tokens());
     store.configure().await?;
 
     if opt.debug {
@@ -1057,7 +1053,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         },
 
-                        _ => unimplemented!(),
+                        AccessCommand::Tokens(tokens) => match tokens.tokens_command {
+                            TokensCommand::Create(params) => {
+                                let password = if let Some(passw) = params.unsafe_password {
+                                    Ok(passw)
+                                } else {
+                                    rpassword::read_password_from_tty(Some("Password: "))
+                                }?;
+
+                                let audience = TokenStore::build_audience_str(&auth.audience);
+
+                                let token = client
+                                    .tokens()
+                                    .create(
+                                        &auth.id,
+                                        params.email.as_str(),
+                                        password.as_str(),
+                                        audience.as_str(),
+                                    )
+                                    .await?;
+
+                                let refresh = client
+                                    .tokens()
+                                    .refresh(&auth.id, token.refresh_token().unwrap().as_str())
+                                    .await?;
+
+                                let token = token.update_access_token(refresh.access_token());
+                                let new_token_bytes = serde_json::to_vec(&token)?;
+
+                                let token_path = TokenStore::token_dirs().join(
+                                    auth.audience.host().expect("We have a host in this URI"),
+                                );
+
+                                tokio::fs::write(&token_path, &new_token_bytes).await?;
+
+                                println!("Token is created for audience {}", audience.as_str());
+                            }
+                        },
                     }
 
                     continue;
@@ -1334,9 +1366,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     continue;
                 }
 
-                Command::Script(params) => {
-                    work_items = Box::new(params.script.commands(opt.username, opt.password));
-                    continue;
+                Command::Script(_) => {
+                    unimplemented!();
                 }
 
                 Command::Resources(res) => {
