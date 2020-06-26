@@ -263,8 +263,8 @@ struct CreateNetwork {
     #[structopt(long, parse(try_from_str = parse_provider), help = "The cloud provider: aws, gcp or azure")]
     provider: esc_api::Provider,
 
-    #[structopt(long, help = "Classless Inter-Domain Routing block (CIDR)")]
-    cidr_block: String,
+    #[structopt(long, parse(try_from_str = parse_cidr), help = "Classless Inter-Domain Routing block (CIDR)")]
+    cidr_block: cidr::Ipv4Cidr,
 
     #[structopt(long, help = "Human-readable description of the network")]
     description: String,
@@ -858,6 +858,10 @@ fn parse_invite_id(src: &str) -> Result<esc_api::InviteId, String> {
     Ok(esc_api::InviteId(src.to_string()))
 }
 
+fn parse_cidr(src: &str) -> Result<cidr::Ipv4Cidr, cidr::NetworkParseError> {
+    src.parse()
+}
+
 #[derive(Debug)]
 struct StringError(String);
 
@@ -1077,7 +1081,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let create_params = esc_api::command::networks::CreateNetworkParams {
                         provider: params.provider,
-                        cidr_block: params.cidr_block,
+                        cidr_block: params.cidr_block.to_string(),
                         description: params.description,
                         region: params.region,
                     };
