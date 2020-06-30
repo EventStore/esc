@@ -64,6 +64,7 @@ enum AccessCommand {
     Tokens(Tokens),
     Groups(Groups),
     Invites(Invites),
+    Policies(Policies),
 }
 
 #[derive(StructOpt, Debug)]
@@ -103,6 +104,79 @@ struct Groups {
 struct Invites {
     #[structopt(subcommand)]
     invites_command: InvitesCommand,
+}
+
+#[derive(StructOpt, Debug)]
+struct Policies {
+    #[structopt(subcommand)]
+    policies_command: PoliciesCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum PoliciesCommand {
+    Create(CreatePolicy),
+    Update(UpdatePolicy),
+    Get(GetPolicy),
+    Delete(DeletePolicy),
+    List(ListPolicies),
+}
+
+#[derive(StructOpt, Debug)]
+struct CreatePolicy {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the policy will relate to")]
+    org_id: OrgId,
+    #[structopt(long, short, help = "Policy's name")]
+    name: String,
+    #[structopt(long, short, help = "Policy's subjects")]
+    subjects: Vec<String>,
+    #[structopt(long, short, help = "Policy's resources")]
+    resources: Vec<String>,
+    #[structopt(long, short, help = "Policy's actions")]
+    actions: Vec<String>,
+    #[structopt(long, short, help = "Policy's effect")]
+    effect: String,
+}
+
+#[derive(StructOpt, Debug)]
+struct UpdatePolicy {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the policy is related to")]
+    org_id: OrgId,
+    #[structopt(long, short, parse(try_from_str = parse_policy_id), help = "Policy's id")]
+    policy: esc_api::PolicyId,
+    #[structopt(long, short, help = "Policy's name")]
+    name: Option<String>,
+    #[structopt(long, short, help = "Policy's subjects")]
+    subjects: Option<Vec<String>>,
+    #[structopt(long, short, help = "Policy's resources")]
+    resources: Option<Vec<String>>,
+    #[structopt(long, short, help = "Policy's actions")]
+    actions: Option<Vec<String>>,
+    #[structopt(long, short, help = "Policy's effect")]
+    effect: Option<String>,
+}
+
+#[derive(StructOpt, Debug)]
+struct GetPolicy {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the policy is related to")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_policy_id), help = "Policy's id")]
+    policy: esc_api::PolicyId,
+}
+
+#[derive(StructOpt, Debug)]
+struct DeletePolicy {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the policy is related to")]
+    org_id: OrgId,
+
+    #[structopt(long, short, parse(try_from_str = parse_policy_id), help = "Policy's id")]
+    policy: esc_api::PolicyId,
+}
+
+#[derive(StructOpt, Debug)]
+struct ListPolicies {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the policy is related to")]
+    org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -842,6 +916,10 @@ fn parse_cluster_id(src: &str) -> Result<esc_api::ClusterId, String> {
     Ok(esc_api::ClusterId(src.to_string()))
 }
 
+fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
+    Ok(esc_api::PolicyId(src.to_string()))
+}
+
 fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
     parse_enum(&PROVIDERS, src)
 }
@@ -1114,6 +1192,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tokio::fs::write(&token_path, &new_token_bytes).await?;
 
                     println!("Token is created for audience {}", audience.as_str());
+                }
+            },
+
+            AccessCommand::Policies(policies) => match policies.policies_command {
+                PoliciesCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let create_params = esc_api::command::policies::CreatePolicyParams {
+                        name: params.name,
+                        subjects: params.subjects,
+                        resources: params.resources,
+                        actions: params.actions,
+                        effect: params.effect,
+                    };
+                    let id = client
+                        .policies(&token)
+                        .create(params.org_id, create_params)
+                        .await?;
+
+                    print_output(opt.output, id)?;
+                }
+
+                PoliciesCommand::Update(params) => {
+                    let token = store.access().await?;
+                    let update_params = esc_api::command::policies::UpdatePolicyParams {
+                        name: params.name,
+                        subjects: params.subjects,
+                        resources: params.resources,
+                        actions: params.actions,
+                        effect: params.effect,
+                    };
+
+                    client
+                        .policies(&token)
+                        .update(params.org_id, params.policy, update_params)
+                        .await?;
+                }
+
+                PoliciesCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .policies(&token)
+                        .delete(params.org_id, params.policy)
+                        .await?;
+                }
+
+                PoliciesCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let policy = client
+                        .policies(&token)
+                        .get(params.org_id, params.policy)
+                        .await?;
+
+                    print_output(opt.output, policy)?;
+                }
+
+                PoliciesCommand::List(params) => {
+                    let token = store.access().await?;
+                    let policies = client.policies(&token).list(params.org_id).await?;
+
+                    print_output(opt.output, List(policies))?;
                 }
             },
         },

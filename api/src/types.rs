@@ -318,7 +318,7 @@ impl AsRef<str> for InviteId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Invite {
     pub id: InviteId,
@@ -328,4 +328,33 @@ pub struct Invite {
     pub groups: Option<Vec<GroupId>>,
     pub accepted: bool,
     pub created: String, // FIXME - Move to a proper date data-structure.
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct PolicyId(pub String);
+
+impl std::fmt::Display for PolicyId {
+    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for PolicyId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Policy {
+    pub id: PolicyId,
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub name: String,
+    pub created: String,
+    pub subjects: Vec<String>,
+    pub resources: Vec<String>,
+    pub actions: Vec<String>,
+    pub effect: String,
 }
