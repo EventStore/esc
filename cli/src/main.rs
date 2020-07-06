@@ -184,6 +184,9 @@ struct CreateInvite {
 
     #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
     email: esc_api::Email,
+
+    #[structopt(long, short, parse(try_from_str = parse_group_id), help = "Group(s) the invite will associate the member with after confirmation")]
+    group: Option<Vec<GroupId>>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -985,7 +988,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let token = store.access().await?;
                         let invite_id = client
                             .invites(&token)
-                            .create(params.org_id, params.email)
+                            .create(params.org_id, params.email, params.group)
                             .await?;
 
                         println!("{}", invite_id)

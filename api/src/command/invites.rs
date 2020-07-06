@@ -1,13 +1,15 @@
 use crate::http::{
     authenticated_request, default_error_handler, req_json_payload, resp_json_payload,
 };
-use crate::{Client, Email, Invite, InviteId, OrgId, Token};
+use crate::{Client, Email, GroupId, Invite, InviteId, OrgId, Token};
 use hyper::{Body, Uri};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateInviteParams {
     pub user_email: Email,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<GroupId>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +45,12 @@ impl<'a> Invites<'a> {
         Invites { client, token }
     }
 
-    pub async fn create(&self, org_id: OrgId, user_email: Email) -> crate::Result<InviteId> {
+    pub async fn create(
+        &self,
+        org_id: OrgId,
+        user_email: Email,
+        groups: Option<Vec<GroupId>>,
+    ) -> crate::Result<InviteId> {
         let uri: Uri = format!(
             "{}/access/v1/organizations/{}/invites",
             self.client.base_url, org_id
@@ -53,7 +60,10 @@ impl<'a> Invites<'a> {
         let req = authenticated_request(self.token, uri)
             .method("POST")
             .header("Content-Type", "application/json")
-            .body(req_json_payload(&CreateInviteParams { user_email })?)?;
+            .body(req_json_payload(&CreateInviteParams {
+                user_email,
+                groups,
+            })?)?;
 
         let mut resp = self.client.inner.request(req).await?;
 
