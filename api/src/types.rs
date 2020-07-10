@@ -323,6 +323,7 @@ pub struct Invite {
     pub id: InviteId,
     pub org_id: OrgId,
     pub email: Email,
+    pub groups: Option<Vec<GroupId>>,
     pub accepted: bool,
     pub created: String, // FIXME - Move to a proper date data-structure.
 }
