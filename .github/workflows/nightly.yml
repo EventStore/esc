@@ -15,10 +15,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust stable
-        run: |
-          rustup update
-          rustup default stable
 
       - name: Lookup or create release
         uses: EventStore/Automations/lookup-or-create-release@master
@@ -29,7 +25,7 @@ jobs:
 
       - name: Packaging
         id: package
-        run: .\release.ps1 -Runner ${{ matrix.os }}
+        run: .\release.ps1 -Runner "${{ matrix.os }}" -Version "${{ steps.release.outputs.version}}"
         shell: pwsh
 
       - name: Upload Release Asset
