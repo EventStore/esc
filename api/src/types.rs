@@ -189,6 +189,7 @@ pub struct Group {
 #[serde(rename_all = "camelCase")]
 pub struct Project {
     pub id: ProjectId,
+    #[serde(rename = "organizationId")]
     pub org_id: OrgId,
     pub name: String,
     pub created: String,
@@ -321,6 +322,7 @@ impl AsRef<str> for InviteId {
 #[serde(rename_all = "camelCase")]
 pub struct Invite {
     pub id: InviteId,
+    #[serde(rename = "organizationId")]
     pub org_id: OrgId,
     pub email: Email,
     pub groups: Option<Vec<GroupId>>,
