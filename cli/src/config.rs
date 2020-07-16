@@ -21,7 +21,7 @@ lazy_static! {
             Err(e) => {
                 if std::path::Path::new(SETTINGS_FILE.as_path()).exists() {
                     eprintln!(
-                        "Error when parsing {}, fallback to default settings. Error: {}",
+                        "Error when parsing {}, fallback to default settings. Error: {}\n",
                         SETTINGS_FILE.as_path().display(),
                         e
                     );

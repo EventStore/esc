@@ -1304,7 +1304,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ProfileDefaultCommand::Get(_) => {
                     match crate::config::SETTINGS.default_profile.as_ref() {
                         Some(value) => serde_json::to_writer_pretty(std::io::stdout(), value)?,
-                        _ => std::process::exit(-1),
+                        _ => {
+                            println!(
+                                "No default profile set\n\n\
+                            To set a default profile use:\n\n\
+                            esc profiles default set <profile_name>"
+                            );
+                            std::process::exit(-1)
+                        }
                     }
                 }
 
