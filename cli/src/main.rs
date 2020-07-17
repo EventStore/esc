@@ -13,6 +13,8 @@ mod store;
 
 use crate::store::{Auth, TokenStore};
 use esc_api::{Client, ClientId, GroupId, OrgId};
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use structopt::StructOpt;
 
@@ -26,11 +28,17 @@ pub struct Opt {
     #[structopt(long, help = "Prints a verbose output during the program execution")]
     debug: bool,
 
-    #[structopt(long, help = "Print a command output in pretty-printed JSON")]
-    json: bool,
+    #[structopt(long, short, default_value = "default", parse(try_from_str = parse_output), help = "How a command output should be rendered")]
+    output: Output,
 
     #[structopt(subcommand)]
     cmd: Command,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Output {
+    Json,
+    Default,
 }
 
 #[derive(StructOpt, Debug)]
@@ -780,6 +788,16 @@ lazy_static! {
     };
 }
 
+lazy_static! {
+    static ref OUTPUT_TYPES: HashMap<&'static str, Output> = {
+        let mut map = HashMap::new();
+        map.insert("json", Output::Json);
+        map.insert("default", Output::Default);
+
+        map
+    };
+}
+
 fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
     if src.trim().is_empty() {
         let profile_opt = crate::config::SETTINGS.get_current_profile();
@@ -836,6 +854,10 @@ fn parse_topology(src: &str) -> Result<esc_api::Topology, String> {
     parse_enum(&CLUSTER_TOPOLOGIES, src)
 }
 
+fn parse_output(src: &str) -> Result<Output, String> {
+    parse_enum(&OUTPUT_TYPES, src)
+}
+
 fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
         Some(p) => Ok(*p),
@@ -876,6 +898,54 @@ impl std::fmt::Display for StringError {
 
 impl std::error::Error for StringError {}
 
+fn print_output<A: std::fmt::Debug + Serialize>(
+    output: Output,
+    value: A,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match output {
+        Output::Json => {
+            serde_json::to_writer_pretty(std::io::stdout(), &value)?;
+            Ok(())
+        }
+        Output::Default => {
+            println!("{:?}", value);
+            Ok(())
+        }
+    }
+}
+
+struct List<A>(Vec<A>);
+
+impl<A> std::fmt::Debug for List<A>
+where
+    A: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for value in self.0.iter() {
+            writeln!(f, "{:?}", value)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<A> serde::ser::Serialize for List<A>
+where
+    A: serde::ser::Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for elem in self.0.iter() {
+            seq.serialize_element(elem)?;
+        }
+
+        seq.end()
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
@@ -909,174 +979,144 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     match opt.cmd {
-        Command::Access(access) => {
-            match access.access_command {
-                AccessCommand::Groups(groups) => {
-                    match groups.groups_command {
-                        GroupsCommand::Create(params) => {
-                            let token = store.access().await?;
-                            let create_params = esc_api::command::groups::CreateGroupParams {
-                                org_id: params.org_id,
-                                name: params.name,
-                                members: params.members,
-                            };
-                            let group_id = client.groups(&token).create(create_params).await?;
+        Command::Access(access) => match access.access_command {
+            AccessCommand::Groups(groups) => match groups.groups_command {
+                GroupsCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let create_params = esc_api::command::groups::CreateGroupParams {
+                        org_id: params.org_id,
+                        name: params.name,
+                        members: params.members,
+                    };
+                    let group_id = client.groups(&token).create(create_params).await?;
 
-                            if opt.json {
-                                serde_json::to_writer_pretty(std::io::stdout(), &group_id)?;
-                            } else {
-                                println!("{}", group_id);
-                            }
+                    print_output(opt.output, group_id)?;
+                }
+
+                GroupsCommand::Update(params) => {
+                    let token = store.access().await?;
+                    let mut update_group = client.groups(&token).update(params.id, params.org_id);
+
+                    update_group.set_name(params.name);
+                    update_group.set_members(params.members);
+                    update_group.execute().await?;
+                }
+
+                GroupsCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let group_id_opt = client.groups(&token).get(params.id, params.org_id).await?;
+
+                    match group_id_opt {
+                        Some(group) => {
+                            print_output(opt.output, group)?;
                         }
 
-                        GroupsCommand::Update(params) => {
-                            let token = store.access().await?;
-                            let mut update_group =
-                                client.groups(&token).update(params.id, params.org_id);
-
-                            update_group.set_name(params.name);
-                            update_group.set_members(params.members);
-                            update_group.execute().await?;
-                        }
-
-                        GroupsCommand::Get(params) => {
-                            let token = store.access().await?;
-                            let group_id_opt =
-                                client.groups(&token).get(params.id, params.org_id).await?;
-
-                            match group_id_opt {
-                                Some(group) => {
-                                    if opt.json {
-                                        serde_json::to_writer_pretty(std::io::stdout(), &group)?;
-                                    } else {
-                                        println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
-                                    }
-                                }
-
-                                _ => {
-                                    eprintln!("Group doesn't exists");
-                                    std::process::exit(-1);
-                                }
-                            }
-                        }
-
-                        GroupsCommand::Delete(params) => {
-                            let token = store.access().await?;
-                            client
-                                .groups(&token)
-                                .delete(params.id, params.org_id)
-                                .await?;
-                        }
-
-                        GroupsCommand::List(params) => {
-                            let token = store.access().await?;
-                            let groups = client.groups(&token).list(params.org_id).await?;
-
-                            if opt.json {
-                                serde_json::to_writer_pretty(std::io::stdout(), &groups)?;
-                            } else {
-                                for group in groups {
-                                    println!("id = {}; org-id = {}; name = {}, created = {}, members = {:?}", group.id, group.org_id, group.name, group.name, group.members);
-                                }
-                            }
+                        _ => {
+                            eprintln!("Group doesn't exists");
+                            std::process::exit(-1);
                         }
                     }
                 }
 
-                AccessCommand::Invites(invites) => match invites.invites_command {
-                    InvitesCommand::Create(params) => {
-                        let token = store.access().await?;
-                        let invite_id = client
-                            .invites(&token)
-                            .create(params.org_id, params.email, params.group)
-                            .await?;
+                GroupsCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .groups(&token)
+                        .delete(params.id, params.org_id)
+                        .await?;
+                }
 
-                        println!("{}", invite_id)
+                GroupsCommand::List(params) => {
+                    let token = store.access().await?;
+                    let groups = client.groups(&token).list(params.org_id).await?;
+
+                    print_output(opt.output, List(groups))?;
+                }
+            },
+
+            AccessCommand::Invites(invites) => match invites.invites_command {
+                InvitesCommand::Create(params) => {
+                    let token = store.access().await?;
+                    let invite_id = client
+                        .invites(&token)
+                        .create(params.org_id, params.email, params.group)
+                        .await?;
+
+                    println!("{}", invite_id)
+                }
+
+                InvitesCommand::Update(params) => {
+                    let token = store.access().await?;
+                    client
+                        .invites(&token)
+                        .update(params.org_id, params.id, params.email)
+                        .await?;
+                }
+
+                InvitesCommand::Get(params) => {
+                    let token = store.access().await?;
+                    let invite = client.invites(&token).get(params.org_id, params.id).await?;
+
+                    if let Some(invite) = invite {
+                        print_output(opt.output, invite)?;
+                    } else {
+                        std::process::exit(-1);
                     }
+                }
 
-                    InvitesCommand::Update(params) => {
-                        let token = store.access().await?;
-                        client
-                            .invites(&token)
-                            .update(params.org_id, params.id, params.email)
-                            .await?;
-                    }
+                InvitesCommand::Delete(params) => {
+                    let token = store.access().await?;
+                    client
+                        .invites(&token)
+                        .delete(params.org_id, params.id)
+                        .await?;
+                }
 
-                    InvitesCommand::Get(params) => {
-                        let token = store.access().await?;
-                        let invite = client.invites(&token).get(params.org_id, params.id).await?;
+                InvitesCommand::List(params) => {
+                    let token = store.access().await?;
+                    let invites = client.invites(&token).list(params.org_id).await?;
 
-                        if let Some(invite) = invite {
-                            if opt.json {
-                                serde_json::to_writer_pretty(std::io::stdout(), &invite)?;
-                            } else {
-                                println!("{:?}", invite);
-                            }
-                        } else {
-                            std::process::exit(-1);
-                        }
-                    }
+                    print_output(opt.output, List(invites))?;
+                }
+            },
 
-                    InvitesCommand::Delete(params) => {
-                        let token = store.access().await?;
-                        client
-                            .invites(&token)
-                            .delete(params.org_id, params.id)
-                            .await?;
-                    }
+            AccessCommand::Tokens(tokens) => match tokens.tokens_command {
+                TokensCommand::Create(params) => {
+                    let password = if let Some(passw) = params.unsafe_password {
+                        Ok(passw)
+                    } else {
+                        rpassword::read_password_from_tty(Some("Password: "))
+                    }?;
 
-                    InvitesCommand::List(params) => {
-                        let token = store.access().await?;
-                        let invites = client.invites(&token).list(params.org_id).await?;
+                    let audience = TokenStore::build_audience_str(&auth.audience);
 
-                        if opt.json {
-                            serde_json::to_writer_pretty(std::io::stdout(), &invites)?;
-                        } else {
-                            for invite in invites {
-                                println!("{:?}", invite);
-                            }
-                        }
-                    }
-                },
+                    let token = client
+                        .tokens()
+                        .create(
+                            &auth.id,
+                            params.email.as_str(),
+                            password.as_str(),
+                            audience.as_str(),
+                        )
+                        .await?;
 
-                AccessCommand::Tokens(tokens) => match tokens.tokens_command {
-                    TokensCommand::Create(params) => {
-                        let password = if let Some(passw) = params.unsafe_password {
-                            Ok(passw)
-                        } else {
-                            rpassword::read_password_from_tty(Some("Password: "))
-                        }?;
+                    let refresh = client
+                        .tokens()
+                        .refresh(&auth.id, token.refresh_token().unwrap().as_str())
+                        .await?;
 
-                        let audience = TokenStore::build_audience_str(&auth.audience);
+                    let token = token.update_access_token(refresh.access_token());
+                    let new_token_bytes = serde_json::to_vec(&token)?;
 
-                        let token = client
-                            .tokens()
-                            .create(
-                                &auth.id,
-                                params.email.as_str(),
-                                password.as_str(),
-                                audience.as_str(),
-                            )
-                            .await?;
+                    let token_path = TokenStore::token_dirs()
+                        .join(auth.audience.host().expect("We have a host in this URI"));
 
-                        let refresh = client
-                            .tokens()
-                            .refresh(&auth.id, token.refresh_token().unwrap().as_str())
-                            .await?;
+                    tokio::fs::write(&token_path, &new_token_bytes).await?;
 
-                        let token = token.update_access_token(refresh.access_token());
-                        let new_token_bytes = serde_json::to_vec(&token)?;
-
-                        let token_path = TokenStore::token_dirs()
-                            .join(auth.audience.host().expect("We have a host in this URI"));
-
-                        tokio::fs::write(&token_path, &new_token_bytes).await?;
-
-                        println!("Token is created for audience {}", audience.as_str());
-                    }
-                },
-            }
-        }
+                    println!("Token is created for audience {}", audience.as_str());
+                }
+            },
+        },
 
         Command::Infra(infra) => match infra.infra_command {
             InfraCommand::Networks(networks) => match networks.networks_command {
@@ -1093,11 +1133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.org_id, params.project_id, create_params)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &network_id)?;
-                    } else {
-                        println!("{}", network_id);
-                    }
+                    print_output(opt.output, network_id)?;
                 }
 
                 NetworksCommand::Update(params) => {
@@ -1126,11 +1162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get(params.org_id, params.project_id, params.id)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &network)?;
-                    } else {
-                        println!("{:?}", network);
-                    }
+                    print_output(opt.output, network)?;
                 }
 
                 NetworksCommand::List(params) => {
@@ -1140,13 +1172,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .list(params.org_id, params.project_id)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &networks)?;
-                    } else {
-                        for network in networks.into_iter() {
-                            println!("{:?}", network);
-                        }
-                    }
+                    print_output(opt.output, List(networks))?;
                 }
             },
 
@@ -1166,11 +1192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.org_id, params.project_id, create_params)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &peering_id)?;
-                    } else {
-                        println!("{}", peering_id);
-                    }
+                    print_output(opt.output, peering_id)?;
                 }
 
                 PeeringsCommand::Update(params) => {
@@ -1199,11 +1221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get(params.org_id, params.project_id, params.id)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &peering)?;
-                    } else {
-                        println!("{:?}", peering);
-                    }
+                    print_output(opt.output, peering)?;
                 }
 
                 PeeringsCommand::List(params) => {
@@ -1213,13 +1231,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .list(params.org_id, params.project_id)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &peerings)?;
-                    } else {
-                        for peering in peerings.into_iter() {
-                            println!("{:?}", peering);
-                        }
-                    }
+                    print_output(opt.output, List(peerings))?;
                 }
             },
         },
@@ -1329,11 +1341,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let org_id = client.organizations(&token).create(params.name).await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &org_id)?;
-                    } else {
-                        println!("{}", org_id);
-                    }
+                    print_output(opt.output, org_id)?;
                 }
 
                 OrganizationsCommand::Update(params) => {
@@ -1353,30 +1361,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let org = client.organizations(&token).get(params.id).await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &org)?;
-                    } else {
-                        println!(
-                            "id = {}; name = {}; created = {}",
-                            org.id, org.name, org.created
-                        );
-                    }
+                    print_output(opt.output, org)?;
                 }
 
                 OrganizationsCommand::List(_) => {
                     let token = store.access().await?;
                     let orgs = client.organizations(&token).list().await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &orgs)?;
-                    } else {
-                        for org in orgs {
-                            println!(
-                                "id = {}; name = {}; created = {}",
-                                org.id, org.name, org.created
-                            );
-                        }
-                    }
+                    print_output(opt.output, List(orgs))?;
                 }
             },
 
@@ -1388,11 +1380,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.org_id, params.name)
                         .await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &proj_id)?;
-                    } else {
-                        println!("{}", proj_id);
-                    }
+                    print_output(opt.output, proj_id)?;
                 }
 
                 ProjectsCommand::Update(params) => {
@@ -1412,14 +1400,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match project_opt {
                         Some(proj) => {
-                            if opt.json {
-                                serde_json::to_writer_pretty(std::io::stdout(), &proj)?;
-                            } else {
-                                println!(
-                                    "id = {}; name = {}; org-id = {}; created = {}",
-                                    proj.id, proj.name, proj.org_id, proj.created
-                                );
-                            }
+                            print_output(opt.output, proj)?;
                         }
 
                         _ => {
@@ -1441,16 +1422,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let projs = client.projects(&token).list(params.org_id).await?;
 
-                    if opt.json {
-                        serde_json::to_writer_pretty(std::io::stdout(), &projs)?;
-                    } else {
-                        for proj in projs {
-                            println!(
-                                "id = {}; name = {}; org-id = {}; created = {}",
-                                proj.id, proj.name, proj.org_id, proj.created
-                            );
-                        }
-                    }
+                    print_output(opt.output, List(projs))?;
                 }
             },
         },
@@ -1474,11 +1446,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .create(params.org_id, params.project_id, create_params)
                             .await?;
 
-                        if opt.json {
-                            serde_json::to_writer_pretty(std::io::stdout(), &cluster_id)?;
-                        } else {
-                            println!("{}", cluster_id);
-                        }
+                        print_output(opt.output, cluster_id)?;
                     }
 
                     ClustersCommand::Get(params) => {
@@ -1487,11 +1455,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .get(params.org_id, params.project_id, params.id)
                             .await?;
 
-                        if opt.json {
-                            serde_json::to_writer_pretty(std::io::stdout(), &cluster)?;
-                        } else {
-                            println!("{:?}", cluster);
-                        }
+                        print_output(opt.output, cluster)?;
                     }
 
                     ClustersCommand::Delete(params) => {
@@ -1514,13 +1478,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .list(params.org_id, params.project_id)
                             .await?;
 
-                        if opt.json {
-                            serde_json::to_writer_pretty(std::io::stdout(), &clusters)?;
-                        } else {
-                            for cluster in clusters {
-                                println!("{:?}", cluster);
-                            }
-                        }
+                        print_output(opt.output, List(clusters))?;
                     }
                 },
             }
