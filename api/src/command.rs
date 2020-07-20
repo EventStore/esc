@@ -4,5 +4,6 @@ pub mod invites;
 pub mod networks;
 pub mod organizations;
 pub mod peerings;
+pub mod policies;
 pub mod projects;
 pub mod tokens;

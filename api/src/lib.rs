@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
+extern crate serde_json;
+#[macro_use]
 extern crate log;
 
 pub mod command;
@@ -76,5 +78,9 @@ impl Client {
 
     pub fn invites<'a>(&'a self, token: &'a Token) -> command::invites::Invites<'a> {
         command::invites::Invites::new(&self, token)
+    }
+
+    pub fn policies<'a>(&'a self, token: &'a Token) -> command::policies::Policies<'a> {
+        command::policies::Policies::new(&self, token)
     }
 }
