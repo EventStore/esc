@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use std::fmt::Formatter;
 
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
@@ -171,7 +172,7 @@ pub struct StandardClaims {
 pub struct Organization {
     pub id: OrgId,
     pub name: String,
-    pub created: String,
+    pub created: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -181,7 +182,7 @@ pub struct Group {
     #[serde(rename = "organizationId")]
     pub org_id: OrgId,
     pub name: String,
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub members: Vec<String>,
 }
 
@@ -192,7 +193,7 @@ pub struct Project {
     #[serde(rename = "organizationId")]
     pub org_id: OrgId,
     pub name: String,
-    pub created: String,
+    pub created: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -234,7 +235,7 @@ pub struct Cluster {
     pub disk_type: String,
     pub server_version: String,
     pub status: String,
-    pub created: String,
+    pub created: DateTime<Utc>,
 }
 
 struct EmailVisitor {}
@@ -327,7 +328,7 @@ pub struct Invite {
     pub email: Email,
     pub groups: Option<Vec<GroupId>>,
     pub accepted: bool,
-    pub created: String, // FIXME - Move to a proper date data-structure.
+    pub created: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -352,7 +353,7 @@ pub struct Policy {
     #[serde(rename = "organizationId")]
     pub org_id: OrgId,
     pub name: String,
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub subjects: Vec<String>,
     pub resources: Vec<String>,
     pub actions: Vec<String>,
