@@ -742,6 +742,7 @@ enum ClustersCommand {
     List(ListClusters),
     Update(UpdateCluster),
     Delete(DeleteCluster),
+    Expand(ExpandCluster),
 }
 
 #[derive(Debug, StructOpt)]
@@ -828,6 +829,22 @@ struct DeleteCluster {
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to delete")]
     id: esc_api::ClusterId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Expand a cluster")]
+struct ExpandCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to expand")]
+    id: esc_api::ClusterId,
+
+    #[structopt(long, help = "Disk size in GB")]
+    disk_size_in_gb: usize,
 }
 
 lazy_static! {
@@ -1617,6 +1634,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .await?;
 
                         print_output(opt.output, List(clusters))?;
+                    }
+
+                    ClustersCommand::Expand(params) => {
+                        client
+                            .clusters(&token)
+                            .expand(
+                                params.org_id,
+                                params.project_id,
+                                params.id,
+                                params.disk_size_in_gb,
+                            )
+                            .await?;
                     }
                 },
             }
