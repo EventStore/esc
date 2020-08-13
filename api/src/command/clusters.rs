@@ -1,7 +1,9 @@
 use crate::http::{
     authenticated_request, default_error_handler, req_json_payload, resp_json_payload,
 };
-use crate::{Client, Cluster, ClusterId, NetworkId, OrgId, ProjectId, Token, Topology};
+use crate::{
+    Client, Cluster, ClusterId, NetworkId, OrgId, ProjectId, ProjectionLevel, Token, Topology,
+};
 use hyper::Uri;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -14,6 +16,9 @@ pub struct CreateClusterParams {
     pub disk_size_gb: usize,
     pub disk_type: String,
     pub server_version: String,
+    pub projection_level: ProjectionLevel,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_backup_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

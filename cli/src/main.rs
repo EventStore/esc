@@ -726,6 +726,7 @@ struct Mesdb {
 #[derive(Debug, StructOpt)]
 enum MesdbCommand {
     Clusters(Clusters),
+    Backups(Backups),
 }
 
 #[derive(Debug, StructOpt)]
@@ -780,6 +781,16 @@ struct CreateCluster {
 
     #[structopt(long, help = "EventStoreDB server version")]
     server_version: String,
+
+    #[structopt(
+        long,
+        parse(try_from_str = parse_projection_level),
+        help = "The projection level of your database. Can be off, system or user "
+    )]
+    projection_level: esc_api::ProjectionLevel,
+
+    #[structopt(long, help = "Optional id of backup to restore")]
+    source_backup_id: Option<String>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -847,6 +858,73 @@ struct ExpandCluster {
     disk_size_in_gb: usize,
 }
 
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers backup management commands")]
+struct Backups {
+    #[structopt(subcommand)]
+    backups_command: BackupsCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum BackupsCommand {
+    Create(CreateBackup),
+    Get(GetBackup),
+    List(ListBackups),
+    Delete(DeleteBackup),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Create a backup")]
+struct CreateBackup {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the backup will relate to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup will relate to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, parse(try_from_str = parse_cluster_id), help = "The id of the cluster to create backup of")]
+    source_cluster_id: esc_api::ClusterId,
+
+    #[structopt(long, help = "A human-readable description of the backup")]
+    description: String,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Get information about a single backup")]
+struct GetBackup {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the backup relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Backup's id")]
+    id: esc_api::BackupId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "List all backups of an organization, given a project id")]
+struct ListBackups {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "An organization's id")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
+    project_id: esc_api::ProjectId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Delete a backup")]
+struct DeleteBackup {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the backup relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Id of the backup you want to delete")]
+    id: esc_api::BackupId,
+}
+
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
         let mut map = HashMap::new();
@@ -875,6 +953,16 @@ lazy_static! {
             "three-node-multi-zone",
             esc_api::Topology::ThreeNodeMultiZone,
         );
+        map
+    };
+}
+
+lazy_static! {
+    static ref CLUSTER_PROJECTION_LEVELS: HashMap<&'static str, esc_api::ProjectionLevel> = {
+        let mut map = HashMap::new();
+        map.insert("off", esc_api::ProjectionLevel::Off);
+        map.insert("system", esc_api::ProjectionLevel::System);
+        map.insert("user", esc_api::ProjectionLevel::User);
         map
     };
 }
@@ -933,6 +1021,10 @@ fn parse_cluster_id(src: &str) -> Result<esc_api::ClusterId, String> {
     Ok(esc_api::ClusterId(src.to_string()))
 }
 
+fn parse_backup_id(src: &str) -> Result<esc_api::BackupId, String> {
+    Ok(esc_api::BackupId(src.to_string()))
+}
+
 fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
     Ok(esc_api::PolicyId(src.to_string()))
 }
@@ -947,6 +1039,10 @@ fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
 
 fn parse_topology(src: &str) -> Result<esc_api::Topology, String> {
     parse_enum(&CLUSTER_TOPOLOGIES, src)
+}
+
+fn parse_projection_level(src: &str) -> Result<esc_api::ProjectionLevel, String> {
+    parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
 fn parse_output(src: &str) -> Result<Output, String> {
@@ -1595,6 +1691,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             disk_size_gb: params.disk_size_in_gb,
                             disk_type: params.disk_type,
                             server_version: params.server_version,
+                            projection_level: params.projection_level,
+                            source_backup_id: params.source_backup_id,
                         };
                         let cluster_id = client
                             .clusters(&token)
@@ -1646,6 +1744,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 params.disk_size_in_gb,
                             )
                             .await?;
+                    }
+                },
+                MesdbCommand::Backups(clusters) => match clusters.backups_command {
+                    BackupsCommand::Create(params) => {
+                        let create_params = esc_api::command::backups::CreateBackupParams {
+                            source_cluster_id: params.source_cluster_id,
+                            description: params.description,
+                        };
+                        let backup_id = client
+                            .backups(&token)
+                            .create(params.org_id, params.project_id, create_params)
+                            .await?;
+
+                        print_output(opt.output, backup_id)?;
+                    }
+
+                    BackupsCommand::Get(params) => {
+                        let backup = client
+                            .backups(&token)
+                            .get(params.org_id, params.project_id, params.id)
+                            .await?;
+
+                        print_output(opt.output, backup)?;
+                    }
+
+                    BackupsCommand::Delete(params) => {
+                        client
+                            .backups(&token)
+                            .delete(params.org_id, params.project_id, params.id)
+                            .await?;
+                    }
+
+                    BackupsCommand::List(params) => {
+                        let backups = client
+                            .backups(&token)
+                            .list(params.org_id, params.project_id)
+                            .await?;
+
+                        print_output(opt.output, List(backups))?;
                     }
                 },
             }
