@@ -1,4 +1,6 @@
-use crate::http::{authenticated_request, default_error_handler, resp_json_payload};
+use crate::http::{
+    authenticated_request, default_error_handler, req_json_payload, resp_json_payload,
+};
 use crate::{Client, Cluster, ClusterId, NetworkId, OrgId, ProjectId, Token, Topology};
 use hyper::Uri;
 
@@ -31,6 +33,12 @@ struct GetClusterResponse {
 #[serde(rename_all = "camelCase")]
 struct ListClustersResponse {
     clusters: Vec<Cluster>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ExpandDisk {
+    disk_size_gb: usize,
 }
 
 pub struct Clusters<'a> {
@@ -163,5 +171,31 @@ impl<'a> Clusters<'a> {
         let result: ListClustersResponse = resp_json_payload(&mut resp).await?;
 
         Ok(result.clusters)
+    }
+
+    pub async fn expand(
+        &self,
+        org_id: OrgId,
+        project_id: ProjectId,
+        cluster_id: ClusterId,
+        disk_size_gb: usize,
+    ) -> crate::Result<()> {
+        let uri: Uri = format!(
+            "{}/mesdb/v1/organizations/{}/projects/{}/clusters/{}/disk/expand",
+            self.client.base_url, org_id, project_id, cluster_id
+        )
+        .parse()?;
+
+        let body = req_json_payload(&ExpandDisk { disk_size_gb })?;
+        let req = authenticated_request(self.token, uri)
+            .method("PUT")
+            .header("Content-Type", "application/json")
+            .body(body)?;
+
+        let mut resp = self.client.inner.request(req).await?;
+
+        default_error_handler(&mut resp).await?;
+
+        Ok(())
     }
 }
