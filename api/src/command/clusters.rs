@@ -7,7 +7,6 @@ use hyper::Uri;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateClusterParams {
-    #[serde(rename = "organizationId")]
     pub network_id: NetworkId,
     pub description: String,
     pub topology: Topology,
