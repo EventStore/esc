@@ -76,6 +76,10 @@ impl Client {
         command::clusters::Clusters::new(&self, token)
     }
 
+    pub fn backups<'a>(&'a self, token: &'a Token) -> command::backups::Backups<'a> {
+        command::backups::Backups::new(&self, token)
+    }
+
     pub fn invites<'a>(&'a self, token: &'a Token) -> command::invites::Invites<'a> {
         command::invites::Invites::new(&self, token)
     }

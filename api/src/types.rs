@@ -94,6 +94,21 @@ impl AsRef<str> for ClusterId {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct BackupId(pub String);
+
+impl std::fmt::Display for BackupId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for BackupId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
@@ -236,6 +251,21 @@ pub struct Cluster {
     pub server_version: String,
     pub status: String,
     pub created: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Backup {
+    pub id: BackupId,
+    pub project_id: ProjectId,
+    pub source_cluster_id: ClusterId,
+    pub source_cluster_description: String,
+    pub description: String,
+    pub size_gb: usize,
+    pub provider: Provider,
+    pub region: String,
+    pub status: String,
+    pub created: String,
 }
 
 struct EmailVisitor {}
