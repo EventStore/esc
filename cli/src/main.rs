@@ -781,6 +781,16 @@ struct CreateCluster {
 
     #[structopt(long, help = "EventStoreDB server version")]
     server_version: String,
+
+    #[structopt(
+        long,
+        parse(try_from_str = parse_projection_level),
+        help = "The projection level of your database. Can be off, system or user "
+    )]
+    projection_level: esc_api::ProjectionLevel,
+
+    #[structopt(long, help = "Optional id of backup to restore")]
+    source_backup_id: Option<String>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -948,6 +958,16 @@ lazy_static! {
 }
 
 lazy_static! {
+    static ref CLUSTER_PROJECTION_LEVELS: HashMap<&'static str, esc_api::ProjectionLevel> = {
+        let mut map = HashMap::new();
+        map.insert("off", esc_api::ProjectionLevel::Off);
+        map.insert("system", esc_api::ProjectionLevel::System);
+        map.insert("user", esc_api::ProjectionLevel::User);
+        map
+    };
+}
+
+lazy_static! {
     static ref OUTPUT_TYPES: HashMap<&'static str, Output> = {
         let mut map = HashMap::new();
         map.insert("json", Output::Json);
@@ -1019,6 +1039,10 @@ fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
 
 fn parse_topology(src: &str) -> Result<esc_api::Topology, String> {
     parse_enum(&CLUSTER_TOPOLOGIES, src)
+}
+
+fn parse_projection_level(src: &str) -> Result<esc_api::ProjectionLevel, String> {
+    parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
 fn parse_output(src: &str) -> Result<Output, String> {
@@ -1667,6 +1691,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             disk_size_gb: params.disk_size_in_gb,
                             disk_type: params.disk_type,
                             server_version: params.server_version,
+                            projection_level: params.projection_level,
+                            source_backup_id: params.source_backup_id,
                         };
                         let cluster_id = client
                             .clusters(&token)

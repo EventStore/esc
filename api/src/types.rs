@@ -233,6 +233,14 @@ pub enum Topology {
     ThreeNodeMultiZone,
 }
 
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProjectionLevel {
+    Off,
+    System,
+    User,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cluster {
@@ -249,6 +257,7 @@ pub struct Cluster {
     pub disk_size_gb: usize,
     pub disk_type: String,
     pub server_version: String,
+    pub projection_level: ProjectionLevel,
     pub status: String,
     pub created: DateTime<Utc>,
 }
