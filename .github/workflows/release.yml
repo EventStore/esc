@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    name: Release
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, windows-2019, macos-10.15]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create version
+        uses: EventStore/Automations/create-version-label@master
+        id: version
+
+      - name: Lookup or create release
+        uses: EventStore/Automations/lookup-or-create-release@master
+        id: release
+        with:
+          build-type: release
+          github-token: ${{ secrets.GH_PAT }}
+          version: 1.${{ steps.version.outputs.version }}
+
+      - name: Packaging
+        id: package
+        run: .\release.ps1 -Runner "${{ matrix.os }}" -Version "${{ steps.release.outputs.version}}"
+        shell: pwsh
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: output/${{ steps.package.outputs.artifact_name }}
+          asset_name: ${{ steps.package.outputs.artifact_name }}
+          asset_content_type: ${{ steps.package.outputs.content_type }}
