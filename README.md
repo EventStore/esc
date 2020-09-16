@@ -60,7 +60,8 @@ esc profiles --help
 esc infra networks create  --cidr-block <cidr-block> --description <description> --provider <provider> --region <region>
 ```
 
-If you want a description of each options, please do
+You can find out more about each option by entering:
+
 ```
 esc infra networks create --help
 ```
@@ -72,7 +73,7 @@ esc infra peerings create --org-id <org-id> --project-id <project-id> --descript
 
 ```
 
-If you want a description of each options, please do
+You can find out more about each option by entering:
 
 ```
 esc infra peerings create --help
@@ -84,7 +85,7 @@ esc infra peerings create --help
 esc mesdb clusters create --org-id <org-id> --project-id <project-id> --description <description> --disk-size-in-gb <disk-size-in-gb> --disk-type <disk-type> --instance-type <instance-type> --network-id <network-id> --projection-level <projection-level> --server-version <server-version> --topology <topology>
 ```
 
-If you want a description of each options, please do:
+You can find out more about each option by entering:
 
 ```
 esc mesdb clusters create --help
