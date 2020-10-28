@@ -1,4 +1,5 @@
 use crate::Token;
+use bytes::{Bytes, BytesMut};
 use http::{Request, Uri};
 use hyper::{body::HttpBody, Body};
 use serde::export::Formatter;
@@ -34,13 +35,8 @@ pub async fn default_error_handler(resp: &mut hyper::Response<Body>) -> crate::R
         return Ok(());
     }
 
-    let body = resp
-        .body_mut()
-        .data()
-        .await
-        .transpose()?
-        .unwrap_or_default();
-    let message = std::string::String::from_utf8_lossy(&body).into_owned();
+    let bytes = read_all_bytes(resp.body_mut()).await?;
+    let message = std::string::String::from_utf8_lossy(bytes.as_ref()).into_owned();
 
     if resp.status().is_client_error() {
         if resp.status().as_u16() == 401 {
@@ -68,13 +64,7 @@ pub async fn resp_json_payload<A>(resp: &mut hyper::Response<Body>) -> crate::Re
 where
     A: serde::de::DeserializeOwned,
 {
-    let bytes = resp
-        .body_mut()
-        .data()
-        .await
-        .transpose()?
-        .unwrap_or_default();
-
+    let bytes = read_all_bytes(resp.body_mut()).await?;
     let value = serde_json::from_reader(std::io::Cursor::new(bytes))?;
 
     Ok(value)
@@ -83,4 +73,14 @@ where
 pub fn req_json_payload<A: Serialize>(payload: &A) -> crate::Result<Body> {
     let bytes = serde_json::to_vec(payload)?;
     Ok(Body::from(bytes))
+}
+
+async fn read_all_bytes(body: &mut Body) -> crate::Result<Bytes> {
+    let mut buffer = BytesMut::new();
+
+    while let Some(bytes) = body.data().await.transpose()? {
+        buffer.extend(bytes);
+    }
+
+    Ok(buffer.freeze())
 }
