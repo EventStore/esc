@@ -77,6 +77,7 @@ struct Tokens {
 #[derive(StructOpt, Debug)]
 enum TokensCommand {
     Create(CreateToken),
+    Display(Display),
 }
 
 #[derive(StructOpt, Debug)]
@@ -91,6 +92,10 @@ struct CreateToken {
     )]
     unsafe_password: Option<String>,
 }
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Display your current refresh token")]
+struct Display {}
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Gathers groups management commands")]
@@ -1304,7 +1309,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     tokio::fs::write(&token_path, &new_token_bytes).await?;
 
-                    println!("Token is created for audience {}", audience.as_str());
+                    println!("Token created for audience {}", audience.as_str());
+                    println!("{}", token.refresh_token().unwrap().as_str());
+                }
+                TokensCommand::Display(_params) => {
+                    let token = store.active_token().await?;
+                    if let Some(token) = token {
+                        println!("{}", token.refresh_token().unwrap());
+                    } else {
+                        println!("No active refresh token");
+                    }
                 }
             },
 

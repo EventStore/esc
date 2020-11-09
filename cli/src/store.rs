@@ -43,6 +43,24 @@ impl<'a> TokenStore<'a> {
         Path::new(crate::config::ESC_DIR.as_path()).join("tokens")
     }
 
+    pub async fn active_token(&self) -> Result<Option<Token>, Box<dyn Error>> {
+        let token_path = self.path.as_path().join(
+            self.auth
+                .audience
+                .host()
+                .expect("We have a host in this URI"),
+        );
+
+        if fs::metadata(&token_path).await.is_ok() {
+            let token_bytes = fs::read(&token_path).await?;
+            let token: Token = serde_json::from_slice(&token_bytes)?;
+
+            return Ok(Some(token));
+        }
+
+        Ok(None)
+    }
+
     pub async fn access(&mut self) -> Result<Token, Box<dyn Error>> {
         let token_path = self.path.as_path().join(
             self.auth
