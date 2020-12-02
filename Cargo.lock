@@ -242,7 +242,7 @@ dependencies = [
 
 [[package]]
 name = "esc"
-version = "0.1.0"
+version = "1.20.12"
 dependencies = [
  "chrono",
  "cidr",
@@ -266,7 +266,7 @@ dependencies = [
 
 [[package]]
 name = "esc-api"
-version = "0.1.0"
+version = "1.20.12"
 dependencies = [
  "bytes",
  "chrono",
