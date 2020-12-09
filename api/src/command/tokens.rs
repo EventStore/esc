@@ -1,7 +1,5 @@
 use crate::http::default_error_handler;
 use crate::{Client, ClientId, Token};
-use hyper::{body::HttpBody, Body, Request, Uri};
-use url::form_urlencoded;
 
 pub struct Tokens<'a> {
     client: &'a Client,
@@ -20,64 +18,41 @@ impl<'a> Tokens<'a> {
         audience: &str,
     ) -> crate::Result<Token> {
         debug!("Audience: {}", audience);
-        let form = form_urlencoded::Serializer::new(String::new())
-            .append_pair("grant_type", "password")
-            .append_pair("username", username)
-            .append_pair("password", password)
-            .append_pair("scope", "cloud:access offline_access")
-            .append_pair("client_id", client_id.as_ref())
-            .append_pair("audience", audience)
-            .finish();
+        let mut form = std::collections::HashMap::new();
 
-        let uri: Uri = format!("{}/oauth/token", self.client.identity_url).parse()?;
-        let req = Request::post(uri)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(Body::from(form))?;
+        form.insert("grant_type", "password");
+        form.insert("username", username);
+        form.insert("password", password);
+        form.insert("scope", "cloud:access offline_access");
+        form.insert("client_id", client_id.as_ref());
+        form.insert("audience", audience);
 
-        debug!("Token creation request on: {}", req.uri());
+        let url = format!("{}/oauth/token", self.client.identity_url);
+        let req = self.client.inner.post(url.as_str()).form(&form);
 
-        let mut resp = self.client.inner.request(req).await?;
+        debug!("Token creation request on: {}", url);
 
-        default_error_handler(&mut resp).await?;
-
-        let bytes = resp
-            .body_mut()
-            .data()
-            .await
-            .transpose()?
-            .unwrap_or_default();
-
-        let token: Token = serde_json::from_slice(&bytes)?;
+        let resp = default_error_handler(req.send().await?).await?;
+        let token = resp.json().await?;
 
         Ok(token)
     }
 
     pub async fn refresh(&self, client_id: &ClientId, refresh_token: &str) -> crate::Result<Token> {
-        let uri: Uri = format!("{}/oauth/token", self.client.identity_url).parse()?;
-        let form = form_urlencoded::Serializer::new(String::new())
-            .append_pair("grant_type", "refresh_token")
-            .append_pair("client_id", client_id.as_ref())
-            .append_pair("refresh_token", refresh_token)
-            .finish();
+        let url = format!("{}/oauth/token", self.client.identity_url);
+        let mut form = std::collections::HashMap::new();
 
-        let req = Request::post(uri)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(Body::from(form))?;
+        form.insert("grant_type", "refresh_token");
+        form.insert("client_id", client_id.as_ref());
+        form.insert("refresh_token", refresh_token);
+
+        let req = self.client.inner.post(url.as_str()).form(&form);
 
         debug!("Token refresh on : {:?}", req);
 
-        let mut resp = self.client.inner.request(req).await?;
+        let resp = default_error_handler(req.send().await?).await?;
+        let token: Token = resp.json().await?;
 
-        default_error_handler(&mut resp).await?;
-
-        let bytes = resp
-            .body_mut()
-            .data()
-            .await
-            .transpose()?
-            .unwrap_or_default();
-
-        let token: Token = serde_json::from_slice(&bytes)?;
         debug!("Token expires_in: {}", token.expires_in);
 
         Ok(token)

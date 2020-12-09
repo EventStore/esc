@@ -11,37 +11,34 @@ mod types;
 
 pub use types::*;
 
-use hyper::{client::HttpConnector, Body};
-use hyper_rustls::HttpsConnector;
-
 pub struct Builder {
-    inner: hyper::client::Builder,
+    inner: reqwest::ClientBuilder,
 }
 
 impl Builder {
-    pub fn build(self, base_url: String, identity_url: String) -> Client {
-        Client {
+    pub fn build(self, base_url: String, identity_url: String) -> crate::Result<Client> {
+        Ok(Client {
             base_url,
             identity_url,
-            inner: self.inner.build(HttpsConnector::new()),
-        }
+            inner: self.inner.build()?,
+        })
     }
 }
 
 pub struct Client {
     base_url: String,
     identity_url: String,
-    inner: hyper::Client<HttpsConnector<HttpConnector>, Body>,
+    pub inner: reqwest::Client,
 }
 
 impl Client {
     pub fn builder() -> Builder {
         Builder {
-            inner: hyper::client::Client::builder(),
+            inner: reqwest::Client::builder(),
         }
     }
 
-    pub fn new(base_url: String, identity_url: String) -> Self {
+    pub fn new(base_url: String, identity_url: String) -> crate::Result<Self> {
         Client::builder().build(base_url, identity_url)
     }
 

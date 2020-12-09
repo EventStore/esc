@@ -1,8 +1,6 @@
-use crate::http::{
-    authenticated_request, default_error_handler, req_json_payload, resp_json_payload,
-};
+use crate::http::{authenticated_request, default_error_handler};
 use crate::{Client, OrgId, Token};
-use hyper::Uri;
+use reqwest::Method;
 
 pub struct Organizations<'a> {
     client: &'a Client,
@@ -45,76 +43,76 @@ impl<'a> Organizations<'a> {
     }
 
     pub async fn list(&self) -> crate::Result<Vec<crate::Organization>> {
-        let uri: Uri = format!("{}/resources/v1/organizations", self.client.base_url).parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Accept", "application/json")
-            .body(hyper::Body::empty())?;
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!("{}/resources/v1/organizations", self.client.base_url),
+        )
+        .header("Accept", "application/json");
 
-        let mut resp = self.client.inner.request(req).await?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        default_error_handler(&mut resp).await?;
-        let result: ListOrgsResp = resp_json_payload(&mut resp).await?;
+        let result: ListOrgsResp = resp.json().await?;
 
         Ok(result.organizations)
     }
 
     pub async fn get(&self, id: OrgId) -> crate::Result<crate::Organization> {
-        let uri: Uri =
-            format!("{}/resources/v1/organizations/{}", self.client.base_url, id).parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Accept", "application/json")
-            .body(hyper::Body::empty())?;
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!("{}/resources/v1/organizations/{}", self.client.base_url, id),
+        )
+        .header("Accept", "application/json");
 
-        let mut resp = self.client.inner.request(req).await?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        default_error_handler(&mut resp).await?;
-        let result: GetOrgResp = resp_json_payload(&mut resp).await?;
+        let result: GetOrgResp = resp.json().await?;
 
         Ok(result.organization)
     }
 
     pub async fn create(&self, name: String) -> crate::Result<OrgId> {
-        let uri: Uri = format!("{}/resources/v1/organizations", self.client.base_url).parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body(req_json_payload(&CreateOrgRequest { name })?)?;
+        let req = authenticated_request(
+            &self.client,
+            Method::POST,
+            self.token,
+            format!("{}/resources/v1/organizations", self.client.base_url),
+        )
+        .json(&CreateOrgRequest { name });
 
-        let mut resp = self.client.inner.request(req).await?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        default_error_handler(&mut resp).await?;
-        let result: CreateOrgResponse = resp_json_payload(&mut resp).await?;
+        let result: CreateOrgResponse = resp.json().await?;
 
         Ok(result.id)
     }
 
     pub async fn update(&self, id: OrgId, name: String) -> crate::Result<()> {
-        let uri: Uri =
-            format!("{}/resources/v1/organizations/{}", self.client.base_url, id).parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("PUT")
-            .header("Content-Type", "application/json")
-            .body(req_json_payload(&UpdateOrgRequest { name })?)?;
+        let req = authenticated_request(
+            &self.client,
+            Method::PUT,
+            self.token,
+            format!("{}/resources/v1/organizations/{}", self.client.base_url, id),
+        )
+        .json(&UpdateOrgRequest { name });
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
 
     pub async fn delete(&self, id: OrgId) -> crate::Result<()> {
-        let uri: Uri =
-            format!("{}/resources/v1/organizations/{}", self.client.base_url, id).parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .body(hyper::Body::empty())?;
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!("{}/resources/v1/organizations/{}", self.client.base_url, id),
+        );
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }

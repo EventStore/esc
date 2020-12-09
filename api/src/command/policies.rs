@@ -1,8 +1,6 @@
-use crate::http::{
-    authenticated_request, default_error_handler, req_json_payload, resp_json_payload,
-};
+use crate::http::{authenticated_request, default_error_handler};
 use crate::{Client, OrgId, Policy, PolicyId, Token};
-use hyper::{Body, Uri};
+use reqwest::Method;
 
 pub struct Policies<'a> {
     client: &'a Client,
@@ -63,22 +61,20 @@ impl<'a> Policies<'a> {
         org_id: OrgId,
         params: CreatePolicyParams,
     ) -> crate::Result<PolicyId> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/policies",
-            self.client.base_url, org_id
+        let req = authenticated_request(
+            &self.client,
+            Method::POST,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/policies",
+                self.client.base_url, org_id
+            ),
         )
-        .parse()?;
+        .json(&params);
 
-        let payload = json!({ "policy": params });
-        let req = authenticated_request(self.token, uri)
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body(req_json_payload(&payload)?)?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: CreatePolicyResponse = resp_json_payload(&mut resp).await?;
+        let result: CreatePolicyResponse = resp.json().await?;
 
         Ok(result.id)
     }
@@ -89,80 +85,73 @@ impl<'a> Policies<'a> {
         policy_id: PolicyId,
         params: UpdatePolicyParams,
     ) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/policies/{}",
-            self.client.base_url, org_id, policy_id
-        )
-        .parse()?;
-
         let payload = json!({ "policy": params });
-        let req = authenticated_request(self.token, uri)
-            .method("PUT")
-            .header("Content-Type", "application/json")
-            .body(req_json_payload(&payload)?)?;
+        let req = authenticated_request(
+            &self.client,
+            Method::PUT,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/policies/{}",
+                self.client.base_url, org_id, policy_id
+            ),
+        )
+        .json(&payload);
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
 
     pub async fn delete(&self, org_id: OrgId, policy_id: PolicyId) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/policies/{}",
-            self.client.base_url, org_id, policy_id
-        )
-        .parse()?;
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/policies/{}",
+                self.client.base_url, org_id, policy_id
+            ),
+        );
 
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .header("Content-Type", "application/json")
-            .body(Body::empty())?;
-
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
 
     pub async fn get(&self, org_id: OrgId, policy_id: PolicyId) -> crate::Result<Policy> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/policies/{}",
-            self.client.base_url, org_id, policy_id
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/policies/{}",
+                self.client.base_url, org_id, policy_id
+            ),
         )
-        .parse()?;
+        .header("Accept", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .header("Content-Type", "application/json")
-            .body(Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: GetPolicyResponse = resp_json_payload(&mut resp).await?;
+        let result: GetPolicyResponse = resp.json().await?;
 
         Ok(result.policy)
     }
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<Policy>> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/policies",
-            self.client.base_url, org_id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/policies",
+                self.client.base_url, org_id
+            ),
         )
-        .parse()?;
+        .header("Accept", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Content-Type", "application/json")
-            .body(Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: ListPoliciesResponse = resp_json_payload(&mut resp).await?;
+        let result: ListPoliciesResponse = resp.json().await?;
 
         Ok(result.policies)
     }
