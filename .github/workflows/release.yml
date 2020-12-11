@@ -27,7 +27,7 @@ jobs:
         with:
           build-type: release
           github-token: ${{ secrets.GH_PAT }}
-          version: 1.${{ steps.version.outputs.version }}
+          version: ${{ steps.version.outputs.version }}
 
       - name: Packaging
         id: package
