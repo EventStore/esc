@@ -19,7 +19,7 @@ jobs:
 
       - name: Create version
         id: version
-        run: echo ::set-output name=version::${GITHUB_REF:10}
+        run: echo ::set-output name=version::${GITHUB_REF#refs/*/}
 
       - name: Lookup or create release
         uses: EventStore/Automations/lookup-or-create-release@master
