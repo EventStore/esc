@@ -1,9 +1,10 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - '*'
+  pull_request
+  # push:
+  #   tags:
+  #     - '*'
 
 jobs:
   release:
@@ -19,7 +20,7 @@ jobs:
 
       - name: Create version
         id: version
-        run: echo ::set-output name=version::${GITHUB_REF#refs/*/}
+        run: echo ::set-output name=version::1.20.13
 
       - name: Lookup or create release
         uses: EventStore/Automations/lookup-or-create-release@master
