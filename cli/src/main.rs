@@ -1445,19 +1445,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 PeeringsCommand::Create(params) => {
                     let token = store.access().await?;
                     let create_params = esc_api::command::peerings::CreatePeeringParams {
-                        network_id: params.network_id,
+                        network_id: params.network_id.clone(),
                         description: params.description,
-                        peer_account: params.peer_account_id,
-                        peer_network: params.peer_network_id,
+                        peer_account_id: params.peer_account_id.clone(),
+                        peer_network_id: params.peer_network_id.clone(),
                         peer_network_region: params.peer_network_region,
                         routes: params.routes,
                     };
-                    let peering_id = client
+                    let result = client
                         .peerings(&token)
-                        .create(params.org_id, params.project_id, create_params)
+                        .create(
+                            params.org_id.clone(),
+                            params.project_id.clone(),
+                            create_params,
+                        )
                         .await?;
 
-                    print_output(opt.output, peering_id)?;
+                    if let Err(_err) = result {
+                        let network = client
+                            .networks(&token)
+                            .get(
+                                params.org_id.clone(),
+                                params.project_id.clone(),
+                                params.network_id,
+                            )
+                            .await?;
+
+                        let derive_peering_commands_params =
+                            esc_api::command::peerings::DerivePeeringCommandsParams {
+                                provider: network.provider,
+                                peer_account_id: params.peer_account_id,
+                                peer_network_id: params.peer_network_id,
+                            };
+
+                        let commands = client
+                            .peerings(&token)
+                            .derive_peering_commands(
+                                params.org_id,
+                                params.project_id,
+                                derive_peering_commands_params,
+                            )
+                            .await?;
+
+                        match opt.output {
+                            Output::Default => {
+                                println!("Upstream provider requires configuration.");
+                                for command in commands {
+                                    println!();
+                                    println!("{}:", command.title);
+                                    println!("{}", command.value);
+                                }
+                            }
+                            Output::Json => {
+                                print_output(opt.output, commands)?;
+                            }
+                        }
+                    } else {
+                        print_output(opt.output, result?)?;
+                    }
                 }
 
                 PeeringsCommand::Update(params) => {
