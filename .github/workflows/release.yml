@@ -20,7 +20,7 @@ jobs:
 
       - name: Create version
         id: version
-        run: echo ::set-output name=version::1.20.13
+        run: echo "::set-output name=version::1.20.13"
 
       - name: Lookup or create release
         uses: EventStore/Automations/lookup-or-create-release@master
