@@ -1,6 +1,6 @@
-use crate::http::{authenticated_request, default_error_handler, resp_json_payload};
+use crate::http::{authenticated_request, default_error_handler};
 use crate::{Client, Network, NetworkId, OrgId, ProjectId, Provider, Token};
-use hyper::Uri;
+use reqwest::Method;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,23 +51,20 @@ impl<'a> Networks<'a> {
         project_id: ProjectId,
         params: CreateNetworkParams,
     ) -> crate::Result<NetworkId> {
-        let uri: Uri = format!(
-            "{}/infra/v1/organizations/{}/projects/{}/networks",
-            self.client.base_url, org_id, project_id
+        let req = authenticated_request(
+            &self.client,
+            Method::POST,
+            self.token,
+            format!(
+                "{}/infra/v1/organizations/{}/projects/{}/networks",
+                self.client.base_url, org_id, project_id
+            ),
         )
-        .parse()?;
+        .json(&params);
 
-        let payload = serde_json::to_vec(&params)?;
-        let req = authenticated_request(self.token, uri)
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::from(payload))?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-
-        let resp: CreateNetworkResponse = resp_json_payload(&mut resp).await?;
+        let resp: CreateNetworkResponse = resp.json().await?;
 
         Ok(resp.id)
     }
@@ -79,21 +76,18 @@ impl<'a> Networks<'a> {
         network_id: NetworkId,
         params: UpdateNetworkParams,
     ) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/infra/v1/organizations/{}/projects/{}/networks/{}",
-            self.client.base_url, org_id, project_id, network_id
+        let req = authenticated_request(
+            &self.client,
+            Method::PUT,
+            self.token,
+            format!(
+                "{}/infra/v1/organizations/{}/projects/{}/networks/{}",
+                self.client.base_url, org_id, project_id, network_id
+            ),
         )
-        .parse()?;
+        .json(&params);
 
-        let payload = serde_json::to_vec(&params)?;
-        let req = authenticated_request(self.token, uri)
-            .method("PUT")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::from(payload))?;
-
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
@@ -104,19 +98,17 @@ impl<'a> Networks<'a> {
         project_id: ProjectId,
         network_id: NetworkId,
     ) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/infra/v1/organizations/{}/projects/{}/networks/{}",
-            self.client.base_url, org_id, project_id, network_id
-        )
-        .parse()?;
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!(
+                "{}/infra/v1/organizations/{}/projects/{}/networks/{}",
+                self.client.base_url, org_id, project_id, network_id
+            ),
+        );
 
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .body(hyper::Body::empty())?;
-
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
@@ -127,41 +119,38 @@ impl<'a> Networks<'a> {
         project_id: ProjectId,
         network_id: NetworkId,
     ) -> crate::Result<Network> {
-        let uri: Uri = format!(
-            "{}/infra/v1/organizations/{}/projects/{}/networks/{}",
-            self.client.base_url, org_id, project_id, network_id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/infra/v1/organizations/{}/projects/{}/networks/{}",
+                self.client.base_url, org_id, project_id, network_id
+            ),
         )
-        .parse()?;
+        .header("Accept", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .body(hyper::Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-
-        let result: GetNetworksResponse = resp_json_payload(&mut resp).await?;
+        let result: GetNetworksResponse = resp.json().await?;
 
         Ok(result.network)
     }
 
     pub async fn list(self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Network>> {
-        let uri: Uri = format!(
-            "{}/infra/v1/organizations/{}/projects/{}/networks",
-            self.client.base_url, org_id, project_id
-        )
-        .parse()?;
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/infra/v1/organizations/{}/projects/{}/networks",
+                self.client.base_url, org_id, project_id
+            ),
+        );
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .body(hyper::Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-
-        let result: ListNetworksResponse = resp_json_payload(&mut resp).await?;
+        let result: ListNetworksResponse = resp.json().await?;
 
         Ok(result.networks)
     }

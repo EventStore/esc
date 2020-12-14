@@ -1,6 +1,6 @@
-use crate::http::{authenticated_request, default_error_handler, resp_json_payload};
+use crate::http::{authenticated_request, default_error_handler};
 use crate::{Backup, BackupId, Client, ClusterId, OrgId, ProjectId, Token};
-use hyper::Uri;
+use reqwest::Method;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,23 +43,20 @@ impl<'a> Backups<'a> {
         project_id: ProjectId,
         params: CreateBackupParams,
     ) -> crate::Result<BackupId> {
-        let uri: Uri = format!(
-            "{}/mesdb/v1/organizations/{}/projects/{}/backups",
-            self.client.base_url, org_id, project_id
+        let req = authenticated_request(
+            &self.client,
+            Method::POST,
+            self.token,
+            format!(
+                "{}/mesdb/v1/organizations/{}/projects/{}/backups",
+                self.client.base_url, org_id, project_id
+            ),
         )
-        .parse()?;
+        .json(&params);
 
-        let payload = serde_json::to_vec(&params)?;
-        let req = authenticated_request(self.token, uri)
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::from(payload))?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-
-        let resp: CreateBackupResponse = resp_json_payload(&mut resp).await?;
+        let resp: CreateBackupResponse = resp.json().await?;
 
         Ok(resp.id)
     }
@@ -70,22 +67,20 @@ impl<'a> Backups<'a> {
         project_id: ProjectId,
         id: BackupId,
     ) -> crate::Result<Backup> {
-        let uri: Uri = format!(
-            "{}/mesdb/v1/organizations/{}/projects/{}/backups/{}",
-            self.client.base_url, org_id, project_id, id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/mesdb/v1/organizations/{}/projects/{}/backups/{}",
+                self.client.base_url, org_id, project_id, id
+            ),
         )
-        .parse()?;
+        .header("Content-Type", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-
-        let result: GetBackupResponse = resp_json_payload(&mut resp).await?;
+        let result: GetBackupResponse = resp.json().await?;
 
         Ok(result.backup)
     }
@@ -96,41 +91,36 @@ impl<'a> Backups<'a> {
         project_id: ProjectId,
         id: BackupId,
     ) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/mesdb/v1/organizations/{}/projects/{}/backups/{}",
-            self.client.base_url, org_id, project_id, id
-        )
-        .parse()?;
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!(
+                "{}/mesdb/v1/organizations/{}/projects/{}/backups/{}",
+                self.client.base_url, org_id, project_id, id
+            ),
+        );
 
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::empty())?;
-
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
 
     pub async fn list(&self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Backup>> {
-        let uri: Uri = format!(
-            "{}/mesdb/v1/organizations/{}/projects/{}/backups",
-            self.client.base_url, org_id, project_id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/mesdb/v1/organizations/{}/projects/{}/backups",
+                self.client.base_url, org_id, project_id
+            ),
         )
-        .parse()?;
+        .header("Content-Type", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-
-        let result: ListBackupsResponse = resp_json_payload(&mut resp).await?;
+        let result: ListBackupsResponse = resp.json().await?;
 
         Ok(result.backups)
     }

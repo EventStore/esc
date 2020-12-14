@@ -1163,7 +1163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
-    let client = Client::new(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string());
+    let client = Client::new(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string())?;
 
     config::Settings::configure().await?;
     let mut store = TokenStore::new(&auth, client.tokens());

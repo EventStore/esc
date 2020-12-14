@@ -1,8 +1,6 @@
-use crate::http::{
-    authenticated_request, default_error_handler, req_json_payload, resp_json_payload,
-};
+use crate::http::{authenticated_request, default_error_handler};
 use crate::{Client, Email, GroupId, Invite, InviteId, OrgId, Token};
-use hyper::{Body, Uri};
+use reqwest::Method;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,24 +49,20 @@ impl<'a> Invites<'a> {
         user_email: Email,
         groups: Option<Vec<GroupId>>,
     ) -> crate::Result<InviteId> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/invites",
-            self.client.base_url, org_id
+        let req = authenticated_request(
+            &self.client,
+            Method::POST,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/invites",
+                self.client.base_url, org_id
+            ),
         )
-        .parse()?;
+        .json(&CreateInviteParams { user_email, groups });
 
-        let req = authenticated_request(self.token, uri)
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body(req_json_payload(&CreateInviteParams {
-                user_email,
-                groups,
-            })?)?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: CreateInviteResponse = resp_json_payload(&mut resp).await?;
+        let result: CreateInviteResponse = resp.json().await?;
 
         Ok(result.id)
     }
@@ -79,79 +73,75 @@ impl<'a> Invites<'a> {
         id: InviteId,
         user_email: Email,
     ) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/invites/{}",
-            self.client.base_url, org_id, id
+        let req = authenticated_request(
+            &self.client,
+            Method::PUT,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/invites/{}",
+                self.client.base_url, org_id, id
+            ),
         )
-        .parse()?;
+        .json(&UpdateInviteParams { user_email });
 
-        let req = authenticated_request(self.token, uri)
-            .method("PUT")
-            .header("Content-Type", "application/json")
-            .body(req_json_payload(&UpdateInviteParams { user_email })?)?;
-
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
 
     pub async fn get(self, org_id: OrgId, id: InviteId) -> crate::Result<Option<Invite>> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/invites/{}",
-            self.client.base_url, org_id, id
-        )
-        .parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .body(Body::empty())?;
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/invites/{}",
+                self.client.base_url, org_id, id
+            ),
+        );
 
-        let mut resp = self.client.inner.request(req).await?;
+        let resp = default_error_handler(req.send().await?).await?;
 
         if resp.status().as_u16() == 404 {
             return Ok(None);
         }
 
-        default_error_handler(&mut resp).await?;
-        let result: GetInviteResponse = resp_json_payload(&mut resp).await?;
+        let result: GetInviteResponse = resp.json().await?;
 
         Ok(Some(result.invite))
     }
 
     pub async fn delete(self, org_id: OrgId, id: InviteId) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/invites/{}",
-            self.client.base_url, org_id, id
-        )
-        .parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .body(Body::empty())?;
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/invites/{}",
+                self.client.base_url, org_id, id
+            ),
+        );
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<Invite>> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/invites",
-            self.client.base_url, org_id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/invites",
+                self.client.base_url, org_id
+            ),
         )
-        .parse()?;
+        .header("Accept", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Accept", "application/json")
-            .body(Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: ListInvitesResponse = resp_json_payload(&mut resp).await?;
+        let result: ListInvitesResponse = resp.json().await?;
 
         Ok(result.invites)
     }

@@ -1,6 +1,6 @@
-use crate::http::{authenticated_request, default_error_handler, resp_json_payload};
+use crate::http::{authenticated_request, default_error_handler};
 use crate::{Client, GroupId, OrgId, Token};
-use hyper::{Body, Uri};
+use reqwest::Method;
 
 pub struct Groups<'a> {
     client: &'a Client,
@@ -46,61 +46,59 @@ impl<'a> Groups<'a> {
     }
 
     pub async fn create(&self, params: CreateGroupParams) -> crate::Result<GroupId> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/groups",
-            self.client.base_url, params.org_id
+        let req = authenticated_request(
+            &self.client,
+            Method::POST,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/groups",
+                self.client.base_url, params.org_id
+            ),
         )
-        .parse()?;
-        let payload = serde_json::to_vec(&params)?;
+        .json(&params);
 
-        let req = authenticated_request(self.token, uri)
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::from(payload))?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: CreateGroupResponse = resp_json_payload(&mut resp).await?;
+        let result: CreateGroupResponse = resp.json().await?;
 
         Ok(result.id)
     }
 
     pub async fn get(self, id: GroupId, org_id: OrgId) -> crate::Result<Option<crate::Group>> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/groups/{}",
-            self.client.base_url, org_id, id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/groups/{}",
+                self.client.base_url, org_id, id
+            ),
         )
-        .parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .body(Body::empty())?;
+        .header("Content-Type", "application/json");
 
-        let mut resp = self.client.inner.request(req).await?;
+        let resp = default_error_handler(req.send().await?).await?;
 
         if resp.status().as_u16() == 404 {
             return Ok(None);
         }
 
-        default_error_handler(&mut resp).await?;
-        let result: GetGroupResponse = resp_json_payload(&mut resp).await?;
+        let result: GetGroupResponse = resp.json().await?;
 
         Ok(Some(result.group))
     }
 
     pub async fn delete(self, id: GroupId, org_id: OrgId) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/groups/{}",
-            self.client.base_url, org_id, id
-        )
-        .parse()?;
-        let req = authenticated_request(self.token, uri)
-            .method("DELETE")
-            .body(Body::empty())?;
+        let req = authenticated_request(
+            &self.client,
+            Method::DELETE,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/groups/{}",
+                self.client.base_url, org_id, id
+            ),
+        );
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
@@ -117,21 +115,20 @@ impl<'a> Groups<'a> {
     }
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<crate::Group>> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/groups",
-            self.client.base_url, org_id
+        let req = authenticated_request(
+            &self.client,
+            Method::GET,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/groups",
+                self.client.base_url, org_id
+            ),
         )
-        .parse()?;
+        .header("Accept", "application/json");
 
-        let req = authenticated_request(self.token, uri)
-            .method("GET")
-            .header("Accept", "application/json")
-            .body(Body::empty())?;
+        let resp = default_error_handler(req.send().await?).await?;
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
-        let result: ListGroupsResponse = resp_json_payload(&mut resp).await?;
+        let result: ListGroupsResponse = resp.json().await?;
 
         Ok(result.groups)
     }
@@ -170,25 +167,23 @@ impl<'a> UpdateGroup<'a> {
     }
 
     pub async fn execute(self) -> crate::Result<()> {
-        let uri: Uri = format!(
-            "{}/access/v1/organizations/{}/groups/{}",
-            self.client.base_url, self.org_id, self.id
-        )
-        .parse()?;
         let params = UpdateGroupParams {
             name: self.name_opt,
             members: self.members_opt,
         };
-        let payload = serde_json::to_vec(&params)?;
 
-        let req = authenticated_request(self.token, uri)
-            .method("PUT")
-            .header("Content-Type", "application/json")
-            .body(hyper::Body::from(payload))?;
+        let req = authenticated_request(
+            &self.client,
+            Method::PUT,
+            self.token,
+            format!(
+                "{}/access/v1/organizations/{}/groups/{}",
+                self.client.base_url, self.org_id, self.id
+            ),
+        )
+        .json(&params);
 
-        let mut resp = self.client.inner.request(req).await?;
-
-        default_error_handler(&mut resp).await?;
+        let _ = default_error_handler(req.send().await?).await?;
 
         Ok(())
     }
