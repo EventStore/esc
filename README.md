@@ -52,6 +52,31 @@ You can find more information about `profiles` by entering:
 esc profiles --help
 ```
 
+## JSON commands output rendering
+You can render any read command output in JSON by using the `--json` flag.
+
+```
+esc resources organizations list --json
+```
+
+## Shell completions
+
+You can generate shell completion script by using the `generate-{shell}-completion` command. Currently supported:
+
+* Bash
+* Zsh
+* Powershell
+
+Additional shells can be supported, please open a feature request.
+
+The content of the script is displayed on STDOUT.
+
+Example:
+
+```
+esc generate-bash-completion > /usr/share/bash-completion/completions/esc.bash
+```
+
 ## Common usage examples:
 
 ### Create a network.

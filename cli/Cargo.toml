@@ -1,6 +1,6 @@
 [package]
 name = "esc"
-version = "1.20.13"
+version = "1.20.14"
 authors = ["Yorick Laupa <yorick.laupa@eventstore.com>"]
 edition = "2018"
 
@@ -25,3 +25,4 @@ url = "2.1"
 rpassword = "4.0"
 rustyline = "6.2"
 cidr = "0.1"
+clap = "*"
