@@ -25,20 +25,22 @@ use structopt::StructOpt;
     author = "Event Store Limited <ops@eventstore.com>"
 )]
 pub struct Opt {
-    #[structopt(long, help = "Prints a verbose output during the program execution")]
+    #[structopt(
+        long,
+        help = "Prints a verbose render_in_json during the program execution",
+        global = true
+    )]
     debug: bool,
 
-    #[structopt(long, short, default_value = "default", parse(try_from_str = parse_output), help = "How a command output should be rendered")]
-    output: Output,
+    #[structopt(
+        long = "json",
+        help = "Render command render_in_json in JSON",
+        global = true
+    )]
+    render_in_json: bool,
 
     #[structopt(subcommand)]
     cmd: Command,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Output {
-    Json,
-    Default,
 }
 
 #[derive(StructOpt, Debug)]
@@ -48,6 +50,12 @@ enum Command {
     Infra(Infra),
     Profiles(Profiles),
     Mesdb(Mesdb),
+    #[structopt(about = "Prints Bash completion script in STDOUT")]
+    GenerateBashCompletion,
+    #[structopt(about = "Prints Zsh completion script in STDOUT")]
+    GenerateZshCompletion,
+    #[structopt(about = "Prints Powershell completion script in STDOUT")]
+    GeneratePowershellCompletion,
 }
 
 #[derive(StructOpt, Debug)]
@@ -972,16 +980,6 @@ lazy_static! {
     };
 }
 
-lazy_static! {
-    static ref OUTPUT_TYPES: HashMap<&'static str, Output> = {
-        let mut map = HashMap::new();
-        map.insert("json", Output::Json);
-        map.insert("default", Output::Default);
-
-        map
-    };
-}
-
 fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
     if src.trim().is_empty() {
         let profile_opt = crate::config::SETTINGS.get_current_profile();
@@ -1050,10 +1048,6 @@ fn parse_projection_level(src: &str) -> Result<esc_api::ProjectionLevel, String>
     parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
-fn parse_output(src: &str) -> Result<Output, String> {
-    parse_enum(&OUTPUT_TYPES, src)
-}
-
 fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
         Some(p) => Ok(*p),
@@ -1095,19 +1089,16 @@ impl std::fmt::Display for StringError {
 impl std::error::Error for StringError {}
 
 fn print_output<A: std::fmt::Debug + Serialize>(
-    output: Output,
+    render_in_json: bool,
     value: A,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    match output {
-        Output::Json => {
-            serde_json::to_writer_pretty(std::io::stdout(), &value)?;
-            Ok(())
-        }
-        Output::Default => {
-            println!("{:?}", value);
-            Ok(())
-        }
+    if render_in_json {
+        serde_json::to_writer_pretty(std::io::stdout(), &value)?;
+    } else {
+        println!("{:?}", value);
     }
+
+    Ok(())
 }
 
 struct List<A>(Vec<A>);
@@ -1144,7 +1135,8 @@ where
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opt = Opt::from_args();
+    let mut clap_app = Opt::clap();
+    let opt = Opt::from_clap(&clap_app.clone().get_matches());
     let audience = constants::ES_CLOUD_API_AUDIENCE.parse()?;
     let auth = Auth {
         id: ClientId(constants::ES_CLIENT_ID.to_owned()),
@@ -1186,7 +1178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     };
                     let group_id = client.groups(&token).create(create_params).await?;
 
-                    print_output(opt.output, group_id)?;
+                    print_output(opt.render_in_json, group_id)?;
                 }
 
                 GroupsCommand::Update(params) => {
@@ -1204,7 +1196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match group_id_opt {
                         Some(group) => {
-                            print_output(opt.output, group)?;
+                            print_output(opt.render_in_json, group)?;
                         }
 
                         _ => {
@@ -1226,7 +1218,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let groups = client.groups(&token).list(params.org_id).await?;
 
-                    print_output(opt.output, List(groups))?;
+                    print_output(opt.render_in_json, List(groups))?;
                 }
             },
 
@@ -1254,7 +1246,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let invite = client.invites(&token).get(params.org_id, params.id).await?;
 
                     if let Some(invite) = invite {
-                        print_output(opt.output, invite)?;
+                        print_output(opt.render_in_json, invite)?;
                     } else {
                         std::process::exit(-1);
                     }
@@ -1272,7 +1264,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let invites = client.invites(&token).list(params.org_id).await?;
 
-                    print_output(opt.output, List(invites))?;
+                    print_output(opt.render_in_json, List(invites))?;
                 }
             },
 
@@ -1337,7 +1329,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.org_id, create_params)
                         .await?;
 
-                    print_output(opt.output, id)?;
+                    print_output(opt.render_in_json, id)?;
                 }
 
                 PoliciesCommand::Update(params) => {
@@ -1371,14 +1363,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get(params.org_id, params.policy)
                         .await?;
 
-                    print_output(opt.output, policy)?;
+                    print_output(opt.render_in_json, policy)?;
                 }
 
                 PoliciesCommand::List(params) => {
                     let token = store.access().await?;
                     let policies = client.policies(&token).list(params.org_id).await?;
 
-                    print_output(opt.output, List(policies))?;
+                    print_output(opt.render_in_json, List(policies))?;
                 }
             },
         },
@@ -1398,7 +1390,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.org_id, params.project_id, create_params)
                         .await?;
 
-                    print_output(opt.output, network_id)?;
+                    print_output(opt.render_in_json, network_id)?;
                 }
 
                 NetworksCommand::Update(params) => {
@@ -1427,7 +1419,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get(params.org_id, params.project_id, params.id)
                         .await?;
 
-                    print_output(opt.output, network)?;
+                    print_output(opt.render_in_json, network)?;
                 }
 
                 NetworksCommand::List(params) => {
@@ -1437,7 +1429,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .list(params.org_id, params.project_id)
                         .await?;
 
-                    print_output(opt.output, List(networks))?;
+                    print_output(opt.render_in_json, List(networks))?;
                 }
             },
 
@@ -1487,21 +1479,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             )
                             .await?;
 
-                        match opt.output {
-                            Output::Default => {
-                                println!("Upstream provider requires configuration.");
-                                for command in commands {
-                                    println!();
-                                    println!("{}:", command.title);
-                                    println!("{}", command.value);
-                                }
-                            }
-                            Output::Json => {
-                                print_output(opt.output, commands)?;
+                        if opt.render_in_json {
+                            print_output(opt.render_in_json, commands)?;
+                        } else {
+                            println!("Upstream provider requires configuration.");
+                            for command in commands {
+                                println!();
+                                println!("{}:", command.title);
+                                println!("{}", command.value);
                             }
                         }
-                    } else {
-                        print_output(opt.output, result?)?;
                     }
                 }
 
@@ -1531,7 +1518,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get(params.org_id, params.project_id, params.id)
                         .await?;
 
-                    print_output(opt.output, peering)?;
+                    print_output(opt.render_in_json, peering)?;
                 }
 
                 PeeringsCommand::List(params) => {
@@ -1541,7 +1528,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .list(params.org_id, params.project_id)
                         .await?;
 
-                    print_output(opt.output, List(peerings))?;
+                    print_output(opt.render_in_json, List(peerings))?;
                 }
             },
         },
@@ -1651,7 +1638,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let org_id = client.organizations(&token).create(params.name).await?;
 
-                    print_output(opt.output, org_id)?;
+                    print_output(opt.render_in_json, org_id)?;
                 }
 
                 OrganizationsCommand::Update(params) => {
@@ -1671,14 +1658,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let org = client.organizations(&token).get(params.id).await?;
 
-                    print_output(opt.output, org)?;
+                    print_output(opt.render_in_json, org)?;
                 }
 
                 OrganizationsCommand::List(_) => {
                     let token = store.access().await?;
                     let orgs = client.organizations(&token).list().await?;
 
-                    print_output(opt.output, List(orgs))?;
+                    print_output(opt.render_in_json, List(orgs))?;
                 }
             },
 
@@ -1690,7 +1677,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .create(params.org_id, params.name)
                         .await?;
 
-                    print_output(opt.output, proj_id)?;
+                    print_output(opt.render_in_json, proj_id)?;
                 }
 
                 ProjectsCommand::Update(params) => {
@@ -1710,7 +1697,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match project_opt {
                         Some(proj) => {
-                            print_output(opt.output, proj)?;
+                            print_output(opt.render_in_json, proj)?;
                         }
 
                         _ => {
@@ -1732,7 +1719,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access().await?;
                     let projs = client.projects(&token).list(params.org_id).await?;
 
-                    print_output(opt.output, List(projs))?;
+                    print_output(opt.render_in_json, List(projs))?;
                 }
             },
         },
@@ -1758,7 +1745,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .create(params.org_id, params.project_id, create_params)
                             .await?;
 
-                        print_output(opt.output, cluster_id)?;
+                        print_output(opt.render_in_json, cluster_id)?;
                     }
 
                     ClustersCommand::Get(params) => {
@@ -1767,7 +1754,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .get(params.org_id, params.project_id, params.id)
                             .await?;
 
-                        print_output(opt.output, cluster)?;
+                        print_output(opt.render_in_json, cluster)?;
                     }
 
                     ClustersCommand::Delete(params) => {
@@ -1790,7 +1777,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .list(params.org_id, params.project_id)
                             .await?;
 
-                        print_output(opt.output, List(clusters))?;
+                        print_output(opt.render_in_json, List(clusters))?;
                     }
 
                     ClustersCommand::Expand(params) => {
@@ -1816,7 +1803,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .create(params.org_id, params.project_id, create_params)
                             .await?;
 
-                        print_output(opt.output, backup_id)?;
+                        print_output(opt.render_in_json, backup_id)?;
                     }
 
                     BackupsCommand::Get(params) => {
@@ -1825,7 +1812,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .get(params.org_id, params.project_id, params.id)
                             .await?;
 
-                        print_output(opt.output, backup)?;
+                        print_output(opt.render_in_json, backup)?;
                     }
 
                     BackupsCommand::Delete(params) => {
@@ -1841,10 +1828,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .list(params.org_id, params.project_id)
                             .await?;
 
-                        print_output(opt.output, List(backups))?;
+                        print_output(opt.render_in_json, List(backups))?;
                     }
                 },
             }
+        }
+
+        Command::GenerateBashCompletion => {
+            clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
+        }
+
+        Command::GenerateZshCompletion => {
+            clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
+        }
+
+        Command::GeneratePowershellCompletion => {
+            clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
         }
     };
 
