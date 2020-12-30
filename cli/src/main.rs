@@ -27,14 +27,14 @@ use structopt::StructOpt;
 pub struct Opt {
     #[structopt(
         long,
-        help = "Prints a verbose render_in_json during the program execution",
+        help = "Prints a verbose output during the program execution",
         global = true
     )]
     debug: bool,
 
     #[structopt(
         long = "json",
-        help = "Render command render_in_json in JSON",
+        help = "Render read-command output in JSON",
         global = true
     )]
     render_in_json: bool,
