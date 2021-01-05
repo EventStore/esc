@@ -22,19 +22,3 @@ jobs:
         with:
           build-type: nightly
           github-token: ${{ secrets.GH_PAT }}
-
-      - name: Packaging
-        id: package
-        run: .\release.ps1 -Runner "${{ matrix.os }}" -Version "${{ steps.release.outputs.version}}"
-        shell: pwsh
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        with:
-          upload_url: ${{ steps.release.outputs.upload_url }}
-          asset_path: output/${{ steps.package.outputs.artifact_name }}
-          asset_name: ${{ steps.package.outputs.artifact_name }}
-          asset_content_type: ${{ steps.package.outputs.content_type }}
