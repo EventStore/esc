@@ -61,7 +61,19 @@ impl<'a> TokenStore<'a> {
         Ok(None)
     }
 
-    pub async fn access(&mut self) -> Result<Token, Box<dyn Error>> {
+    pub async fn access(
+        &mut self,
+        provided_refresh_token: Option<String>,
+    ) -> Result<Token, Box<dyn Error>> {
+        if let Some(provided_refresh_token) = provided_refresh_token {
+            let token = self
+                .tokens
+                .refresh(&self.auth.id, provided_refresh_token.as_str())
+                .await?;
+
+            return Ok(token);
+        }
+
         let token_path = self.path.as_path().join(
             self.auth
                 .audience
