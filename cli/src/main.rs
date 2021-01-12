@@ -39,6 +39,13 @@ pub struct Opt {
     )]
     render_in_json: bool,
 
+    #[structopt(
+        long,
+        help = "Refresh token, useful if you intend to use esc in a CI/scripting setting for example",
+        global = true
+    )]
+    refresh_token: Option<String>,
+
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -1170,7 +1177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Access(access) => match access.access_command {
             AccessCommand::Groups(groups) => match groups.groups_command {
                 GroupsCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let create_params = esc_api::command::groups::CreateGroupParams {
                         org_id: params.org_id,
                         name: params.name,
@@ -1182,7 +1189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 GroupsCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let mut update_group = client.groups(&token).update(params.id, params.org_id);
 
                     update_group.set_name(params.name);
@@ -1191,7 +1198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 GroupsCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let group_id_opt = client.groups(&token).get(params.id, params.org_id).await?;
 
                     match group_id_opt {
@@ -1207,7 +1214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 GroupsCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .groups(&token)
                         .delete(params.id, params.org_id)
@@ -1215,7 +1222,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 GroupsCommand::List(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let groups = client.groups(&token).list(params.org_id).await?;
 
                     print_output(opt.render_in_json, List(groups))?;
@@ -1224,7 +1231,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             AccessCommand::Invites(invites) => match invites.invites_command {
                 InvitesCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let invite_id = client
                         .invites(&token)
                         .create(params.org_id, params.email, params.group)
@@ -1234,7 +1241,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 InvitesCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .invites(&token)
                         .update(params.org_id, params.id, params.email)
@@ -1242,7 +1249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 InvitesCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let invite = client.invites(&token).get(params.org_id, params.id).await?;
 
                     if let Some(invite) = invite {
@@ -1253,7 +1260,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 InvitesCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .invites(&token)
                         .delete(params.org_id, params.id)
@@ -1261,7 +1268,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 InvitesCommand::List(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let invites = client.invites(&token).list(params.org_id).await?;
 
                     print_output(opt.render_in_json, List(invites))?;
@@ -1316,7 +1323,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             AccessCommand::Policies(policies) => match policies.policies_command {
                 PoliciesCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let create_params = esc_api::command::policies::CreatePolicyParams {
                         name: params.name,
                         subjects: params.subjects,
@@ -1333,7 +1340,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PoliciesCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let update_params = esc_api::command::policies::UpdatePolicyParams {
                         name: params.name,
                         subjects: params.subjects,
@@ -1349,7 +1356,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PoliciesCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .policies(&token)
                         .delete(params.org_id, params.policy)
@@ -1357,7 +1364,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PoliciesCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let policy = client
                         .policies(&token)
                         .get(params.org_id, params.policy)
@@ -1367,7 +1374,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PoliciesCommand::List(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let policies = client.policies(&token).list(params.org_id).await?;
 
                     print_output(opt.render_in_json, List(policies))?;
@@ -1378,7 +1385,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Infra(infra) => match infra.infra_command {
             InfraCommand::Networks(networks) => match networks.networks_command {
                 NetworksCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let create_params = esc_api::command::networks::CreateNetworkParams {
                         provider: params.provider,
                         cidr_block: params.cidr_block.to_string(),
@@ -1394,7 +1401,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 NetworksCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let update_params = esc_api::command::networks::UpdateNetworkParams {
                         description: params.description,
                     };
@@ -1405,7 +1412,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 NetworksCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .networks(&token)
                         .delete(params.org_id, params.project_id, params.id)
@@ -1413,7 +1420,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 NetworksCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let network = client
                         .networks(&token)
                         .get(params.org_id, params.project_id, params.id)
@@ -1423,7 +1430,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 NetworksCommand::List(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let networks = client
                         .networks(&token)
                         .list(params.org_id, params.project_id)
@@ -1435,7 +1442,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             InfraCommand::Peerings(peerings) => match peerings.peerings_command {
                 PeeringsCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let create_params = esc_api::command::peerings::CreatePeeringParams {
                         network_id: params.network_id.clone(),
                         description: params.description,
@@ -1493,7 +1500,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PeeringsCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let update_params = esc_api::command::peerings::UpdatePeeringParams {
                         description: params.description,
                     };
@@ -1504,7 +1511,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PeeringsCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .peerings(&token)
                         .delete(params.org_id, params.project_id, params.id)
@@ -1512,7 +1519,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PeeringsCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let peering = client
                         .peerings(&token)
                         .get(params.org_id, params.project_id, params.id)
@@ -1522,7 +1529,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PeeringsCommand::List(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let peerings = client
                         .peerings(&token)
                         .list(params.org_id, params.project_id)
@@ -1635,14 +1642,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Resources(res) => match res.resources_command {
             ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
                 OrganizationsCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let org_id = client.organizations(&token).create(params.name).await?;
 
                     print_output(opt.render_in_json, org_id)?;
                 }
 
                 OrganizationsCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .organizations(&token)
                         .update(params.id, params.name)
@@ -1650,19 +1657,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 OrganizationsCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client.organizations(&token).delete(params.id).await?;
                 }
 
                 OrganizationsCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let org = client.organizations(&token).get(params.id).await?;
 
                     print_output(opt.render_in_json, org)?;
                 }
 
                 OrganizationsCommand::List(_) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let orgs = client.organizations(&token).list().await?;
 
                     print_output(opt.render_in_json, List(orgs))?;
@@ -1671,7 +1678,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             ResourcesCommand::Projects(projs) => match projs.projects_command {
                 ProjectsCommand::Create(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let proj_id = client
                         .projects(&token)
                         .create(params.org_id, params.name)
@@ -1681,7 +1688,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 ProjectsCommand::Update(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .projects(&token)
                         .update(params.org_id, params.id, params.name)
@@ -1689,7 +1696,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 ProjectsCommand::Get(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let project_opt = client
                         .projects(&token)
                         .get(params.org_id, params.id)
@@ -1708,7 +1715,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 ProjectsCommand::Delete(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     client
                         .projects(&token)
                         .delete(params.org_id, params.id)
@@ -1716,7 +1723,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 ProjectsCommand::List(params) => {
-                    let token = store.access().await?;
+                    let token = store.access(opt.refresh_token).await?;
                     let projs = client.projects(&token).list(params.org_id).await?;
 
                     print_output(opt.render_in_json, List(projs))?;
@@ -1725,7 +1732,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
 
         Command::Mesdb(mesdb) => {
-            let token = store.access().await?;
+            let token = store.access(opt.refresh_token).await?;
             match mesdb.mesdb_command {
                 MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
                     ClustersCommand::Create(params) => {

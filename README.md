@@ -16,6 +16,11 @@ esc access tokens create --email <email> --unsafe-password <password>
 `esc` will refresh your token automatically without you needing to do anything. Rest assured that
 `esc` doesn't store your password in your system.
 
+## Scripting / Continuous Integration (CI) Usage
+
+`esc` exposes `--refresh-token=<your refresh token>` parameter to ease scripting integration. If set, `esc` won't rely
+on the filesystem to fetch your refresh token. Your refresh token won't be persisted on the filesystem neither.
+
 ## Implicit parameters
 
 Virtually all commands require `--org-id` and `--project-id` parameters. It is possible to tell
