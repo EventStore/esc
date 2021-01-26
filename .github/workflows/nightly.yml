@@ -2,7 +2,7 @@ name: Nightly
 
 on:
   schedule:
-    - cron: '0 3 * * *' # Every day at 3am UTC.
+    - cron: '0 0 3 ? * SUN *' # At 03:00:00am, on every Sunday, every month. Not enough churn to turn nightlies on.
 
 jobs:
   release:
