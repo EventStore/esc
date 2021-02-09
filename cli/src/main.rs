@@ -60,6 +60,7 @@ enum Command {
     Infra(Infra),
     Profiles(Profiles),
     Mesdb(Mesdb),
+    Orchestrate(Orchestrate),
     #[structopt(about = "Prints Bash completion script in STDOUT")]
     GenerateBashCompletion,
     #[structopt(about = "Prints Zsh completion script in STDOUT")]
@@ -948,6 +949,130 @@ struct DeleteBackup {
     id: esc_api::BackupId,
 }
 
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers jobs management commands")]
+struct Orchestrate {
+    #[structopt(subcommand)]
+    orchestrate_command: OrchestrateCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum OrchestrateCommand {
+    Jobs(Jobs),
+    History(History),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers jobs management commands")]
+struct Jobs {
+    #[structopt(subcommand)]
+    jobs_command: JobsCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum JobsCommand {
+    Create(CreateJob),
+    Get(GetJob),
+    List(ListJobs),
+    Delete(DeleteJob),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Create a job")]
+struct CreateJob {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the job will relate to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the job will relate to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, help = "A human-readable description of the job")]
+    description: String,
+
+    #[structopt(long, help = "The schedule in semi-cron format")]
+    schedule: String,
+
+    #[structopt(subcommand)]
+    job_type: CreateJobType,
+}
+
+#[derive(Debug, StructOpt)]
+enum CreateJobType {
+    ScheduledBackup(ScheduledBackupArgs),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Scheduled backup args")]
+struct ScheduledBackupArgs {
+    #[structopt(long, short, help = "Description to give each backup")]
+    description: String,
+    #[structopt(long, short, help = "Max number of backups to keep")]
+    max_backup_count: i32,
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to backup")]
+    cluster_id: esc_api::ClusterId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Get job information")]
+struct GetJob {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_job_id), help = "Job's id")]
+    id: esc_api::JobId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "List all jobs of an organization, given a project id")]
+struct ListJobs {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "An organization's id")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
+    project_id: esc_api::ProjectId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Delete a job")]
+struct DeleteJob {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_job_id), help = "Id of the job you want to delete")]
+    id: esc_api::JobId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers jobs management commands")]
+struct History {
+    #[structopt(subcommand)]
+    history_command: HistoryCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum HistoryCommand {
+    List(ListHistory),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Show job history")]
+struct ListHistory {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "An organization's id")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
+    project_id: esc_api::ProjectId,
+
+    #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
+    job_id: Option<esc_api::JobId>,
+}
+
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
         let mut map = HashMap::new();
@@ -1036,6 +1161,10 @@ fn parse_cluster_id(src: &str) -> Result<esc_api::ClusterId, String> {
 
 fn parse_backup_id(src: &str) -> Result<esc_api::BackupId, String> {
     Ok(esc_api::BackupId(src.to_string()))
+}
+
+fn parse_job_id(src: &str) -> Result<esc_api::JobId, String> {
+    Ok(esc_api::JobId(src.to_string()))
 }
 
 fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
@@ -1847,6 +1976,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        Command::Orchestrate(orchestrate) => {
+            let token = store.access(opt.refresh_token).await?;
+            match orchestrate.orchestrate_command {
+                OrchestrateCommand::Jobs(jobs) => match jobs.jobs_command {
+                    JobsCommand::Create(params) => {
+                        let data: esc_api::JobData = match params.job_type {
+                            CreateJobType::ScheduledBackup(args) => {
+                                esc_api::JobData::ScheduledBackup(esc_api::JobDataScheduledBackup {
+                                    description: args.description,
+                                    max_backup_count: args.max_backup_count,
+                                    cluster_id: args.cluster_id,
+                                })
+                            }
+                        };
+                        let create_params = esc_api::command::jobs::CreateJobParams {
+                            description: params.description,
+                            schedule: params.schedule,
+                            data,
+                        };
+                        let job_id = client
+                            .jobs(&token)
+                            .create(params.org_id, params.project_id, create_params)
+                            .await?;
+
+                        print_output(opt.render_in_json, job_id)?;
+                    }
+
+                    JobsCommand::Get(params) => {
+                        let job = client
+                            .jobs(&token)
+                            .get(params.org_id, params.project_id, params.id)
+                            .await?;
+
+                        print_output(opt.render_in_json, job)?;
+                    }
+
+                    JobsCommand::Delete(params) => {
+                        client
+                            .jobs(&token)
+                            .delete(params.org_id, params.project_id, params.id)
+                            .await?;
+                    }
+
+                    JobsCommand::List(params) => {
+                        let jobs = client
+                            .jobs(&token)
+                            .list(params.org_id, params.project_id)
+                            .await?;
+
+                        print_output(opt.render_in_json, List(jobs))?;
+                    }
+                },
+                OrchestrateCommand::History(history) => match history.history_command {
+                    HistoryCommand::List(params) => {
+                        let items = client
+                            .history(&token)
+                            .list(params.org_id, params.project_id, params.job_id)
+                            .await?;
+
+                        print_output(opt.render_in_json, List(items))?;
+                    }
+                },
+            }
+        }
         Command::GenerateBashCompletion => {
             clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
         }
