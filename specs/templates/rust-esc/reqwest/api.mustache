@@ -1,0 +1,130 @@
+{{>partial_header}}
+
+use reqwest;
+
+use crate::apis::ResponseContent;
+use super::{Error, configuration};
+use crate::http::{authenticated_request, default_error_handler};
+use crate::{Client, OrgId, Token};
+use reqwest::Method;
+
+
+{{#operations}}
+{{#operation}}
+{{#vendorExtensions.x-group-parameters}}
+{{#allParams}}
+{{#-first}}
+/// struct for passing parameters to the method `{{operationId}}`
+#[derive(Clone, Debug)]
+pub struct {{{operationIdCamelCase}}}Params {
+{{/-first}}
+    {{#description}}
+    /// {{{.}}}
+    {{/description}}
+    pub {{{paramName}}}: {{^required}}Option<{{/required}}{{#required}}{{#isNullable}}Option<{{/isNullable}}{{/required}}{{#isString}}{{#isArray}}Vec<{{/isArray}}String{{#isArray}}>{{/isArray}}{{/isString}}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}String{{#isArray}}>{{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}crate::models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}{{^required}}>{{/required}}{{#required}}{{#isNullable}}>{{/isNullable}}{{/required}}{{^-last}},{{/-last}}
+{{#-last}}
+}
+
+{{/-last}}
+{{/allParams}}
+{{/vendorExtensions.x-group-parameters}}
+{{/operation}}
+{{/operations}}
+
+{{#supportMultipleResponses}}
+{{#operations}}
+{{#operation}}
+/// struct for typed successes of method `{{operationId}}`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum {{{operationIdCamelCase}}}Success {
+    {{#responses}}
+    {{#is2xx}}
+    Status{{code}}({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
+    {{/is2xx}}
+    {{#is3xx}}
+    Status{{code}}({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
+    {{/is3xx}}
+    {{/responses}}
+    UnknownValue(serde_json::Value),
+}
+
+{{/operation}}
+{{/operations}}
+{{/supportMultipleResponses}}
+{{#operations}}
+{{#operation}}
+/// struct for typed errors of method `{{operationId}}`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum {{{operationIdCamelCase}}}Error {
+    {{#responses}}
+    {{#is4xx}}
+    Status{{code}}({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
+    {{/is4xx}}
+    {{#is5xx}}
+    Status{{code}}({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
+    {{/is5xx}}
+    {{#isDefault}}
+    DefaultResponse({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
+    {{/isDefault}}
+    {{/responses}}
+    UnknownValue(serde_json::Value),
+}
+
+{{/operation}}
+{{/operations}}
+
+
+// baseName: {{baseName}}
+// className: {{className}}
+// classVarName: {{classVarName}}
+
+pub struct {{baseName}}<'a> {
+    client: &'a Client,
+    token: &'a Token,
+}
+
+impl<'a> {{baseName}}<'a> {
+
+    pub fn new(client: &'a Client, token: &'a Token) -> Self {
+        Organizations { client, token }
+    }
+
+    {{#operations}}
+    {{#operation}}
+    {{#description}}
+    /// {{{.}}}
+    {{/description}}
+    {{#notes}}
+    /// {{{.}}}
+    {{/notes}}
+    pub async fn {{operationId}}(&self{{#allParams}}{{#-first}}, params: {{{operationIdCamelCase}}}Params{{/-first}}{{/allParams}}) -> crate::Result<{{#returnType}}{{{returnType}}}{{/returnType}}> {        
+        let url = format!("{}{{contextPath}}{{{path}}}", self.client.base_url{{#pathParams}}, {{{baseName}}}={{#isString}}crate::apis::urlencode({{/isString}}{{{paramName}}}{{^required}}.unwrap(){{/required}}{{#required}}{{#isNullable}}.unwrap(){{/isNullable}}{{/required}}{{#isArray}}.join(",").as_ref(){{/isArray}}{{#isString}}){{/isString}}{{/pathParams}});
+        let req = authenticated_request(
+            &self.client,
+            Method::{{#lambda.uppercase}}{{{httpMethod}}}{{/lambda.uppercase}},
+            self.token,
+            url,
+        )
+        .header("Accept", "application/json");
+
+        let resp = default_error_handler(req.send().await?).await?;
+
+        let result: {{#returnType}}{{{returnType}}}{{/returnType}} = resp.json().await?;
+
+    /*
+    {{returnType}}
+    */
+        Ok(result)
+    }
+    {{/operation}}
+    {{/operations}}
+
+}  // end {{baseName}}
+
+
+// WHAT IS THIS
+/*
+{{this}}
+*/

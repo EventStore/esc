@@ -97,9 +97,9 @@ components:
     ListOrganizationsResponse:
       type: object
       required:
-        - organizationz
+        - organizationw
       properties:
-        organizations:
+        organizationw:
           type: array
           items:
             $ref: '#/components/schemas/Organization'
