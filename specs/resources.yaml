@@ -17,7 +17,7 @@ paths:
   /organizations:
     get:
       tags:
-        - organizations
+        - organizationz
       description: |
         Lists organizations
       operationId: list_organizations
@@ -39,7 +39,7 @@ paths:
   /organizations/{organizationId}:
     get:
       tags:
-        - organizations
+        - organizationz
       description: |
         Gets a single organization by ID.
       operationId: get_organization
@@ -97,7 +97,7 @@ components:
     ListOrganizationsResponse:
       type: object
       required:
-        - organizations
+        - organizationz
       properties:
         organizations:
           type: array
