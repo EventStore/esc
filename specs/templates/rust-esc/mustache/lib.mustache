@@ -12,6 +12,53 @@ extern crate futures;
 extern crate reqwest;
 {{/reqwest}}
 
-
+pub mod http;
+pub mod token;
 pub mod apis;
 pub mod models;
+
+pub type Result<A> = std::result::Result<A, Box<dyn std::error::Error>>;
+
+pub struct Builder {
+    inner: reqwest::ClientBuilder,
+}
+
+impl Builder {
+    pub fn build(self, base_url: String, identity_url: String) -> crate::Result<Client> {
+        Ok(Client {
+            base_url,
+            identity_url,
+            inner: self.inner.build()?,
+        })
+    }
+}
+
+pub struct Client {
+    base_url: String,
+    identity_url: String,
+    pub inner: reqwest::Client,
+}
+
+
+impl Client {
+    pub fn builder() -> Builder {
+        Builder {
+            inner: reqwest::Client::builder(),
+        }
+    }
+
+    pub fn new(base_url: String, identity_url: String) -> crate::Result<Self> {
+        Client::builder().build(base_url, identity_url)
+    }
+
+
+    {{#apiInfo}}
+    {{#apis}}
+    pub fn {{classVarName}}<'a>(&'a self, token: &'a token::Token) -> apis::{{{classFilename}}}::{{baseName}}<'a> {
+        apis::{{{classFilename}}}::{{baseName}}::new(&self, token)
+    }
+    
+    {{/apis}}
+    {{/apiInfo}}
+
+}
