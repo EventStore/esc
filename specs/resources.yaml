@@ -1,0 +1,137 @@
+openapi: "3.0.0"
+info:
+  title: EventStore Cloud
+  version: 0.1.0
+  description: APIs for EventStore API
+  termsOfService: http://swagger.io/terms/ TODO
+  contact:
+    name: EventStore API
+    email: esc@eventstore.com
+    url: https://eventstore.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.eventstore.cloud/resources/v1
+paths:
+  /organizations:
+    get:
+      tags:
+        - organizations
+      description: |
+        Lists organizations
+      operationId: list_organizations
+      security:
+        - token: []
+      responses:
+        '200':
+          description: returns all organizations under this account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOrganizationsResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /organizations/{organizationId}:
+    get:
+      tags:
+        - organizations
+      description: |
+        Gets a single organization by ID.
+      operationId: get_organization
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: return the organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetOrganizationResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+# security:
+#   - oAuthNoScopes: []  # <-----
+
+components:  
+  schemas:
+    Organization:
+      type: object
+      required:
+      - created
+      - id
+      - name
+      properties:
+        created:
+          type: string
+          format: date-time 
+        id:
+          type: string
+        name:
+          type: string
+        
+    GetOrganizationResponse:
+      type: object
+      required:
+        - organization
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'
+          
+    ListOrganizationsResponse:
+      type: object
+      required:
+        - organizations
+      properties:
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+    
+    NewOrganization:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string        
+    
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+  securitySchemes:
+    esc_auth:    # <---- arbitrary name
+      type: oauth2
+      description: This API uses OAuth 2 with the implicit grant flow. [More info](https://api.example.com/docs/auth)
+      flows:
+        implicit:
+          authorizationUrl: https://identity.eventstore.com
+          scopes: {}
+    token:
+      type: apiKey
+      name: Authorization
+      in: header
