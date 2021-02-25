@@ -1,0 +1,5 @@
+inputSpec: resources.yaml
+generatorName: rust
+templateDir: templates/rust-esc/mustache
+packageName: escApi
+outputDir: ../../client/rust-esc/api

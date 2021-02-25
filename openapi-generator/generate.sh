@@ -18,7 +18,7 @@ echo 'Copying over static files...'
 cp -r templates/rust-esc/static/* ../../client/rust-esc/
 echo 'Running openapi-generator...'
 # openapi-generator generate -i resources.yaml -g rust --package-name esc-api -o ../../client/rust-esc/api    '--import-mappings=chrono::DateTime=chrono::DateTime,OrgId=crate::OrgId'  '--type-mappings=DateTime=chrono::DateTime<chrono::Utc>,orgid=OrgId' -t templates/rust-esc/mustache
-openapi-generator batch generate.yaml
+openapi-generator batch --includes-base-dir generate generate.yaml
 echo 'Building...'
 pushd ../../client/rust-esc/api
 RUSTFLAGS="-Z macro-backtrace" cargo build

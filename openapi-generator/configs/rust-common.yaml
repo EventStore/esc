@@ -1,8 +1,3 @@
-inputSpec: resources.yaml
-generatorName: rust
-templateDir: templates/rust-esc/mustache
-packageName: escApi
-outputDir: ../../client/rust-esc/api
 importMappings: 
   chrono::DateTime: chrono::DateTime
   OrgId: crate::OrgId
