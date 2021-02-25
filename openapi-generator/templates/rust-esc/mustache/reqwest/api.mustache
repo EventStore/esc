@@ -60,17 +60,15 @@ pub enum {{{operationIdCamelCase}}}Success {
 #[serde(untagged)]
 pub enum {{{operationIdCamelCase}}}Error {
     {{#responses}}
+    /*  {{code}} {{ message }} */
     {{#is4xx}}
     Status{{code}}({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
     {{/is4xx}}
     {{#is5xx}}
     Status{{code}}({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
-    {{/is5xx}}
-    {{#isDefault}}
-    DefaultResponse({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
-    {{/isDefault}}
+    {{/is5xx}}    
     {{/responses}}
-    UnknownValue(serde_json::Value),
+    Other,  // (crate::models::failure::UnexpectedResponse),
 }
 
 {{/operation}}
@@ -100,7 +98,7 @@ impl<'a> {{baseName}}<'a> {
     {{#notes}}
     /// {{{.}}}
     {{/notes}}
-    pub async fn {{operationId}}(&self, {{#allParams}}{{{paramName}}}: {{^required}}Option<{{/required}}{{#required}}{{#isNullable}}Option<{{/isNullable}}{{/required}}{{#isString}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isString}}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}crate::models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}{{^required}}>{{/required}}{{#required}}{{#isNullable}}>{{/isNullable}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}}) -> crate::Result<{{#returnType}}{{{returnType}}}{{/returnType}}> {        
+    pub async fn {{operationId}}(&self, {{#allParams}}{{{paramName}}}: {{^required}}Option<{{/required}}{{#required}}{{#isNullable}}Option<{{/isNullable}}{{/required}}{{#isString}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isString}}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}crate::models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}{{^required}}>{{/required}}{{#required}}{{#isNullable}}>{{/isNullable}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}}) -> Result<{{#returnType}}{{{returnType}}}{{/returnType}}, Error<{{{operationIdCamelCase}}}Error>> {        
         let url = format!("{}{{contextPath}}{{{path}}}", self.client.base_url{{#pathParams}}, {{{baseName}}}={{#isString}}crate::apis::urlencode({{/isString}}{{{paramName}}}{{^required}}.unwrap(){{/required}}{{#required}}{{#isNullable}}.unwrap(){{/isNullable}}{{/required}}{{#isArray}}.join(",").as_ref(){{/isArray}}{{#isString}}){{/isString}}{{/pathParams}});
         let req = authenticated_request(
             &self.client,
@@ -110,14 +108,50 @@ impl<'a> {{baseName}}<'a> {
         )
         .header("Accept", "application/json");
 
-        let resp = default_error_handler(req.send().await?).await?;
+        let resp = req.send().await?;
+        
+        let status = resp.status();
+        let content = resp.text().await?;
 
-        let result: {{#returnType}}{{{returnType}}}{{/returnType}} = resp.json().await?;
-
-    /*
-    {{returnType}}
-    */
-        Ok(result)
+        match status.as_u16() {
+             {{#responses}}
+             {{#is2xx}}
+             {{code}} => {
+                let result: {{#returnType}}{{{returnType}}}{{/returnType}} 
+                    = serde_json::from_str::<{{#returnType}}{{{returnType}}}{{/returnType}}>(&content)?;
+                Ok(result)
+             },
+             {{/is2xx}}
+             {{#is3xx}}
+             {{code}} => {
+                let result: {{#returnType}}{{{returnType}}}{{/returnType}} 
+                    = serde_json::from_str::<{{#returnType}}{{{returnType}}}{{/returnType}}>(&content)?;
+                Ok(result)
+             },
+             {{/is3xx}}
+             {{#is4xx}}
+             {{code}}  => {
+                let data = serde_json::from_str::<{{{dataType}}}>(&content)?;
+                Err(Error::ResponseError(ResponseContent{
+                    status, content, entity: {{{operationIdCamelCase}}}Error::Status{{code}}(data)
+                }))
+            },
+            {{/is4xx}}
+            {{#is5xx}}
+             {{code}}  => {
+                let data = serde_json::from_str::<{{{dataType}}}>(&content)?;
+                Err(Error::ResponseError(ResponseContent{
+                    status, content, entity: {{{operationIdCamelCase}}}Error::Status{{code}}(data)
+                }))
+            },
+            {{/is5xx}}
+             {{/responses}}
+            _ => {
+                Err(Error::ResponseError(ResponseContent{
+                    status, content, entity: {{{operationIdCamelCase}}}Error::Other
+                }))
+            }
+        }
     }
     {{/operation}}
     {{/operations}}

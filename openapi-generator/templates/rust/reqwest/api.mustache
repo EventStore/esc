@@ -65,7 +65,7 @@ pub enum {{{operationIdCamelCase}}}Error {
     DefaultResponse({{#isEnum}}{{{enumName}}}{{/isEnum}}{{^isEnum}}{{{dataType}}}{{/isEnum}}),
     {{/isDefault}}
     {{/responses}}
-    UnknownValue(serde_json::Value),
+    {{! UnknownValue(serde_json::Value), }}
 }
 
 {{/operation}}

@@ -20,11 +20,6 @@ paths:
     $ref: 'resources/organizations.yaml#/paths/organizations-{organizationId}'
   
 components:  
-  schemas:
-
-    Error:
-      $ref: 'errors.yaml#/components/schemas/Error'
-
   securitySchemes:
     esc_auth:
       type: oauth2

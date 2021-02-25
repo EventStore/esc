@@ -1,10 +1,11 @@
 paths:
-  organizations:
+  organizations:    
+
     get:
       tags:
         - organizations
       description: |
-        Lists organizations
+        Lists organizations under the account owned by the credentials
       operationId: list_organizations
       security:
         - token: []
@@ -15,12 +16,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOrganizationsResponse'
+        '404': 
+          description: organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ProblemDetails'    
+    post:
+      tags:
+        - organizations
+      description: |
+        Creates a new organization
+      operationId: create_organization
+      security:
+        - token: []
+      responses:
+        '200':
+          description: creates a new organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrganizationResponse'
+        '429':
+          description: organization limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+                
   organizations-{organizationId}:
     $ref: 'resources/organizations.yaml#/paths/organizations'
     get:
@@ -51,16 +87,52 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ProblemDetails'
 
 components:  
   schemas:
+
+    CreateOrganizationRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string        
+
+    CreateOrganizationResponse:
+      type: object
+      required:
+        - organization
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'   
+
+    GetOrganizationResponse:
+      type: object
+      required:
+        - organization
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'     
+          
+    ListOrganizationsResponse:
+      type: object
+      required:
+        - organizations
+      properties:
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'    
+
     Organization:
       type: object
       required:
       - created
       - id
       - name
+      - provisioningEnabled
       properties:
         created:
           type: string
@@ -72,32 +144,6 @@ components:
           type: string
         provisioningEnabled:
           type: string
-        
-    GetOrganizationResponse:
-      type: object
-      required:
-        - organization
-      properties:
-        organization:
-          $ref: '#/components/schemas/Organization'
-          
-    ListOrganizationsResponse:
-      type: object
-      required:
-        - organizations
-      properties:
-        organizations:
-          type: array
-          items:
-            $ref: '#/components/schemas/Organization'
-    
-    NewOrganization:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string        
-    
-    Error:
-      $ref: '../errors.yaml#/components/schemas/Error'
+     
+    ProblemDetails:
+      $ref: '../common/ProblemDetails.yaml#/components/schemas/ProblemDetails'

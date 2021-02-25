@@ -5,20 +5,24 @@ components:
       type: object
       required:
         - code
+        - details
         - message
-      properties:
-        type:
-          type: string
-        title:
-          type: string
-        status:
-          type: string
+        - status
+        - type
+      properties:              
         details:
-          type: string
-        instance:
           type: string
         fields:
           type: object
+          $ref: '#/components/schemas/Fields'
+        instance:
+          type: string        
+        status:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
     Fields:
       type: object
       additionalProperties:
