@@ -3,4 +3,4 @@ importMappings:
   OrgId: crate::OrgId
 typeMappings:
   DateTime: chrono::DateTime<chrono::Utc>
-  orgid: crate::types::OrgId
+  OrganizationId: crate::types::OrgId

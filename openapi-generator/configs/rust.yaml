@@ -2,7 +2,4 @@
 '!include': '../target/output.yaml'
 '!include': 'rust-common.yaml'
 generatorName: rust
-templateDir: templates/rust-esc/mustache
 packageName: escApi
-additionalProperties: 
-  useSingleRequestParameter: true 

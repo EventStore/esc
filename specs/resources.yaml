@@ -3,7 +3,7 @@ info:
   title: EventStore Cloud
   version: 0.1.0
   description: APIs for EventStore API
-  termsOfService: http://swagger.io/terms/ TODO
+  termsOfService: http://swagger.io/terms/
   contact:
     name: EventStore API
     email: esc@eventstore.com
@@ -15,114 +15,18 @@ servers:
   - url: https://api.eventstore.cloud/resources/v1
 paths:
   /organizations:
-    get:
-      tags:
-        - organizationz
-      description: |
-        Lists organizations
-      operationId: list_organizations
-      security:
-        - token: []
-      responses:
-        '200':
-          description: returns all organizations under this account
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListOrganizationsResponse'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+    $ref: 'resources/organizations.yaml#/paths/organizations'    
   /organizations/{organizationId}:
-    get:
-      tags:
-        - organizationz
-      description: |
-        Gets a single organization by ID.
-      operationId: get_organization
-      security:
-        - token: []
-      parameters:
-        - name: organizationId
-          in: path
-          required: true
-          description: The id of the organization to retrieve
-          schema:
-            type: string
-      responses:
-        '200':
-          description: return the organization
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetOrganizationResponse'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
+    $ref: 'resources/organizations.yaml#/paths/organizations-{organizationId}'
+  
 components:  
   schemas:
-    Organization:
-      type: object
-      required:
-      - created
-      - id
-      - name
-      properties:
-        created:
-          type: string
-          format: date-time 
-        id:
-          type: string
-          format: orgid
-        name:
-          type: string
-        
-    GetOrganizationResponse:
-      type: object
-      required:
-        - organization
-      properties:
-        organization:
-          $ref: '#/components/schemas/Organization'
-          
-    ListOrganizationsResponse:
-      type: object
-      required:
-        - organizationw
-      properties:
-        organizationw:
-          type: array
-          items:
-            $ref: '#/components/schemas/Organization'
-    
-    NewOrganization:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string        
-    
+
     Error:
-      type: object
-      required:
-        - code
-        - message
-      properties:
-        code:
-          type: integer
-          format: int32
-        message:
-          type: string
+      $ref: 'errors.yaml#/components/schemas/Error'
+
   securitySchemes:
-    esc_auth:    # <---- arbitrary name
+    esc_auth:
       type: oauth2
       description: This API uses OAuth 2 with the implicit grant flow. [More info](https://api.example.com/docs/auth)
       flows:

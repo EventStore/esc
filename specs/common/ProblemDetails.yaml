@@ -1,0 +1,25 @@
+# https://tools.ietf.org/html/rfc7807
+components:  
+  schemas:    
+    ProblemDetails:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        details:
+          type: string
+        instance:
+          type: string
+        fields:
+          type: object
+    Fields:
+      type: object
+      additionalProperties:
+        type: string

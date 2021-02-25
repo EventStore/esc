@@ -1,0 +1,112 @@
+paths:  
+  organizations-{orgId}-projects-{id}:
+    get:
+      tags:
+        - projects
+      description: |
+        List projects
+      operationId: list_projects
+      security:
+        - token: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          description: The id of the organization to retrieve
+          schema:
+            type: string
+            format: OrganizationId
+      responses:
+        '200':
+          description: returns all projects under the given organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProjectsResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  organizations-{org-id}-projects-{id}:
+    $ref: 'resources/organizations.yaml#/paths/organizations'
+    get:
+      tags:
+        - projects
+      description: |
+        Gets a single organization by ID.
+      operationId: get_organization
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization to retrieve
+          schema:
+            type: string
+            format: orgid
+      responses:
+        '200':
+          description: return the organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProjectResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:  
+  schemas:
+    Project:
+      type: object
+      required:
+      - created
+      - id
+      - name
+      - organizationId
+      properties:
+        created:
+          type: string
+          format: date-time 
+        id:
+          type: string
+          format: ProjectId
+        name:
+          type: string
+        organizationId:
+          type: OrganizationId
+        
+    GetProjectResponse:
+      type: object
+      required:
+        - project
+      properties:
+        project:
+          $ref: '#/components/schemas/Project'
+          
+    ListProjectResponse:
+      type: object
+      required:
+        - projects
+      properties:
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+    
+    NewProject:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string        
+    
+    Error:
+      $ref: '../errors.yaml#/components/schemas/Error'
