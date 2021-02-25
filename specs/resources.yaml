@@ -66,9 +66,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-# security:
-#   - oAuthNoScopes: []  # <-----
-
 components:  
   schemas:
     Organization:
@@ -83,6 +80,7 @@ components:
           format: date-time 
         id:
           type: string
+          format: orgid
         name:
           type: string
         
