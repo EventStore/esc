@@ -1,0 +1,7 @@
+[package]
+name = "esc_api_helpers"
+version = "1.0.0"
+authors = ["OpenAPI Generator team and contributors"]
+edition = "2018"
+
+[lib]

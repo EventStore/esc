@@ -1,0 +1,13 @@
+[package]
+name = "esc_api_helpers_derive"
+version = "1.0.0"
+authors = ["OpenAPI Generator team and contributors"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0.60", features = ["full"] }
+quote = "1.0.9"
+proc-macro2 = "1.0"

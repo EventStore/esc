@@ -1,5 +1,8 @@
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate esc_api_helpers_derive;
+
 
 extern crate serde;
 extern crate serde_json;
@@ -11,6 +14,7 @@ extern crate futures;
 {{#reqwest}}
 extern crate reqwest;
 {{/reqwest}}
+
 
 pub mod http;
 pub mod token;

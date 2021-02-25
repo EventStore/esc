@@ -1,3 +1,5 @@
+use esc_api_helpers::ApiHelpers;
+
 {{>partial_header}}
 {{#models}}
 {{#model}}
@@ -44,7 +46,7 @@ pub enum {{classname}} {
 {{!-- for non-enum schemas --}}
 {{^isEnum}}
 {{^discriminator}}
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ApiHelpers)]
 pub struct {{{classname}}} {
 {{#vars}}
     {{#description}}

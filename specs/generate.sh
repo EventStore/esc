@@ -15,9 +15,9 @@ mkdir -p ../../client/rust-esc/src
 echo 'Copying over static files...'
 cp -r templates/rust-esc/static/* ../../client/rust-esc/
 echo 'Running openapi-generator...'
-openapi-generator generate -i resources.yaml -g rust -o ../../client/rust-esc    --import-mappings=chrono::DateTime=chrono::DateTime  '--type-mappings=DateTime=chrono::DateTime<chrono::Utc>' -t templates/rust-esc/mustache
+openapi-generator generate -i resources.yaml -g rust --package-name esc-api -o ../../client/rust-esc/api    --import-mappings=chrono::DateTime=chrono::DateTime  '--type-mappings=DateTime=chrono::DateTime<chrono::Utc>' -t templates/rust-esc/mustache
 echo 'Building...'
-pushd ../../client/rust-esc
+pushd ../../client/rust-esc/api
 cargo build
 
 # openapi-generator generate -i resources.yaml -g rust -o client/rust --additional-properties=--packageName=escg
