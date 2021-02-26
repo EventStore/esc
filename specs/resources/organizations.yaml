@@ -36,6 +36,13 @@ paths:
       operationId: create_organization
       security:
         - token: []
+      requestBody:
+        description: describes new organization
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
       responses:
         '200':
           description: creates a new organization

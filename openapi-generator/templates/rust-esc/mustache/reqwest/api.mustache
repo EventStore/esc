@@ -106,6 +106,11 @@ impl<'a> {{baseName}}<'a> {
             self.token,
             url,
         )
+        {{#hasBodyParam}}
+        {{#bodyParams}}
+        .json(&{{{paramName}}})
+        {{/bodyParams}}
+        {{/hasBodyParam}}
         .header("Accept", "application/json");
 
         let resp = req.send().await?;
