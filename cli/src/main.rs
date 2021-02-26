@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_wraps)]
+
 #[macro_use]
 extern crate log;
 
