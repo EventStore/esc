@@ -948,9 +948,9 @@ struct DeleteBackup {
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
         let mut map = HashMap::new();
-        map.insert("aws", esc_api::Provider::AWS);
-        map.insert("gcp", esc_api::Provider::GCP);
-        map.insert("azure", esc_api::Provider::AZURE);
+        map.insert("aws", esc_api::Provider::Aws);
+        map.insert("gcp", esc_api::Provider::Gcp);
+        map.insert("azure", esc_api::Provider::Azure);
         map
     };
 }
