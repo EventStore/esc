@@ -1,5 +1,5 @@
 paths:  
-  organizations-{orgId}-projects-{id}:
+  organizations-{organizationId}-projects:
     get:
       tags:
         - projects
@@ -9,7 +9,7 @@ paths:
       security:
         - token: []
       parameters:
-        - name: orgId
+        - name: organizationId
           in: path
           required: true
           description: The id of the organization to retrieve
@@ -23,20 +23,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListProjectsResponse'
+        '404':
+          description: organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-  organizations-{org-id}-projects-{id}:
-    $ref: 'resources/organizations.yaml#/paths/organizations'
-    get:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
       tags:
         - projects
       description: |
-        Gets a single organization by ID.
-      operationId: get_organization
+        Creates a new project
+      operationId: create_project
       security:
         - token: []
       parameters:
@@ -46,42 +50,147 @@ paths:
           description: The id of the organization to retrieve
           schema:
             type: string
-            format: orgid
+            format: OrganizationId
+      requestBody:
+        description: describes a new project
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
       responses:
         '200':
-          description: return the organization
+          description: project was created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetProjectResponse'
+                $ref: '#/components/schemas/CreateProjectResponse'
+        '400':
+          description: invalid content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: project limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ProblemDetails' 
+  
+  organizations-{organizationId}-projects-{projectId}:
+    get:
+      tags:
+        - projects
+      description: |
+        Get project
+      operationId: get_project
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization to retrieve
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project to retrieve
+          schema:
+            type: string
+            format: ProjectId
+      responses:
+        '200':
+          description: returns the given project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProjectResponse'
+        '404':
+          description: project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - projects
+      description: |
+        Deletes project
+      operationId: delete_project
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization to delete
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project to delete
+          schema:
+            type: string
+            format: ProjectId
+      responses:
+        '204':
+          description: the project was deleted successfully          
+        '404':
+          description: project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
 components:  
-  schemas:
-    Project:
+  schemas:   
+    CreateProjectRequest:
       type: object
       required:
-      - created
-      - id
-      - name
-      - organizationId
+        - name
       properties:
-        created:
-          type: string
-          format: date-time 
-        id:
-          type: string
-          format: ProjectId
         name:
-          type: string
-        organizationId:
-          type: OrganizationId
-        
+          type: string        
+
+    CreateProjectResponse:
+      type: object
+      required:
+        - organization
+      properties:
+        id:
+          type: string 
+          format: ProjectId
+
     GetProjectResponse:
       type: object
       required:
@@ -90,7 +199,7 @@ components:
         project:
           $ref: '#/components/schemas/Project'
           
-    ListProjectResponse:
+    ListProjectsResponse:
       type: object
       required:
         - projects
@@ -108,5 +217,25 @@ components:
         name:
           type: string        
     
-    Error:
-      $ref: '../errors.yaml#/components/schemas/Error'
+    ProblemDetails:
+      $ref: '../common/ProblemDetails.yaml#/components/schemas/ProblemDetails'
+
+    Project:
+      type: object
+      required:
+      - created
+      - id
+      - name
+      - organizationId
+      properties:
+        created:
+          type: string
+          format: date-time 
+        id:
+          type: string
+          format: ProjectId
+        name:
+          type: string
+        organizationId:
+          type: string
+          format: OrganizationId

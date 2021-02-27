@@ -18,7 +18,10 @@ paths:
     $ref: 'resources/organizations.yaml#/paths/organizations'    
   /organizations/{organizationId}:
     $ref: 'resources/organizations.yaml#/paths/organizations-{organizationId}'
-  
+  /organizations/{organizationId}/projects:
+    $ref: 'resources/projects.yaml#/paths/organizations-{organizationId}-projects'
+  /organizations/{organizationId}/projects/{projectId}:
+    $ref: 'resources/projects.yaml#/paths/organizations-{organizationId}-projects-{projectId}'
 components:  
   securitySchemes:
     esc_auth:
