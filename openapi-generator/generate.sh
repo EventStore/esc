@@ -51,6 +51,10 @@ for client in "${clients[@]}"; do
         pushd "${clients_dir}/java/resources"
         mvn compile
         popd
+    elif [[ "${client}" == "rust" ]]; then
+        pushd "${clients_dir}/rust/resources"
+        cargo build
+        popd
     elif [[ "${client}" == "rust-esc" ]]; then
         pushd "${clients_dir}/rust-esc/resources"
         cargo build
