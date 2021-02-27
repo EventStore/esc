@@ -98,7 +98,7 @@ impl<'a> {{baseName}}<'a> {
     {{#notes}}
     /// {{{.}}}
     {{/notes}}
-    pub async fn {{operationId}}(&self, {{#allParams}}{{{paramName}}}: {{^required}}Option<{{/required}}{{#required}}{{#isNullable}}Option<{{/isNullable}}{{/required}}{{#isString}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isString}}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}crate::models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}{{^required}}>{{/required}}{{#required}}{{#isNullable}}>{{/isNullable}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}}) -> Result<{{#returnType}}{{{returnType}}}{{/returnType}}, Error<{{{operationIdCamelCase}}}Error>> {        
+    pub async fn {{operationId}}(&self, {{#allParams}}{{{paramName}}}: {{^required}}Option<{{/required}}{{#required}}{{#isNullable}}Option<{{/isNullable}}{{/required}}{{#isString}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isString}}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}crate::models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}{{^required}}>{{/required}}{{#required}}{{#isNullable}}>{{/isNullable}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}}) -> Result<{{^returnType}}(){{/returnType}}{{#returnType}}{{{returnType}}}{{/returnType}}, Error<{{{operationIdCamelCase}}}Error>> {        
         let url = format!("{}{{contextPath}}{{{path}}}", self.client.base_url{{#pathParams}}, {{{baseName}}}={{#isString}}crate::apis::urlencode({{/isString}}{{{paramName}}}{{^required}}.unwrap(){{/required}}{{#required}}{{#isNullable}}.unwrap(){{/isNullable}}{{/required}}{{#isArray}}.join(",").as_ref(){{/isArray}}{{#isString}}){{/isString}}{{/pathParams}});
         let req = authenticated_request(
             &self.client,
@@ -122,16 +122,22 @@ impl<'a> {{baseName}}<'a> {
              {{#responses}}
              {{#is2xx}}
              {{code}} => {
-                let result: {{#returnType}}{{{returnType}}}{{/returnType}} 
-                    = serde_json::from_str::<{{#returnType}}{{{returnType}}}{{/returnType}}>(&content)?;
+                {{^returnType}}Ok(()){{/returnType}}
+                {{#returnType}}
+                let result: {{{returnType}}} 
+                    = serde_json::from_str::<{{{returnType}}}>(&content)?;
                 Ok(result)
+                {{/returnType}}
              },
              {{/is2xx}}
              {{#is3xx}}
              {{code}} => {
-                let result: {{#returnType}}{{{returnType}}}{{/returnType}} 
-                    = serde_json::from_str::<{{#returnType}}{{{returnType}}}{{/returnType}}>(&content)?;
+                {{^returnType}}Ok(()){{/returnType}}
+                {{#returnType}}
+                let result: {{{returnType}}} 
+                    = serde_json::from_str::<{{{returnType}}}>(&content)?;
                 Ok(result)
+                {{/returnType}}
              },
              {{/is3xx}}
              {{#is4xx}}
