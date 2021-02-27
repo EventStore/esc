@@ -1,6 +1,6 @@
+
 paths:
   organizations:    
-
     get:
       tags:
         - organizations
@@ -65,7 +65,6 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
                 
   organizations-{organizationId}:
-    $ref: 'resources/organizations.yaml#/paths/organizations'
     get:
       tags:
         - organizations
@@ -95,7 +94,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-
+    delete:
+      tags:
+        - organizations
+      description: |
+        Deletes an organization by ID.
+      operationId: delete_organization
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization to retrieve
+          schema:
+            type: string
+            format: OrganizationId
+      responses:
+        '200':
+          description: deletes the organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetOrganizationResponse'
+        '404': 
+          description: organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    update:
+      tags:
+        - organizations
+      description: |
+        Deletes an organization by ID.
+      operationId: update_organization
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization to alter
+      requestBody:
+        description: describes new organization
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrganizationRequest'
+      responses:
+        '200':
+          description: deletes the organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetOrganizationResponse'
+        '400': 
+          description: invalid content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404': 
+          description: organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 components:  
   schemas:
 
@@ -154,3 +232,11 @@ components:
      
     ProblemDetails:
       $ref: '../common/ProblemDetails.yaml#/components/schemas/ProblemDetails'
+    
+    UpdateOrganizationRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string        
