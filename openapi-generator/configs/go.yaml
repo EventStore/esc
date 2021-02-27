@@ -1,4 +1,4 @@
 '!include': '../target/input.yaml'
-'!include': '../target/output.yaml'
+'!include': '../target/go-output.yaml'
 generatorName: go
 packageName: escApi

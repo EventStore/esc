@@ -1,0 +1,4 @@
+'!include': '../target/input.yaml'
+'!include': '../target/python-output.yaml'
+generatorName: python
+packageName: esc

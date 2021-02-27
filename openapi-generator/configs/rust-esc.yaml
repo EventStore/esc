@@ -1,5 +1,5 @@
 '!include': '../target/input.yaml'
-'!include': '../target/output.yaml'
+'!include': '../target/rust-esc-output.yaml'
 '!include': 'rust-common.yaml'
 generatorName: rust
 templateDir: templates/rust-esc/mustache

@@ -1,0 +1,4 @@
+'!include': '../target/input.yaml'
+'!include': '../target/java-output.yaml'
+generatorName: java
+packageName: com.eventstore.cloud
