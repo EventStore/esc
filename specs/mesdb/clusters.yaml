@@ -92,7 +92,177 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
         '404':
-          description: project not found
+          description: project or organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  organizations-{organizationId}-projects-{projectId}-clusters-{clusterId}:
+    delete:
+      tags:
+        - clusters
+      description: |
+        Deletes a cluster
+      operationId: delete_cluster
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+        - name: clusterId
+          in: path
+          required: true
+          description: The id of the cluster to delete
+          schema:
+            type: string
+            format: ClusterId
+      responses:
+        '204':
+          description: return the specified cluster          
+        '404':
+          description: cluster not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'                
+    get:
+      tags:
+        - clusters
+      description: |
+        Get a single cluster
+      operationId: get_cluster
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+        - name: clusterId
+          in: path
+          required: true
+          description: The id of the cluster to retrieve
+          schema:
+            type: string
+            format: ClusterId
+      responses:
+        '200':
+          description: return the specified cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetClusterResponse'
+        '404':
+          description: project or organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    update:
+      tags:
+        - clusters
+      description: |
+        Get a single cluster
+      operationId: update_cluster
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+        - name: clusterId
+          in: path
+          required: true
+          description: The id of the cluster to update
+          schema:
+            type: string
+            format: ClusterId
+      requestBody:
+        description: describes changes to make to a cluster
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClusterRequest'
+      responses:
+        '200':
+          description: return the specified cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetClusterResponse'
+        '400':
+          description: invalid content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: project or organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: conflict
           content:
             application/json:
               schema:
@@ -207,13 +377,25 @@ components:
     
     CreateClusterResponse:
       type: object
+      required:
+        - id
       properties:
         id:
           type: string
           format: ClusterId
+    
+    GetClusterResponse:
+      type: object
+      required:
+        - cluster
+      properties:
+        cluster:
+          $ref: '#/components/schemas/Cluster'
 
     ListClustersResponse:
       type: object
+      required:
+        - clusters
       properties:
         clusters: 
           type: array
@@ -222,4 +404,11 @@ components:
     
     ProblemDetails:
       $ref: '../common/ProblemDetails.yaml#/components/schemas/ProblemDetails'
- 
+
+    UpdateClusterRequest:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          type: string
