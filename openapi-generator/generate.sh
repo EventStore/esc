@@ -37,10 +37,6 @@ for api in "${apis[@]}"; do
     echo "inputSpec: ../specs/${api}.yaml" > target/input.yaml
     for client in "${clients[@]}"; do 
         echo "outputDir: ${clients_dir}/${client}/${api}" > "target/${client}-output.yaml"
-        if [[ "${client}" == "rust-esc" ]]; then 
-            mkdir -p "${clients_dir}/${client}/${api}"
-            cp -r templates/rust-esc/static/api/* "${clients_dir}/${client}/${api}"
-        fi
     done
 
     openapi-generator batch --includes-base-dir configs "${configs[@]}" 

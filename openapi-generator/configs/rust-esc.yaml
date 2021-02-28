@@ -2,7 +2,20 @@
 '!include': '../target/rust-esc-output.yaml'
 '!include': 'rust-common.yaml'
 generatorName: rust
-templateDir: templates/rust-esc/mustache
+templateDir: templates/rust-esc
 packageName: escApi
 additionalProperties: 
   useSingleRequestParameter: true 
+files: 
+  static/http.rs:
+    folder: src/
+    destinationFilename: http.rs    
+  static/token.rs:
+    folder: src/
+    destinationFilename: token.rs    
+  static/types.rs:
+    folder: src/
+    destinationFilename: types.rs    
+  static/models/failure.rs:
+    folder: src/models/
+    destinationFilename: failure.rs    
