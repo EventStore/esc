@@ -1,0 +1,225 @@
+paths:  
+  organizations-{organizationId}-projects-{projectId}-clusters:
+    get:
+      tags:
+        - clusters
+      description: |
+        List clusters
+      operationId: list_clusters
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+      responses:
+        '200':
+          description: returns a list of clusters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListClustersResponse'
+        '404':
+          description: project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+        - clusters
+      description: |
+        Create a cluster
+      operationId: create_cluster
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+      requestBody:
+        description: describes a new cluster
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClusterRequest'
+      responses:
+        '200':
+          description: returns a list of clusters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListClustersResponse'
+        '400':
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:  
+  schemas:   
+    Cluster:
+      type: object
+      required:    
+        - canExpandDisk  
+        - cloudIntegratedAuthentication
+        - created
+        - description
+        - diskSizeGb
+        - diskType
+        - id
+        - instanceType
+        - networkId
+        - organizationId
+        - projectId
+        - projectionLevel
+        - provider
+        - region
+        - serverVersion
+        - serverVersionTag
+        - status
+        - topology
+      properties:
+        canExpandDisk:
+          type: bool
+        cloudIntegratedAuthentication:
+          type: bool
+        created:
+          type: string
+        description:
+          type: string
+        diskSizeGb:
+          type: int32
+        diskType:
+          type: string
+        id:
+          type: string        
+          format: ClusterId
+        instanceType:
+          type: string          
+        networkId:
+          type: string
+        organizationId:
+          type: string
+          format: OrganizationId
+        projectId:
+          type: string
+          format: ProjectId
+        projectionLevel:
+          type: string
+        provider:
+          type: string
+        region:
+          type: string
+        serverVersion:
+          type: string
+        serverVersionTag:
+          type: string
+        status:
+          type: string
+        topology:
+          type: string
+    
+    CreateClusterRequest:
+      type: object
+      required:
+        - cloudIntegratedAuthentication
+        - description
+        - diskSizeGb
+        - diskType
+        - instanceType
+        - networkId
+        - projectionLevel
+        - serverVersion
+        - sourceBackupId
+        - topology
+      properties: 
+        cloudIntegratedAuthentication:
+          type: bool
+        description:
+          type: string
+        diskSizeGb:
+          type: int32
+        diskType:
+          type: string
+        instanceType:
+          type: string          
+        networkId:
+          type: string
+        projectionLevel:
+          type: string
+        serverVersion:
+          type: string
+        serverVersionTag:
+          type: string
+        sourceBackupId:
+          type: string
+        topology:
+          type: string
+    
+    CreateClusterResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: ClusterId
+
+    ListClustersResponse:
+      type: object
+      properties:
+        clusters: 
+          type: array
+          items:
+            $ref: '#/components/schemas/Cluster'
+    
+    ProblemDetails:
+      $ref: '../common/ProblemDetails.yaml#/components/schemas/ProblemDetails'
+ 

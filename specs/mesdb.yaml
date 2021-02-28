@@ -1,8 +1,8 @@
 openapi: "3.0.0"
 info:
-  title: EventStore Cloud Resources API
+  title: Managed Event Store Databases API
   version: 0.1.0
-  description: APIs used to access customer defined resources
+  description: Works with Event Store databases
   termsOfService: http://swagger.io/terms/
   contact:
     name: EventStore API
@@ -14,14 +14,8 @@ info:
 servers:
   - url: https://api.eventstore.cloud/resources/v1
 paths:
-  /organizations:
-    $ref: 'resources/organizations.yaml#/paths/organizations'    
-  /organizations/{organizationId}:
-    $ref: 'resources/organizations.yaml#/paths/organizations-{organizationId}'
-  /organizations/{organizationId}/projects:
-    $ref: 'resources/projects.yaml#/paths/organizations-{organizationId}-projects'
-  /organizations/{organizationId}/projects/{projectId}:
-    $ref: 'resources/projects.yaml#/paths/organizations-{organizationId}-projects-{projectId}'
+  /organizations/{organizationId}/projects/{projectId}/clusters:
+    $ref: 'mesdb/clusters.yaml#/paths/organizations-{organizationId}-projects-{projectId}-clusters'  
 components:  
   securitySchemes:
     esc_auth:

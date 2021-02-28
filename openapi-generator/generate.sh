@@ -6,7 +6,7 @@ set -euo pipefail
 
 mkdir -p target
 
-readonly apis=('resources')
+readonly apis=('mesdb') # 'resources')
 
 if [ $# -lt 1 ]; then
     readonly clients=('java' 'go' 'python' 'rust-esc' 'rust')
@@ -40,20 +40,21 @@ for api in "${apis[@]}"; do
     done
 
     openapi-generator batch --includes-base-dir configs "${configs[@]}" 
-done
 
-for client in "${clients[@]}"; do 
-    if [[ "${client}" == "java" ]]; then
-        pushd "${clients_dir}/java/resources"
-        mvn compile
-        popd
-    elif [[ "${client}" == "rust" ]]; then
-        pushd "${clients_dir}/rust/resources"
-        cargo build
-        popd
-    elif [[ "${client}" == "rust-esc" ]]; then
-        pushd "${clients_dir}/rust-esc/resources"
-        cargo build
-        popd
-    fi
+    for client in "${clients[@]}"; do 
+        if [[ "${client}" == "java" ]]; then
+            pushd "${clients_dir}/java/${api}"
+            mvn compile
+            popd
+        elif [[ "${client}" == "rust" ]]; then
+            pushd "${clients_dir}/rust/${api}"
+            cargo build
+            popd
+        elif [[ "${client}" == "rust-esc" ]]; then
+            pushd "${clients_dir}/rust-esc/${api}"
+            # cargo build
+            popd
+        fi
+    done
+
 done
