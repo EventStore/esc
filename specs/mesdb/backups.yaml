@@ -12,14 +12,14 @@ paths:
         - name: organizationId
           in: path
           required: true
-          description: The id of the organization the cluster is owned by
+          description: The id of the organization the backup is owned by
           schema:
             type: string
             format: OrganizationId
         - name: projectId
           in: path
           required: true
-          description: The id of the project the cluster is organized by
+          description: The id of the project the backup is grouped under
           schema:
             type: string
             format: ProjectId
@@ -54,14 +54,14 @@ paths:
         - name: organizationId
           in: path
           required: true
-          description: The id of the organization the cluster is owned by
+          description: The id of the organization the backup is owned by
           schema:
             type: string
             format: OrganizationId
         - name: projectId
           in: path
           required: true
-          description: The id of the project the cluster is organized by
+          description: The id of the project the backup is grouped under
           schema:
             type: string
             format: ProjectId
@@ -93,6 +93,107 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
         '409':
           description: cannot create due to conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'    
+  organizations-{organizationId}-projects-{projectId}-backups-{backupId}:
+    delete:
+      tags:
+        - backups
+      description: |
+        deletes a backup
+      operationId: delete_backup
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the backup is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the backup is grouped under
+          schema:
+            type: string
+            format: ProjectId
+        - name: backupId
+          in: path
+          required: true
+          description: The id of the backup to retrieve
+          schema:
+            type: string
+            format: BackupId
+      responses:
+        '200':
+          description: backup deleted
+        '404':
+          description: project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: cannot delete due to conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    get:
+      tags:
+        - backups
+      description: |
+        get a single backup
+      operationId: get_backup
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the backup is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the backup is grouped under
+          schema:
+            type: string
+            format: ProjectId
+        - name: backupId
+          in: path
+          required: true
+          description: The id of the backup to retrieve
+          schema:
+            type: string
+            format: BackupId
+      responses:
+        '200':
+          description: returns a backup
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBackupResponse'
+        '404':
+          description: project not found
           content:
             application/json:
               schema:
@@ -143,7 +244,8 @@ components:
         serverVersionTag:
           type: string
         sizeGb:
-          type: int32
+          type: integer
+          format: int32
         sourceClusterId:
           type: string
           format: ClusterId
@@ -172,6 +274,14 @@ components:
         id:
           type: string
           format: BackupId
+
+    GetBackupResponse:
+      type: object
+      required: 
+        - backup
+      properties:
+        backup:
+          $ref: '#/components/schemas/Backup'
 
     ListBackupsResponse:
       type: object

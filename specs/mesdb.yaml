@@ -16,10 +16,14 @@ servers:
 paths:
   /organizations/{organizationId}/projects/{projectId}/backups:
     $ref: 'mesdb/backups.yaml#/paths/organizations-{organizationId}-projects-{projectId}-backups'  
+  /organizations/{organizationId}/projects/{projectId}/backups/{backupId}:
+    $ref: 'mesdb/backups.yaml#/paths/organizations-{organizationId}-projects-{projectId}-backups-{backupId}'  
   /organizations/{organizationId}/projects/{projectId}/clusters:
     $ref: 'mesdb/clusters.yaml#/paths/organizations-{organizationId}-projects-{projectId}-clusters'  
   /organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}:
     $ref: 'mesdb/clusters.yaml#/paths/organizations-{organizationId}-projects-{projectId}-clusters-{clusterId}'  
+  /organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/disk/expand:
+    $ref: 'mesdb/clusters.yaml#/paths/organizations-{organizationId}-projects-{projectId}-clusters-{clusterId}-disk-expand'  
 
 components:  
   securitySchemes:

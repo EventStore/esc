@@ -273,6 +273,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  organizations-{organizationId}-projects-{projectId}-clusters-{clusterId}-disk-expand:
+    put:
+      tags:
+        - clusters
+      description: |
+        expands a cluster's disk
+      operationId: expand_cluster_disk
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+        - name: clusterId
+          in: path
+          required: true
+          description: The id of the cluster
+          schema:
+            type: string
+            format: ClusterId
+      requestBody:
+        description: describes how to expand the disk
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpandClusterDiskRequest'
+      responses:
+        '204':
+          description: return the specified cluster          
+        '400':
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: cluster not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'        
 
 components:  
   schemas:   
@@ -307,7 +377,8 @@ components:
         description:
           type: string
         diskSizeGb:
-          type: int32
+          type: integer
+          format: int32
         diskType:
           type: string
         id:
@@ -357,7 +428,8 @@ components:
         description:
           type: string
         diskSizeGb:
-          type: int32
+          type: integer
+          format: int32
         diskType:
           type: string
         instanceType:
@@ -384,6 +456,15 @@ components:
           type: string
           format: ClusterId
     
+    ExpandClusterDiskRequest:
+      type: object
+      required:
+        - diskSizeGb
+      properties:
+        diskSizeGb: 
+          type: integer
+          format: int32
+          
     GetClusterResponse:
       type: object
       required:
