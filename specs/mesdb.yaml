@@ -14,10 +14,13 @@ info:
 servers:
   - url: https://api.eventstore.cloud/resources/v1
 paths:
+  /organizations/{organizationId}/projects/{projectId}/backups:
+    $ref: 'mesdb/backups.yaml#/paths/organizations-{organizationId}-projects-{projectId}-backups'  
   /organizations/{organizationId}/projects/{projectId}/clusters:
     $ref: 'mesdb/clusters.yaml#/paths/organizations-{organizationId}-projects-{projectId}-clusters'  
   /organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}:
     $ref: 'mesdb/clusters.yaml#/paths/organizations-{organizationId}-projects-{projectId}-clusters-{clusterId}'  
+
 components:  
   securitySchemes:
     esc_auth:

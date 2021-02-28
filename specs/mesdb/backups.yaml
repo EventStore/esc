@@ -1,0 +1,187 @@
+paths:  
+  organizations-{organizationId}-projects-{projectId}-backups:
+    get:
+      tags:
+        - backups
+      description: |
+        List backups
+      operationId: list_backups
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+      responses:
+        '200':
+          description: returns a list of backups
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListBackupsResponse'
+        '404':
+          description: project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:  
+      tags:
+        - backups
+      description: |
+        Creates a new backup
+      operationId: create_backup
+      security:
+        - token: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: The id of the organization the cluster is owned by
+          schema:
+            type: string
+            format: OrganizationId
+        - name: projectId
+          in: path
+          required: true
+          description: The id of the project the cluster is organized by
+          schema:
+            type: string
+            format: ProjectId
+      requestBody:
+        description: describes a new backup
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBackupRequest'
+      responses:
+        '200':
+          description: returns a list of backups
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBackupResponse'
+        '400':
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: cannot create due to conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:  
+  schemas:   
+    Backup:
+      type: object
+      required:
+        - created
+        - description
+        - id
+        - projectId
+        - provider
+        - region
+        - serverVersion
+        - serverVersionTag
+        - sizeGb
+        - sourceClusterId
+        - sourceClusterDescription
+        - status
+      properties:
+        created:
+          type: string
+        description:
+          type: string
+        linkedResource:
+          type: string          
+        id:
+          type: string
+          format: BackupId
+        projectId:
+          type: string
+          format: ProjectId
+        provider:
+          type: string
+        region:
+          type: string
+        serverVersion:
+          type: string
+        serverVersionTag:
+          type: string
+        sizeGb:
+          type: int32
+        sourceClusterId:
+          type: string
+          format: ClusterId
+        sourceClusterDescription:
+          type: string
+        status:
+          type: string
+    
+    CreateBackupRequest:
+      type: object
+      required: 
+        - description
+        - sourceClusterId
+      properties:
+        description:
+          type: string
+        sourceClusterId:
+          type: string
+          format: ClusterId
+    
+    CreateBackupResponse:
+      type: object
+      required: 
+        - id
+      properties:
+        id:
+          type: string
+          format: BackupId
+
+    ListBackupsResponse:
+      type: object
+      required:
+        - backups
+      properties:
+        backups:
+          type: array
+          items: 
+            $ref: '#/components/schemas/Backup'
+
+    ProblemDetails:
+      $ref: '../common/ProblemDetails.yaml#/components/schemas/ProblemDetails'
