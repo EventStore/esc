@@ -1,5 +1,4 @@
 '!include': '../target/input.yaml'
 '!include': '../target/rust-output.yaml'
-'!include': 'rust-common.yaml'
 generatorName: rust
 packageName: escApi

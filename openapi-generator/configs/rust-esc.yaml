@@ -1,11 +1,22 @@
 '!include': '../target/input.yaml'
 '!include': '../target/rust-esc-output.yaml'
-'!include': 'rust-common.yaml'
 generatorName: rust
 templateDir: templates/rust-esc
 packageName: escApi
 additionalProperties: 
   useSingleRequestParameter: true 
+importMappings: 
+  BackupId: crate::BackupId
+  chrono::DateTime: chrono::DateTime
+  ClusterId: crate::ClusterId
+  OrgId: crate::OrgId
+  ProjectId: crate::ProjectId
+typeMappings:
+  BackupId: crate::types::BackupId  
+  ClusterId: crate::types::ClusterId
+  DateTime: chrono::DateTime<chrono::Utc>
+  OrganizationId: crate::types::OrgId
+  ProjectId: crate::types::ProjectId
 files: 
   static/http.rs:
     folder: src/
@@ -19,3 +30,15 @@ files:
   static/models/failure.rs:
     folder: src/models/
     destinationFilename: failure.rs    
+  README.mustache:
+    templateType: SupportingFiles
+    folder: deleteme/
+    destinationFilename: README  
+  git_push.sh.mustache:
+    type: SupportingFiles
+    folder: deleteme/
+    destinationFilename: git_push.sh    
+  .travis.yml:
+    templateType: SupportingFiles
+    folder: deleteme/
+    destinationFilename: .travis.yml

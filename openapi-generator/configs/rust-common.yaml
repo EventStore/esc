@@ -1,6 +1,0 @@
-importMappings: 
-  chrono::DateTime: chrono::DateTime
-  OrgId: crate::OrgId
-typeMappings:
-  DateTime: chrono::DateTime<chrono::Utc>
-  OrganizationId: crate::types::OrgId
