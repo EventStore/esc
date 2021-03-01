@@ -1,0 +1,50 @@
+{{>partial_header}}
+
+use crate::http::{authenticated_request, default_error_handler};
+use reqwest::Method;
+
+pub struct {{baseName}}<'a> {
+    client: &'a crate::Client,
+    token: &'a crate::Token,
+}
+
+impl<'a> {{baseName}}<'a> {
+
+    pub fn new(client: &'a crate::Client, token: &'a crate::Token) -> Self {
+        Self { client, token }
+    }
+
+    {{#operations}}
+    {{#operation}}
+    {{#description}}
+    /// {{{.}}}
+    {{/description}}
+    {{#notes}}
+    /// {{{.}}}
+    {{/notes}}
+    pub async fn {{operationId}}(&self, {{#allParams}}-PARAM-{{{paramName}}}: {{^required}}Option<{{/required}}{{#required}}{{#isNullable}}Option<{{/isNullable}}{{/required}}{{#isString}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isString}}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}&str{{#isArray}}>{{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}crate::models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}{{^required}}>{{/required}}{{#required}}{{#isNullable}}>{{/isNullable}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}}) -> crate::Result<{{^returnType}}(){{/returnType}}{{#returnType}}{{{returnType}}}{{/returnType}}> {        
+        let url = format!("{}{{contextPath}}{{{path}}}", self.client.base_url{{#pathParams}}, {{{baseName}}}={{#isString}}crate::apis::urlencode({{/isString}}{{{paramName}}}{{^required}}.unwrap(){{/required}}{{#required}}{{#isNullable}}.unwrap(){{/isNullable}}{{/required}}{{#isArray}}.join(",").as_ref(){{/isArray}}{{#isString}}){{/isString}}{{/pathParams}});
+        let req = authenticated_request(
+            &self.client,
+            Method::{{#lambda.uppercase}}{{{httpMethod}}}{{/lambda.uppercase}},
+            self.token,
+            url,
+        )
+        {{#hasBodyParam}}
+        {{#bodyParams}}
+        .json(&{{{paramName}}})
+        {{/bodyParams}}
+        {{/hasBodyParam}}
+        .header("Accept", "application/json");
+
+        let resp = default_error_handler(req.send().await?).await?;
+        
+        {{^returnType}}Ok(()){{/returnType}}
+        {{#returnType}}let result: {{{returnType}}} = resp.json().await?;
+        Ok(result)
+        {{/returnType}}
+    }
+    {{/operation}}
+    {{/operations}}
+
+}  // end {{baseName}}

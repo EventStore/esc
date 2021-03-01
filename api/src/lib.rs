@@ -5,9 +5,11 @@ extern crate serde_json;
 #[macro_use]
 extern crate log;
 
+pub mod apis;
 pub mod command;
 mod http;
 mod types;
+
 
 pub use types::*;
 

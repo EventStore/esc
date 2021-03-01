@@ -19,6 +19,14 @@ impl std::fmt::Display for OrgId {
     }
 }
 
+impl AsRef<str> for OrgId {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
 pub struct ClientId(pub String);
 
@@ -42,6 +50,7 @@ impl std::fmt::Display for ProjectId {
         self.0.fmt(f)
     }
 }
+
 
 impl AsRef<str> for ProjectId {
     fn as_ref(&self) -> &str {

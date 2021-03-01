@@ -1,0 +1,19 @@
+'!include': '../target/input.yaml'
+'!include': '../target/rust-esc-1-output.yaml'
+generatorName: rust
+templateDir: templates/rust-esc-1
+packageName: escApi
+additionalProperties: 
+  useSingleRequestParameter: true 
+importMappings: 
+  BackupId: crate::BackupId
+  chrono::DateTime: chrono::DateTime
+  ClusterId: crate::ClusterId
+  OrgId: crate::OrgId
+  ProjectId: crate::ProjectId
+typeMappings:
+  BackupId: crate::types::BackupId  
+  ClusterId: crate::types::ClusterId
+  DateTime: chrono::DateTime<chrono::Utc>
+  OrganizationId: crate::types::OrgId
+  ProjectId: crate::types::ProjectId
