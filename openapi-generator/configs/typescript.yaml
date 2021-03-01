@@ -1,0 +1,4 @@
+'!include': '../target/input.yaml'
+'!include': '../target/typescript-output.yaml'
+generatorName: typescript
+packageName: EscApi

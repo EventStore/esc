@@ -10,7 +10,7 @@ mkdir -p target
 readonly apis=('mesdb' 'resources')
 
 if [ $# -lt 1 ]; then
-    readonly clients=('java' 'go' 'python' 'rust-esc' 'rust-esc-1' 'rust')
+    readonly clients=('java' 'go' 'python' 'rust-esc' 'rust-esc-1' 'rust' 'typescript')
 else
     readonly clients="${@}"
 fi
