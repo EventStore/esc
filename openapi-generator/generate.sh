@@ -30,7 +30,7 @@ echo "${configs[@]}"
 # The generated clients have to live one directory above because ESC so Cargo
 # will let us actually build the Rust stuff without modifying our workspace
 # file
-readonly gen_clients_dir="../../clients"
+readonly gen_clients_dir="target/clients"
 
 for api in "${apis[@]}"; do        
     echo "generating ${api} ..."
