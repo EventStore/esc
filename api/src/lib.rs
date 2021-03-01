@@ -59,24 +59,24 @@ impl Client {
     pub fn organizations<'a>(
         &'a self,
         token: &'a Token,
-    ) -> command::organizations::Organizations<'a> {
-        command::organizations::Organizations::new(&self, token)
+    ) -> apis::resources::apis::organizations_api::Organizations<'a> {
+        apis::resources::apis::organizations_api::Organizations::new(&self, token)
     }
 
-    pub fn projects<'a>(&'a self, token: &'a Token) -> command::projects::Projects<'a> {
-        command::projects::Projects::new(&self, token)
+    pub fn projects<'a>(&'a self, token: &'a Token) -> apis::resources::apis::projects_api::Projects<'a> {
+        apis::resources::apis::projects_api::Projects::new(&self, token)
     }
 
     pub fn peerings<'a>(&'a self, token: &'a Token) -> command::peerings::Peerings<'a> {
         command::peerings::Peerings::new(&self, token)
     }
 
-    pub fn clusters<'a>(&'a self, token: &'a Token) -> command::clusters::Clusters<'a> {
-        command::clusters::Clusters::new(&self, token)
+    pub fn clusters<'a>(&'a self, token: &'a Token) -> apis::mesdb::apis::clusters_api::Clusters<'a> {
+        apis::mesdb::apis::clusters_api::Clusters::new(&self, token)
     }
 
-    pub fn backups<'a>(&'a self, token: &'a Token) -> command::backups::Backups<'a> {
-        command::backups::Backups::new(&self, token)
+    pub fn backups<'a>(&'a self, token: &'a Token) -> apis::mesdb::apis::backups_api::Backups<'a> {
+        apis::mesdb::apis::backups_api::Backups::new(&self, token)
     }
 
     pub fn invites<'a>(&'a self, token: &'a Token) -> command::invites::Invites<'a> {
