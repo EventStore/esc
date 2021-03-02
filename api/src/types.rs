@@ -138,9 +138,9 @@ impl Token {
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
-    AWS,
-    GCP,
-    AZURE,
+    Aws,
+    Gcp,
+    Azure,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
