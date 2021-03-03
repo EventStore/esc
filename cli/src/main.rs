@@ -11,6 +11,7 @@ extern crate serde_derive;
 
 mod config;
 mod constants;
+mod enrich;
 mod store;
 
 use crate::store::{Auth, TokenStore};
@@ -1763,7 +1764,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .get(params.org_id, params.project_id, params.id)
                             .await?;
 
-                        print_output(opt.render_in_json, cluster)?;
+                        print_output(opt.render_in_json, enrich::enrich_cluster(cluster))?;
                     }
 
                     ClustersCommand::Delete(params) => {
@@ -1786,7 +1787,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .list(params.org_id, params.project_id)
                             .await?;
 
-                        print_output(opt.render_in_json, List(clusters))?;
+                        print_output(
+                            opt.render_in_json,
+                            List(clusters.into_iter().map(enrich::enrich_cluster).collect()),
+                        )?;
                     }
 
                     ClustersCommand::Expand(params) => {
