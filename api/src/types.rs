@@ -10,6 +10,12 @@ impl std::fmt::Display for GroupId {
     }
 }
 
+impl AsRef<str> for GroupId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize, Default)]
 pub struct OrgId(pub String);
 
