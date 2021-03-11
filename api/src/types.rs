@@ -19,6 +19,12 @@ impl std::fmt::Display for OrgId {
     }
 }
 
+impl AsRef<str> for OrgId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
 pub struct ClientId(pub String);
 

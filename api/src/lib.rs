@@ -5,9 +5,11 @@ extern crate serde_json;
 #[macro_use]
 extern crate log;
 
+pub mod apis;
 pub mod command;
 mod http;
 mod types;
+mod utils;
 
 pub use types::*;
 
@@ -57,8 +59,8 @@ impl Client {
     pub fn organizations<'a>(
         &'a self,
         token: &'a Token,
-    ) -> command::organizations::Organizations<'a> {
-        command::organizations::Organizations::new(&self, token)
+    ) -> crate::apis::resources::paths::organizations::Organizations<'a> {
+        crate::apis::resources::paths::organizations::Organizations::new(&self, token)
     }
 
     pub fn projects<'a>(&'a self, token: &'a Token) -> command::projects::Projects<'a> {

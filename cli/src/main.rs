@@ -1645,8 +1645,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Resources(res) => match res.resources_command {
             ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
                 OrganizationsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let org_id = client.organizations(&token).create(params.name).await?;
+                    let token = store.access(opt.refresh_token).await?;                    
+                    let org_id = client.organizations(&token).create(esc_api::apis::resources::CreateOrganizationRequest{name: params.name}).await?;
 
                     print_output(opt.render_in_json, org_id)?;
                 }
@@ -1655,7 +1655,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access(opt.refresh_token).await?;
                     client
                         .organizations(&token)
-                        .update(params.id, params.name)
+                        .update(params.id, esc_api::apis::resources::UpdateOrganizationRequest{name: params.name})
                         .await?;
                 }
 
@@ -1675,7 +1675,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token = store.access(opt.refresh_token).await?;
                     let orgs = client.organizations(&token).list().await?;
 
-                    print_output(opt.render_in_json, List(orgs))?;
+                    print_output(opt.render_in_json, List(orgs.organizations))?;
                 }
             },
 
