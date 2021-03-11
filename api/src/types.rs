@@ -10,12 +10,24 @@ impl std::fmt::Display for GroupId {
     }
 }
 
+impl AsRef<str> for GroupId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize, Default)]
 pub struct OrgId(pub String);
 
 impl std::fmt::Display for OrgId {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for OrgId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -124,7 +136,7 @@ impl AsRef<str> for JobId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
     pub(crate) refresh_token: Option<String>,

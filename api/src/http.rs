@@ -1,6 +1,6 @@
 use crate::Token;
 
-enum Failure {
+pub enum Failure {
     Client(String),
     Server(String),
 }
