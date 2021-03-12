@@ -59,8 +59,11 @@ impl Client {
     pub fn organizations<'a>(
         &'a self,
         token: &'a Token,
-    ) -> crate::apis::resources::paths::organizations::Organizations<'a> {
-        crate::apis::resources::paths::organizations::Organizations::new(&self, token)
+    // ) -> crate::apis::resources::paths::organizations::Organizations<'a> {
+    //     crate::apis::resources::paths::organizations::Organizations::new(&self, token)
+    // }
+    ) -> command::organizations::Organizations<'a> {
+        command::organizations::Organizations::new(&self, token)
     }
 
     pub fn projects<'a>(&'a self, token: &'a Token) -> command::projects::Projects<'a> {

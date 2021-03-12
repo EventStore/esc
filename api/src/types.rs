@@ -121,6 +121,21 @@ impl AsRef<str> for BackupId {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct JobId(pub String);
+
+impl std::fmt::Display for JobId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for JobId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
