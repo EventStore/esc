@@ -9,12 +9,14 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 
+mod apis;
 mod config;
 mod constants;
 mod enrich;
 mod store;
 
 use crate::store::{Auth, TokenStore};
+use apis::resources::CreateOrganizationRequest;
 use esc_api::{Client, ClientId, GroupId, OrgId};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
@@ -631,7 +633,7 @@ struct Organizations {
 
 #[derive(Debug, StructOpt)]
 enum OrganizationsCommand {
-    Create(CreateOrganization),
+    Create(crate::apis::resources::paths::organizations::CreateOrganization),
     Update(UpdateOrganization),
     Get(GetOrganization),
     Delete(DeleteOrganization),
@@ -1646,7 +1648,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
                 OrganizationsCommand::Create(params) => {
                     let token = store.access(opt.refresh_token).await?;                    
-                    let org_id = client.organizations(&token).create(esc_api::apis::resources::CreateOrganizationRequest{name: params.name}).await?;
+                    let org_id = client.organizations(&token).create(esc_api::apis::resources::CreateOrganizationRequest{name: params.create_organization_request.name}).await?;
 
                     print_output(opt.render_in_json, org_id)?;
                 }
