@@ -55,12 +55,9 @@ impl<'a> Jobs<'a> {
         )
         .json(&params);
 
-        let resp: CreateJobResponse = default_error_handler(req.send().await?)
-            .await?
-            .json()
-            .await?;
-
-        Ok(resp.id)
+        let resp = default_error_handler(req.send().await?).await?;
+        let result: CreateJobResponse = resp.json().await?;
+        Ok(result.id)
     }
 
     pub async fn get(
@@ -80,12 +77,9 @@ impl<'a> Jobs<'a> {
         )
         .header("Content-Type", "application/json");
 
-        let resp: GetJobResponse = default_error_handler(req.send().await?)
-            .await?
-            .json()
-            .await?;
-
-        Ok(resp.job)
+        let resp = default_error_handler(req.send().await?).await?;
+        let result: GetJobResponse = resp.json().await?;
+        Ok(result.job)
     }
 
     pub async fn delete(
