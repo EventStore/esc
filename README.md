@@ -1,6 +1,6 @@
-# EvenStoreDB Cloud CLI
+# Event Store Cloud CLI
 
-`esc` in a command-line tool that allows to access EventStoreDB Cloud API in the confort of your terminal.
+`esc` in a command-line tool that allows to access Event Store Cloud API in the confort of your terminal.
 
 ## Authentication
 
