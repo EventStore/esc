@@ -136,7 +136,7 @@ impl AsRef<str> for JobId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
     pub(crate) refresh_token: Option<String>,

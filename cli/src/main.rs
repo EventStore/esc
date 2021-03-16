@@ -620,8 +620,8 @@ struct Resources {
 
 #[derive(Debug, StructOpt)]
 enum ResourcesCommand {
-    Organizations(Organizations),
-    Projects(Projects),
+    Organizations(crate::apis::resources::Organizations),
+    Projects(crate::apis::resources::Projects),
 }
 
 #[derive(Debug, StructOpt)]
@@ -633,7 +633,7 @@ struct Organizations {
 
 #[derive(Debug, StructOpt)]
 enum OrganizationsCommand {
-    Create(crate::apis::resources::paths::organizations::CreateOrganization),
+    Create(CreateOrganization),
     Update(UpdateOrganization),
     Get(GetOrganization),
     Delete(DeleteOrganization),
@@ -1113,6 +1113,8 @@ fn print_output<A: std::fmt::Debug + Serialize>(
     Ok(())
 }
 
+
+
 struct List<A>(Vec<A>);
 
 impl<A> std::fmt::Debug for List<A>
@@ -1142,6 +1144,30 @@ where
         }
 
         seq.end()
+    }
+}
+
+struct CliConfig {
+    client: Client,
+    // store: TokenStore<'a>,
+    // refresh_token: Option<String>,
+    token: esc_api::Token,
+    render_in_json: bool,
+}
+
+impl CliConfig {
+    pub fn create_client(&self) -> Client {
+        return self.client.clone();
+    }
+
+    // pub async fn get_token(&self) -> Result<esc_api::Token, Box<dyn std::error::Error>> {
+    pub fn get_token(&self) -> esc_api::Token {
+        // self.store.access(self.refresh_token.clone()).await
+        self.token.clone()
+    }
+
+    pub fn render_in_json(&self) -> bool {
+        self.render_in_json
     }
 }
 
@@ -1645,94 +1671,107 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
 
         Command::Resources(res) => match res.resources_command {
-            ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
-                OrganizationsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;                    
-                    let org_id = client.organizations(&token).create(esc_api::apis::resources::CreateOrganizationRequest{name: params.create_organization_request.name}).await?;
+            ResourcesCommand::Organizations(orgs) => {
+                let cc = CliConfig{
+                    client: client.clone(),
+                    token: store.access(opt.refresh_token).await?,
+                    render_in_json: opt.render_in_json,
+                };
+                orgs.command.exec(&cc).await?
+                // OrganizationsCommand::Create(params) => {
+                //     let token = store.access(opt.refresh_token).await?;                    
+                //     let org_id = client.organizations(&token).create(params.name).await?;
 
-                    print_output(opt.render_in_json, org_id)?;
-                }
+                //     print_output(opt.render_in_json, org_id)?;
+                // }
 
-                OrganizationsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .organizations(&token)
-                        .update(params.id, esc_api::apis::resources::UpdateOrganizationRequest{name: params.name})
-                        .await?;
-                }
+                // OrganizationsCommand::Update(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     client
+                //         .organizations(&token)
+                //         .update(params.id, params.name)
+                //         .await?;
+                // }
 
-                OrganizationsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client.organizations(&token).delete(params.id).await?;
-                }
+                // OrganizationsCommand::Delete(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     client.organizations(&token).delete(params.id).await?;
+                // }
 
-                OrganizationsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let org = client.organizations(&token).get(params.id).await?;
+                // OrganizationsCommand::Get(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     let org = client.organizations(&token).get(params.id).await?;
 
-                    print_output(opt.render_in_json, org)?;
-                }
+                //     print_output(opt.render_in_json, org)?;
+                // }
 
-                OrganizationsCommand::List(_) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let orgs = client.organizations(&token).list().await?;
+                // OrganizationsCommand::List(_) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     let orgs = client.organizations(&token).list().await?;
 
-                    print_output(opt.render_in_json, List(orgs.organizations))?;
-                }
+                //     print_output(opt.render_in_json, List(orgs))?;
+                // }
             },
 
-            ResourcesCommand::Projects(projs) => match projs.projects_command {
-                ProjectsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let proj_id = client
-                        .projects(&token)
-                        .create(params.org_id, params.name)
-                        .await?;
+            ResourcesCommand::Projects(projs) => {
+                let cc = CliConfig{
+                    client: client.clone(),
+                    token: store.access(opt.refresh_token).await?,
+                    render_in_json: opt.render_in_json,
+                };
+                projs.command.exec(&cc).await?
+                // match projs.projects_command {
+                // ProjectsCommand::Create(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     let proj_id = client
+                //         .projects(&token)
+                //         .create(params.org_id, params.name)
+                //         .await?;
 
-                    print_output(opt.render_in_json, proj_id)?;
-                }
+                //     print_output(opt.render_in_json, proj_id)?;
+                // }
 
-                ProjectsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .projects(&token)
-                        .update(params.org_id, params.id, params.name)
-                        .await?;
-                }
+                // ProjectsCommand::Update(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     client
+                //         .projects(&token)
+                //         .update(params.org_id, params.id, params.name)
+                //         .await?;
+                // }
 
-                ProjectsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let project_opt = client
-                        .projects(&token)
-                        .get(params.org_id, params.id)
-                        .await?;
+                // ProjectsCommand::Get(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     let project_opt = client
+                //         .projects(&token)
+                //         .get(params.org_id, params.id)
+                //         .await?;
 
-                    match project_opt {
-                        Some(proj) => {
-                            print_output(opt.render_in_json, proj)?;
-                        }
+                //     match project_opt {
+                //         Some(proj) => {
+                //             print_output(opt.render_in_json, proj)?;
+                //         }
 
-                        _ => {
-                            eprintln!("Project doesn't exists");
-                            std::process::exit(-1);
-                        }
-                    }
-                }
+                //         _ => {
+                //             eprintln!("Project doesn't exists");
+                //             std::process::exit(-1);
+                //         }
+                //     }
+                // }
 
-                ProjectsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .projects(&token)
-                        .delete(params.org_id, params.id)
-                        .await?;
-                }
+                // ProjectsCommand::Delete(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     client
+                //         .projects(&token)
+                //         .delete(params.org_id, params.id)
+                //         .await?;
+                // }
 
-                ProjectsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let projs = client.projects(&token).list(params.org_id).await?;
+                // ProjectsCommand::List(params) => {
+                //     let token = store.access(opt.refresh_token).await?;
+                //     let projs = client.projects(&token).list(params.org_id).await?;
 
-                    print_output(opt.render_in_json, List(projs))?;
-                }
+                //     print_output(opt.render_in_json, List(projs))?;
+                // }
             },
         },
 

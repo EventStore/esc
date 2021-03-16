@@ -27,6 +27,7 @@ impl Builder {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     base_url: String,
     identity_url: String,
