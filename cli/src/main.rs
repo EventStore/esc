@@ -60,7 +60,7 @@ enum Command {
     Resources(crate::apis::resources::Resources),
     Infra(crate::apis::infra::Infra),
     Profiles(Profiles),
-    Mesdb(Mesdb),
+    Mesdb(crate::apis::mesdb::Mesdb),
     #[structopt(about = "Prints Bash completion script in STDOUT")]
     GenerateBashCompletion,
     #[structopt(about = "Prints Zsh completion script in STDOUT")]
@@ -611,215 +611,6 @@ enum ProfilePropName {
 }
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers cluster management commands")]
-struct Mesdb {
-    #[structopt(subcommand)]
-    mesdb_command: MesdbCommand,
-}
-
-#[derive(Debug, StructOpt)]
-enum MesdbCommand {
-    Clusters(Clusters),
-    Backups(Backups),
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers cluster management commands")]
-struct Clusters {
-    #[structopt(subcommand)]
-    clusters_command: ClustersCommand,
-}
-
-#[derive(Debug, StructOpt)]
-enum ClustersCommand {
-    Create(CreateCluster),
-    Get(GetCluster),
-    List(ListClusters),
-    Update(UpdateCluster),
-    Delete(DeleteCluster),
-    Expand(ExpandCluster),
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Create a cluster")]
-struct CreateCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
-    network_id: esc_api::NetworkId,
-
-    #[structopt(long, help = "A human-readable description of the cluster")]
-    description: String,
-
-    #[structopt(long, parse(try_from_str = parse_topology), help = "Either single-node or three-node-multi-zone")]
-    topology: esc_api::Topology,
-
-    #[structopt(
-        long,
-        help = "Type of instance, based on its hardware. For example, it could be F1 for a micro or C4 for a large instance"
-    )]
-    instance_type: String,
-
-    #[structopt(long, help = "Total disk capacity in Gigabytes (GB)")]
-    disk_size_in_gb: usize,
-
-    #[structopt(
-        long,
-        help = "Type of disk. For example, if you are using AWS as a provider, it could be GP2"
-    )]
-    disk_type: String,
-
-    #[structopt(long, help = "EventStoreDB server version")]
-    server_version: String,
-
-    #[structopt(
-        long,
-        parse(try_from_str = parse_projection_level),
-        help = "The projection level of your database. Can be off, system or user "
-    )]
-    projection_level: esc_api::ProjectionLevel,
-
-    #[structopt(long, help = "Optional id of backup to restore")]
-    source_backup_id: Option<String>,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Get a cluster information")]
-struct GetCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Cluster's id")]
-    id: esc_api::ClusterId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "List all clusters of an organization, given a project id")]
-struct ListClusters {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "An organization's id")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Update a cluster")]
-struct UpdateCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
-    id: esc_api::ClusterId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Delete a cluster")]
-struct DeleteCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to delete")]
-    id: esc_api::ClusterId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Expand a cluster")]
-struct ExpandCluster {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to expand")]
-    id: esc_api::ClusterId,
-
-    #[structopt(long, help = "Disk size in GB")]
-    disk_size_in_gb: usize,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers backup management commands")]
-struct Backups {
-    #[structopt(subcommand)]
-    backups_command: BackupsCommand,
-}
-
-#[derive(Debug, StructOpt)]
-enum BackupsCommand {
-    Create(CreateBackup),
-    Get(GetBackup),
-    List(ListBackups),
-    Delete(DeleteBackup),
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Create a backup")]
-struct CreateBackup {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the backup will relate to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup will relate to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, parse(try_from_str = parse_cluster_id), help = "The id of the cluster to create backup of")]
-    source_cluster_id: esc_api::ClusterId,
-
-    #[structopt(long, help = "A human-readable description of the backup")]
-    description: String,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Get information about a single backup")]
-struct GetBackup {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the backup relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Backup's id")]
-    id: esc_api::BackupId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "List all backups of an organization, given a project id")]
-struct ListBackups {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "An organization's id")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Delete a backup")]
-struct DeleteBackup {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the backup relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
-    project_id: esc_api::ProjectId,
-
-    #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Id of the backup you want to delete")]
-    id: esc_api::BackupId,
-}
-
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
         let mut map = HashMap::new();
@@ -1283,24 +1074,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         },
 
-        Command::Infra(infra) => match infra.command {
-            crate::apis::infra::InfraCommand::Networks(networks) => {
-                let cc = CliConfig{
-                    client: client.clone(),
-                    token: store.access(opt.refresh_token).await?,
-                    render_in_json: opt.render_in_json,
-                };
-                networks.command.exec(&cc).await?
-            },
-
-            crate::apis::infra::InfraCommand::Peerings(peerings) => {
-                let cc = CliConfig{
-                    client: client.clone(),
-                    token: store.access(opt.refresh_token).await?,
-                    render_in_json: opt.render_in_json,
-                };
-                peerings.command.exec(&cc).await?
-            },
+        Command::Infra(infra) =>  {
+            let cc = CliConfig{
+                client: client.clone(),
+                token: store.access(opt.refresh_token).await?,
+                render_in_json: opt.render_in_json,
+            };
+            infra.command.exec(&cc).await?
         },
 
         Command::Profiles(context) => match context.profiles_command {
@@ -1402,138 +1182,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         },
 
-        Command::Resources(res) => match res.command {
-            crate::apis::resources::ResourcesCommand::Organizations(orgs) => {
-                let cc = CliConfig{
-                    client: client.clone(),
-                    token: store.access(opt.refresh_token).await?,
-                    render_in_json: opt.render_in_json,
-                };
-                orgs.command.exec(&cc).await?               
-            },
-
-            crate::apis::resources::ResourcesCommand::Projects(projs) => {
-                let cc = CliConfig{
-                    client: client.clone(),
-                    token: store.access(opt.refresh_token).await?,
-                    render_in_json: opt.render_in_json,
-                };
-                projs.command.exec(&cc).await?                
-            },
+        Command::Resources(res) => {
+            let cc = CliConfig{
+                client: client.clone(),
+                token: store.access(opt.refresh_token).await?,
+                render_in_json: opt.render_in_json,
+            };
+            res.command.exec(&cc).await?
         },
 
-        Command::Mesdb(mesdb) => {
-            let token = store.access(opt.refresh_token).await?;
-            match mesdb.mesdb_command {
-                MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
-                    ClustersCommand::Create(params) => {
-                        let create_params = esc_api::command::clusters::CreateClusterParams {
-                            network_id: params.network_id,
-                            description: params.description,
-                            topology: params.topology,
-                            instance_type: params.instance_type,
-                            disk_size_gb: params.disk_size_in_gb,
-                            disk_type: params.disk_type,
-                            server_version: params.server_version,
-                            projection_level: params.projection_level,
-                            source_backup_id: params.source_backup_id,
-                        };
-                        let cluster_id = client
-                            .clusters(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
+        Command::Mesdb(mesdb) =>  {
+            let cc = CliConfig{
+                client: client.clone(),
+                token: store.access(opt.refresh_token).await?,
+                render_in_json: opt.render_in_json,
+            };
+            mesdb.command.exec(&cc).await?
+        },
 
-                        print_output(opt.render_in_json, cluster_id)?;
-                    }
-
-                    ClustersCommand::Get(params) => {
-                        let cluster = client
-                            .clusters(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, enrich::enrich_cluster(cluster))?;
-                    }
-
-                    ClustersCommand::Delete(params) => {
-                        client
-                            .clusters(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    ClustersCommand::Update(params) => {
-                        client
-                            .clusters(&token)
-                            .update(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    ClustersCommand::List(params) => {
-                        let clusters = client
-                            .clusters(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(
-                            opt.render_in_json,
-                            List(clusters.into_iter().map(enrich::enrich_cluster).collect()),
-                        )?;
-                    }
-
-                    ClustersCommand::Expand(params) => {
-                        client
-                            .clusters(&token)
-                            .expand(
-                                params.org_id,
-                                params.project_id,
-                                params.id,
-                                params.disk_size_in_gb,
-                            )
-                            .await?;
-                    }
-                },
-                MesdbCommand::Backups(clusters) => match clusters.backups_command {
-                    BackupsCommand::Create(params) => {
-                        let create_params = esc_api::command::backups::CreateBackupParams {
-                            source_cluster_id: params.source_cluster_id,
-                            description: params.description,
-                        };
-                        let backup_id = client
-                            .backups(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
-                        print_output(opt.render_in_json, backup_id)?;
-                    }
-
-                    BackupsCommand::Get(params) => {
-                        let backup = client
-                            .backups(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, backup)?;
-                    }
-
-                    BackupsCommand::Delete(params) => {
-                        client
-                            .backups(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    BackupsCommand::List(params) => {
-                        let backups = client
-                            .backups(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(backups))?;
-                    }
-                },
-            }
-        }
 
         Command::GenerateBashCompletion => {
             clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
