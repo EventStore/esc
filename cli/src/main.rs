@@ -16,7 +16,6 @@ mod enrich;
 mod store;
 
 use crate::store::{Auth, TokenStore};
-use apis::resources::CreateOrganizationRequest;
 use esc_api::{Client, ClientId, GroupId, OrgId};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
@@ -58,8 +57,8 @@ pub struct Opt {
 #[derive(StructOpt, Debug)]
 enum Command {
     Access(Access),
-    Resources(Resources),
-    Infra(Infra),
+    Resources(crate::apis::resources::Resources),
+    Infra(crate::apis::infra::Infra),
     Profiles(Profiles),
     Mesdb(Mesdb),
     #[structopt(about = "Prints Bash completion script in STDOUT")]
@@ -341,8 +340,8 @@ struct Infra {
 
 #[derive(StructOpt, Debug)]
 enum InfraCommand {
-    Networks(Networks),
-    Peerings(Peerings),
+    Networks(crate::apis::infra::Networks),
+    Peerings(crate::apis::infra::Peerings),
 }
 
 #[derive(StructOpt, Debug)]
@@ -611,135 +610,6 @@ enum ProfilePropName {
     ApiBaseUrl,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers organizations and projects management commands")]
-struct Resources {
-    #[structopt(subcommand)]
-    resources_command: ResourcesCommand,
-}
-
-#[derive(Debug, StructOpt)]
-enum ResourcesCommand {
-    Organizations(crate::apis::resources::Organizations),
-    Projects(crate::apis::resources::Projects),
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers organizations management commands")]
-struct Organizations {
-    #[structopt(subcommand)]
-    organizations_command: OrganizationsCommand,
-}
-
-#[derive(Debug, StructOpt)]
-enum OrganizationsCommand {
-    Create(CreateOrganization),
-    Update(UpdateOrganization),
-    Get(GetOrganization),
-    Delete(DeleteOrganization),
-    List(ListOrganizations),
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Create an organization")]
-struct CreateOrganization {
-    #[structopt(long, short)]
-    name: String,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Update an organization")]
-struct UpdateOrganization {
-    #[structopt(short, long, parse(try_from_str = parse_org_id), help = "The id of the organization you want to update")]
-    id: OrgId,
-
-    #[structopt(long, short)]
-    name: String,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "read an organization's information")]
-struct GetOrganization {
-    #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read information from")]
-    id: OrgId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Delete an organization")]
-struct DeleteOrganization {
-    #[structopt(short, long, parse(try_from_str = parse_org_id), help = "The id of the organization you want to delete")]
-    id: OrgId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "List organizations")]
-struct ListOrganizations {}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers projects management commands")]
-struct Projects {
-    #[structopt(subcommand)]
-    projects_command: ProjectsCommand,
-}
-
-#[derive(Debug, StructOpt)]
-enum ProjectsCommand {
-    Create(CreateProject),
-    Update(UpdateProject),
-    Get(GetProject),
-    Delete(DeleteProject),
-    List(ListProjects),
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Create a project")]
-struct CreateProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the project will relate to")]
-    org_id: OrgId,
-
-    #[structopt(long, short, help = "Project's name")]
-    name: String,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Update a project")]
-struct UpdateProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the project is related to")]
-    org_id: OrgId,
-
-    #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to update")]
-    id: esc_api::ProjectId,
-
-    #[structopt(long, short, help = "New project's name")]
-    name: String,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Get a project information")]
-struct GetProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the project is related to")]
-    org_id: OrgId,
-
-    #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to read information from")]
-    id: esc_api::ProjectId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Delete a project")]
-struct DeleteProject {
-    #[structopt(long, parse(try_from_str = parse_org_id), help = "The organization id the project is related to")]
-    org_id: OrgId,
-
-    #[structopt(long, short, parse(try_from_str = parse_project_id), help = "The id of the project you want to delete")]
-    id: esc_api::ProjectId,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(about = "List an organization's projects")]
-struct ListProjects {
-    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "Organization's id")]
-    org_id: OrgId,
-}
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Gathers cluster management commands")]
@@ -1413,161 +1283,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         },
 
-        Command::Infra(infra) => match infra.infra_command {
-            InfraCommand::Networks(networks) => match networks.networks_command {
-                NetworksCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::networks::CreateNetworkParams {
-                        provider: params.provider,
-                        cidr_block: params.cidr_block.to_string(),
-                        description: params.description,
-                        region: params.region,
-                    };
-                    let network_id = client
-                        .networks(&token)
-                        .create(params.org_id, params.project_id, create_params)
-                        .await?;
-
-                    print_output(opt.render_in_json, network_id)?;
-                }
-
-                NetworksCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::networks::UpdateNetworkParams {
-                        description: params.description,
-                    };
-                    client
-                        .networks(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
-                }
-
-                NetworksCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .networks(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
-                }
-
-                NetworksCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let network = client
-                        .networks(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
-                    print_output(opt.render_in_json, network)?;
-                }
-
-                NetworksCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let networks = client
-                        .networks(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    print_output(opt.render_in_json, List(networks))?;
-                }
+        Command::Infra(infra) => match infra.command {
+            crate::apis::infra::InfraCommand::Networks(networks) => {
+                let cc = CliConfig{
+                    client: client.clone(),
+                    token: store.access(opt.refresh_token).await?,
+                    render_in_json: opt.render_in_json,
+                };
+                networks.command.exec(&cc).await?
             },
 
-            InfraCommand::Peerings(peerings) => match peerings.peerings_command {
-                PeeringsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::peerings::CreatePeeringParams {
-                        network_id: params.network_id.clone(),
-                        description: params.description,
-                        peer_account_id: params.peer_account_id.clone(),
-                        peer_network_id: params.peer_network_id.clone(),
-                        peer_network_region: params.peer_network_region,
-                        routes: params.routes,
-                    };
-                    let result = client
-                        .peerings(&token)
-                        .create(
-                            params.org_id.clone(),
-                            params.project_id.clone(),
-                            create_params,
-                        )
-                        .await?;
-
-                    if let Err(_err) = result {
-                        let network = client
-                            .networks(&token)
-                            .get(
-                                params.org_id.clone(),
-                                params.project_id.clone(),
-                                params.network_id,
-                            )
-                            .await?;
-
-                        let derive_peering_commands_params =
-                            esc_api::command::peerings::DerivePeeringCommandsParams {
-                                provider: network.provider,
-                                peer_account_id: params.peer_account_id,
-                                peer_network_id: params.peer_network_id,
-                            };
-
-                        let commands = client
-                            .peerings(&token)
-                            .derive_peering_commands(
-                                params.org_id,
-                                params.project_id,
-                                derive_peering_commands_params,
-                            )
-                            .await?;
-
-                        if opt.render_in_json {
-                            print_output(opt.render_in_json, commands)?;
-                        } else {
-                            println!("Upstream provider requires configuration.");
-                            for command in commands {
-                                println!();
-                                println!("{}:", command.title);
-                                println!("{}", command.value);
-                            }
-                        }
-                    }
-                }
-
-                PeeringsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::peerings::UpdatePeeringParams {
-                        description: params.description,
-                    };
-                    client
-                        .peerings(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
-                }
-
-                PeeringsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .peerings(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
-                }
-
-                PeeringsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let peering = client
-                        .peerings(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
-                    print_output(opt.render_in_json, peering)?;
-                }
-
-                PeeringsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let peerings = client
-                        .peerings(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    print_output(opt.render_in_json, List(peerings))?;
-                }
+            crate::apis::infra::InfraCommand::Peerings(peerings) => {
+                let cc = CliConfig{
+                    client: client.clone(),
+                    token: store.access(opt.refresh_token).await?,
+                    render_in_json: opt.render_in_json,
+                };
+                peerings.command.exec(&cc).await?
             },
         },
 
@@ -1670,108 +1402,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         },
 
-        Command::Resources(res) => match res.resources_command {
-            ResourcesCommand::Organizations(orgs) => {
+        Command::Resources(res) => match res.command {
+            crate::apis::resources::ResourcesCommand::Organizations(orgs) => {
                 let cc = CliConfig{
                     client: client.clone(),
                     token: store.access(opt.refresh_token).await?,
                     render_in_json: opt.render_in_json,
                 };
-                orgs.command.exec(&cc).await?
-                // OrganizationsCommand::Create(params) => {
-                //     let token = store.access(opt.refresh_token).await?;                    
-                //     let org_id = client.organizations(&token).create(params.name).await?;
-
-                //     print_output(opt.render_in_json, org_id)?;
-                // }
-
-                // OrganizationsCommand::Update(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     client
-                //         .organizations(&token)
-                //         .update(params.id, params.name)
-                //         .await?;
-                // }
-
-                // OrganizationsCommand::Delete(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     client.organizations(&token).delete(params.id).await?;
-                // }
-
-                // OrganizationsCommand::Get(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     let org = client.organizations(&token).get(params.id).await?;
-
-                //     print_output(opt.render_in_json, org)?;
-                // }
-
-                // OrganizationsCommand::List(_) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     let orgs = client.organizations(&token).list().await?;
-
-                //     print_output(opt.render_in_json, List(orgs))?;
-                // }
+                orgs.command.exec(&cc).await?               
             },
 
-            ResourcesCommand::Projects(projs) => {
+            crate::apis::resources::ResourcesCommand::Projects(projs) => {
                 let cc = CliConfig{
                     client: client.clone(),
                     token: store.access(opt.refresh_token).await?,
                     render_in_json: opt.render_in_json,
                 };
-                projs.command.exec(&cc).await?
-                // match projs.projects_command {
-                // ProjectsCommand::Create(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     let proj_id = client
-                //         .projects(&token)
-                //         .create(params.org_id, params.name)
-                //         .await?;
-
-                //     print_output(opt.render_in_json, proj_id)?;
-                // }
-
-                // ProjectsCommand::Update(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     client
-                //         .projects(&token)
-                //         .update(params.org_id, params.id, params.name)
-                //         .await?;
-                // }
-
-                // ProjectsCommand::Get(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     let project_opt = client
-                //         .projects(&token)
-                //         .get(params.org_id, params.id)
-                //         .await?;
-
-                //     match project_opt {
-                //         Some(proj) => {
-                //             print_output(opt.render_in_json, proj)?;
-                //         }
-
-                //         _ => {
-                //             eprintln!("Project doesn't exists");
-                //             std::process::exit(-1);
-                //         }
-                //     }
-                // }
-
-                // ProjectsCommand::Delete(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     client
-                //         .projects(&token)
-                //         .delete(params.org_id, params.id)
-                //         .await?;
-                // }
-
-                // ProjectsCommand::List(params) => {
-                //     let token = store.access(opt.refresh_token).await?;
-                //     let projs = client.projects(&token).list(params.org_id).await?;
-
-                //     print_output(opt.render_in_json, List(projs))?;
-                // }
+                projs.command.exec(&cc).await?                
             },
         },
 
