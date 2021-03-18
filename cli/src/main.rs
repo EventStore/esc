@@ -705,6 +705,10 @@ fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
     Ok(esc_api::PolicyId(src.to_string()))
 }
 
+fn parse_job_id(src: &str) -> Result<esc_api::JobId, String> {
+    Ok(esc_api::JobId(src.to_string()))
+}
+
 fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
     parse_enum(&PROVIDERS, src)
 }
