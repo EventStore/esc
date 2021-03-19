@@ -1,6 +1,6 @@
 [package]
 name = "esc-api"
-version = "1.21.1"
+version = "1.21.3"
 authors = ["Yorick Laupa <yorick.laupa@eventstore.com>"]
 edition = "2018"
 
