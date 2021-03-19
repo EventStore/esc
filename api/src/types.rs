@@ -109,6 +109,21 @@ impl AsRef<str> for BackupId {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct JobId(pub String);
+
+impl std::fmt::Display for JobId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for JobId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub(crate) access_token: String,
@@ -275,6 +290,55 @@ pub struct Backup {
     pub region: String,
     pub status: String,
     pub created: String,
+    pub linked_resource: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobDataScheduledBackup {
+    pub description: String,
+    pub max_backup_count: i32,
+    pub cluster_id: ClusterId,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum JobData {
+    ScheduledBackup(JobDataScheduledBackup),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleField {
+    pub expr_type: String,
+    pub number: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Job {
+    pub id: JobId,
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub project_id: ProjectId,
+    pub description: String,
+    pub schedule: String,
+    pub status: String,
+    #[serde(flatten)]
+    pub data: JobData,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub project_id: ProjectId,
+    pub job_id: JobId,
+    pub status: String,
+    pub details: String,
+    pub linked_resource: String,
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
 }
 
 struct EmailVisitor {}

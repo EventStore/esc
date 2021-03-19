@@ -84,4 +84,12 @@ impl Client {
     pub fn policies<'a>(&'a self, token: &'a Token) -> command::policies::Policies<'a> {
         command::policies::Policies::new(&self, token)
     }
+
+    pub fn jobs<'a>(&'a self, token: &'a Token) -> command::jobs::Jobs<'a> {
+        command::jobs::Jobs::new(&self, token)
+    }
+
+    pub fn history<'a>(&'a self, token: &'a Token) -> command::history::History<'a> {
+        command::history::History::new(&self, token)
+    }
 }
