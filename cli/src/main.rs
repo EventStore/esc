@@ -51,11 +51,7 @@ pub struct Opt {
     )]
     refresh_token: Option<String>,
 
-    #[structopt(
-        long,
-        help = "Show all request / response traffic",
-        global = true
-    )]
+    #[structopt(long, help = "Show all request / response traffic", global = true)]
     show_traffic: bool,
 
     #[structopt(subcommand)]
@@ -409,8 +405,7 @@ impl CliConfig {
     }
 }
 
-struct TrafficSpy {
-}
+struct TrafficSpy {}
 
 impl esc_api::ClientObserver for TrafficSpy {
     fn on_request(&self, method: &str, url: &str, body: &str) {
@@ -419,7 +414,7 @@ impl esc_api::ClientObserver for TrafficSpy {
             println!("{}", body);
         }
     }
-    
+
     fn on_response(&self, status: &str, body: &str) {
         println!("status: {}", status);
         if body.len() > 0 {
@@ -451,11 +446,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
     let observer: Option<Arc<dyn esc_api::ClientObserver>> = if opt.show_traffic {
-        Some(Arc::new(TrafficSpy{}))
+        Some(Arc::new(TrafficSpy {}))
     } else {
         None
     };
-    let client = Client::builder().set_observer(observer).build(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string())?;
+    let client = Client::builder()
+        .set_observer(observer)
+        .build(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string())?;
 
     config::Settings::configure().await?;
     let mut store = TokenStore::new(&auth, client.tokens());

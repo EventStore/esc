@@ -66,27 +66,42 @@ impl Client {
 
     // note: this replaces `default_error_handler`
 
-    pub async fn send_request<B: Serialize + ?Sized, R: DeserializeOwned>(&self, token: &Token, method: reqwest::Method, url: String, body: Option<&B>) -> crate::Result<R> {        
+    pub async fn send_request<B: Serialize + ?Sized, R: DeserializeOwned>(
+        &self,
+        token: &Token,
+        method: reqwest::Method,
+        url: String,
+        body: Option<&B>,
+    ) -> crate::Result<R> {
         use crate::http::Failure;
-        
+
         if let Some(o) = &self.observer {
             let body_string: String = match body {
-                Some(b) => match serde_json::to_string(b) { Ok(s) => s, _ => "<err!>".to_string() },
+                Some(b) => match serde_json::to_string(b) {
+                    Ok(s) => s,
+                    _ => "<err!>".to_string(),
+                },
                 None => "".to_string(),
             };
             o.on_request(&method.as_str(), &url, &body_string);
         }
-    
-        let req = self.inner.request(method, url.as_str()).header("Authorization",
-        format!("{} {}", token.token_type, token.access_token)).header("Accept", "application/json");        
+
+        let req = self
+            .inner
+            .request(method, url.as_str())
+            .header(
+                "Authorization",
+                format!("{} {}", token.token_type, token.access_token),
+            )
+            .header("Accept", "application/json");
         let req = match body {
             Some(b) => req.json(b),
-            None => req
+            None => req,
         };
 
         let resp = req.send().await?;
-        
-        let status = resp.status();        
+
+        let status = resp.status();
 
         if status.is_success() {
             return match &self.observer {
@@ -95,7 +110,7 @@ impl Client {
                     o.on_response(status.as_str(), &text);
                     let r: R = serde_json::from_str(&text)?;
                     Ok(r)
-                },
+                }
                 None => {
                     let r: R = resp.json().await?;
                     Ok(r)
