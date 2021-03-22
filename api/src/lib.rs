@@ -20,11 +20,11 @@ pub use types::*;
 
 pub struct Builder {
     inner: reqwest::ClientBuilder,
-    observer: Option<Arc<dyn ClientObserver>>,
+    observer: Option<Arc<dyn ClientObserver + Send + Sync>>,
 }
 
 impl<'a> Builder {
-    pub fn set_observer(mut self, observer: Option<Arc<dyn ClientObserver>>) -> Builder {
+    pub fn set_observer(mut self, observer: Option<Arc<dyn ClientObserver + Send + Sync>>) -> Builder {
         self.observer = observer;
         return self;
     }
@@ -49,7 +49,7 @@ pub struct Client {
     base_url: String,
     identity_url: String,
     pub inner: reqwest::Client,
-    observer: Option<Arc<dyn ClientObserver>>,
+    observer: Option<Arc<dyn ClientObserver + Send + Sync>>,
 }
 
 impl Client {

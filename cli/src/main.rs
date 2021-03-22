@@ -445,7 +445,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
-    let observer: Option<Arc<dyn esc_api::ClientObserver>> = if opt.show_traffic {
+    let observer: Option<Arc<dyn esc_api::ClientObserver + Send + Sync>> = if opt.show_traffic {
         Some(Arc::new(TrafficSpy {}))
     } else {
         None
