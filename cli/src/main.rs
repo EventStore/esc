@@ -17,7 +17,7 @@ mod enrich;
 mod store;
 
 use crate::store::{Auth, TokenStore};
-use esc_api::{Client, ClientId, GroupId, OrgId};
+use esc_api::{Client, ClientId};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -62,7 +62,7 @@ pub struct Opt {
 enum Command {
     Access(crate::apis::access::Command),
     Infra(crate::apis::infra::Command),
-    orchestrate(crate::apis::orchestrate::Command),
+    Orchestrate(crate::apis::orchestrate::Command),
     Profiles(Profiles),
     Resources(crate::apis::resources::Command),
     Mesdb(crate::apis::mesdb::Command),
@@ -252,38 +252,6 @@ fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
     Ok(esc_api::ProjectId(src.to_string()))
 }
 
-fn parse_network_id(src: &str) -> Result<esc_api::NetworkId, String> {
-    Ok(esc_api::NetworkId(src.to_string()))
-}
-
-fn parse_group_id(src: &str) -> Result<esc_api::GroupId, String> {
-    Ok(esc_api::GroupId(src.to_string()))
-}
-
-fn parse_peering_id(src: &str) -> Result<esc_api::PeeringId, String> {
-    Ok(esc_api::PeeringId(src.to_string()))
-}
-
-fn parse_cluster_id(src: &str) -> Result<esc_api::ClusterId, String> {
-    Ok(esc_api::ClusterId(src.to_string()))
-}
-
-fn parse_backup_id(src: &str) -> Result<esc_api::BackupId, String> {
-    Ok(esc_api::BackupId(src.to_string()))
-}
-
-fn parse_job_id(src: &str) -> Result<esc_api::JobId, String> {
-    Ok(esc_api::JobId(src.to_string()))
-}
-
-fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
-    Ok(esc_api::PolicyId(src.to_string()))
-}
-
-fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
-    parse_enum(&PROVIDERS, src)
-}
-
 fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
     parse_enum(&CONTEXT_PROP_NAMES, src)
 }
@@ -381,7 +349,7 @@ where
     }
 }
 
-struct CliConfig {
+pub struct CliConfig {
     client: Client,
     // store: TokenStore<'a>,
     // refresh_token: Option<String>,
@@ -392,6 +360,10 @@ struct CliConfig {
 impl CliConfig {
     pub fn create_client(&self) -> Client {
         return self.client.clone();
+    }
+
+    pub fn create_request_sender(&self) -> esc_api::sender::EscRequestSender {
+        return self.client.esc_request_sender(self.token.clone());
     }
 
     // pub async fn get_token(&self) -> Result<esc_api::Token, Box<dyn std::error::Error>> {
@@ -407,7 +379,7 @@ impl CliConfig {
 
 struct TrafficSpy {}
 
-impl esc_api::ClientObserver for TrafficSpy {
+impl esc_api::RequestObserver for TrafficSpy {
     fn on_request(&self, method: &str, url: &str, body: &str) {
         println!("{} {}", method, url);
         if body.len() > 0 {
@@ -445,7 +417,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
-    let observer: Option<Arc<dyn esc_api::ClientObserver + Send + Sync>> = if opt.show_traffic {
+    let observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>> = if opt.show_traffic {
         Some(Arc::new(TrafficSpy {}))
     } else {
         None
@@ -491,7 +463,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             cmd.command.exec(&cc).await?
         }
 
-        Command::orchestrate(cmd) => {
+        Command::Orchestrate(cmd) => {
             let cc = CliConfig {
                 client: client.clone(),
                 token: store.access(opt.refresh_token).await?,

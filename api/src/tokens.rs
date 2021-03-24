@@ -29,7 +29,12 @@ pub async fn create(
     Ok(token)
 }
 
-pub async fn refresh(client: &reqwest::Client, identity_url: &str, client_id: &crate::ClientId, refresh_token: &str) -> crate::Result<crate::Token> {
+pub async fn refresh(
+    client: &reqwest::Client,
+    identity_url: &str,
+    client_id: &crate::ClientId,
+    refresh_token: &str,
+) -> crate::Result<crate::Token> {
     let url = format!("{}/oauth/token", identity_url);
     let mut form = std::collections::HashMap::new();
 
@@ -48,4 +53,3 @@ pub async fn refresh(client: &reqwest::Client, identity_url: &str, client_id: &c
 
     Ok(token)
 }
-

@@ -55,7 +55,7 @@ pub fn authenticated_request(
     token: &Token,
     url: String,
 ) -> reqwest::RequestBuilder {
-    client.inner.request(meth, url.as_str()).header(
+    client.sender.client.request(meth, url.as_str()).header(
         "Authorization",
         format!("{} {}", token.token_type, token.access_token),
     )
