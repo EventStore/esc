@@ -17,44 +17,10 @@ impl<'a> Tokens<'a> {
         password: &str,
         audience: &str,
     ) -> crate::Result<Token> {
-        debug!("Audience: {}", audience);
-        let mut form = std::collections::HashMap::new();
-
-        form.insert("grant_type", "password");
-        form.insert("username", username);
-        form.insert("password", password);
-        form.insert("scope", "cloud:access offline_access");
-        form.insert("client_id", client_id.as_ref());
-        form.insert("audience", audience);
-
-        let url = format!("{}/oauth/token", self.client.identity_url);
-        let req = self.client.inner.post(url.as_str()).form(&form);
-
-        debug!("Token creation request on: {}", url);
-
-        let resp = default_error_handler(req.send().await?).await?;
-        let token = resp.json().await?;
-
-        Ok(token)
+        crate::tokens::create(&self.client.inner, &self.client.identity_url, client_id, username, password, audience).await
     }
 
     pub async fn refresh(&self, client_id: &ClientId, refresh_token: &str) -> crate::Result<Token> {
-        let url = format!("{}/oauth/token", self.client.identity_url);
-        let mut form = std::collections::HashMap::new();
-
-        form.insert("grant_type", "refresh_token");
-        form.insert("client_id", client_id.as_ref());
-        form.insert("refresh_token", refresh_token);
-
-        let req = self.client.inner.post(url.as_str()).form(&form);
-
-        debug!("Token refresh on : {:?}", req);
-
-        let resp = default_error_handler(req.send().await?).await?;
-        let token: Token = resp.json().await?;
-
-        debug!("Token expires_in: {}", token.expires_in);
-
-        Ok(token)
+        crate::tokens::refresh(&self.client.inner, &self.client.identity_url, client_id, refresh_token).await
     }
 }

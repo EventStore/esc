@@ -12,6 +12,7 @@ use serde::Serialize;
 
 pub mod apis;
 pub mod command;
+pub mod tokens;
 mod http;
 mod types;
 mod utils;
