@@ -7,13 +7,18 @@ extern crate log;
 
 use std::sync::Arc;
 
-pub mod apis;
 pub mod command;
 mod http;
 pub mod sender;
 pub mod tokens;
 mod types;
 mod utils;
+
+pub mod access;
+pub mod infra;
+pub mod mesdb;
+pub mod orchestrate;
+pub mod resources;
 
 pub use sender::EscRequestSender;
 pub use sender::RequestObserver;
