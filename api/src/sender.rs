@@ -105,8 +105,12 @@ impl EscRequestSender {
         method: reqwest::Method,
         relative_url: String,
         body: Option<&B>,
-    ) -> crate::Result<R> {
-        let url = format!("{}/{}", self.base_url, relative_url);
+    ) -> crate::Result<R> {        
+        let url = if relative_url.starts_with("/") {
+            format!("{}{}", self.base_url, relative_url)
+        } else {
+            format!("{}/{}", self.base_url, relative_url)
+        };
         self.sender
             .send_request(&self.token, method, url, body)
             .await
