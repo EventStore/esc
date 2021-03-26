@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{iter::Empty, sync::Arc};
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -28,6 +28,7 @@ impl RequestSender {
         method: reqwest::Method,
         url: String,
         body: Option<&B>,
+        use_return_value: Option<R>,
     ) -> crate::Result<R> {
         use crate::http::Failure;
 
@@ -64,7 +65,13 @@ impl RequestSender {
                 Some(o) => {
                     let text = resp.text().await?;
                     o.on_response(status.as_str(), &text);
-                    let r: R = serde_json::from_str(&text)?;
+                    let r: R = match use_return_value {
+                        Some(r) => r,
+                        None => {
+                            let r: R = serde_json::from_str(&text)?;
+                            r
+                        }
+                    };
                     Ok(r)
                 }
                 None => {
@@ -105,6 +112,7 @@ impl EscRequestSender {
         method: reqwest::Method,
         relative_url: String,
         body: Option<&B>,
+        use_return_value: Option<R>,
     ) -> crate::Result<R> {
         let url = if relative_url.starts_with("/") {
             format!("{}{}", self.base_url, relative_url)
@@ -112,7 +120,7 @@ impl EscRequestSender {
             format!("{}/{}", self.base_url, relative_url)
         };
         self.sender
-            .send_request(&self.token, method, url, body)
+            .send_request(&self.token, method, url, body, use_return_value)
             .await
     }
 }
