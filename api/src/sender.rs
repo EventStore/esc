@@ -82,6 +82,10 @@ impl RequestSender {
         }
 
         let message = resp.text().await?;
+        
+        if let Some(o) = &self.observer {
+            o.on_response(status.as_str(), &message);
+        }
 
         if status.is_client_error() {
             if status.as_u16() == 401 {
