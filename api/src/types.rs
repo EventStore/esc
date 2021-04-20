@@ -474,3 +474,18 @@ pub struct Policy {
     pub actions: Vec<String>,
     pub effect: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct ConfigurationId(pub String);
+
+impl std::fmt::Display for ConfigurationId {
+    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for ConfigurationId {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
