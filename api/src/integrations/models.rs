@@ -8,10 +8,10 @@ pub struct Configuration {
     pub description: String,
     #[serde(rename = "id")]
     pub id: crate::types::ConfigurationId,
-    #[serde(rename = "organization")]
-    pub organization: crate::types::OrgId,
-    #[serde(rename = "project")]
-    pub project: crate::types::ProjectId,
+    #[serde(rename = "organizationId")]
+    pub organization_id: crate::types::OrgId,
+    #[serde(rename = "projectId")]
+    pub project_id: crate::types::ProjectId,
     #[serde(rename = "updated")]
     pub updated: chrono::DateTime<chrono::Utc>,
 }
@@ -71,15 +71,6 @@ pub struct OpsGenieConfiguration {
     pub api_key: String,
 }
 
-/// OpsGenieIntegrationConfiguration : Configuration for the Ops Genie API integration
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct OpsGenieIntegrationConfiguration {
-    /// API key used with the Ops Genie integration API
-    #[serde(rename = "api_key")]
-    pub api_key: String,
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProblemDetails {
     #[serde(rename = "details")]
@@ -100,18 +91,6 @@ pub struct ProblemDetails {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SlackConfiguration {
-    /// Slack Channel to send messages to
-    #[serde(rename = "channelId")]
-    pub channel_id: String,
-    /// API token for the Slack bot
-    #[serde(rename = "token")]
-    pub token: String,
-}
-
-/// SlackIntegrationConfiguration : Configruation for a Slack bot used by this integration.
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct SlackIntegrationConfiguration {
     /// Slack Channel to send messages to
     #[serde(rename = "channelId")]
     pub channel_id: String,
