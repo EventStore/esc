@@ -17,7 +17,7 @@ pub struct Configuration {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "sink")]
 pub enum ConfigurationData {
     #[serde(rename = "OpsGenie")]
     OpsGenieConfiguration {
@@ -71,6 +71,15 @@ pub struct OpsGenieConfiguration {
     pub api_key: String,
 }
 
+/// OpsGenieIntegrationConfiguration : Configuration for the Ops Genie API integration
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OpsGenieIntegrationConfiguration {
+    /// API key used with the Ops Genie integration API
+    #[serde(rename = "api_key")]
+    pub api_key: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProblemDetails {
     #[serde(rename = "details")]
@@ -91,6 +100,18 @@ pub struct ProblemDetails {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SlackConfiguration {
+    /// Slack Channel to send messages to
+    #[serde(rename = "channelId")]
+    pub channel_id: String,
+    /// API token for the Slack bot
+    #[serde(rename = "token")]
+    pub token: String,
+}
+
+/// SlackIntegrationConfiguration : Configruation for a Slack bot used by this integration.
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SlackIntegrationConfiguration {
     /// Slack Channel to send messages to
     #[serde(rename = "channelId")]
     pub channel_id: String,

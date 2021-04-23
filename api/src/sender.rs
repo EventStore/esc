@@ -1,4 +1,4 @@
-use std::{iter::Empty, sync::Arc};
+use std::sync::Arc;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
