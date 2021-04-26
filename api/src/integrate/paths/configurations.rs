@@ -1,5 +1,5 @@
 /*
- * Event Store Integrations API
+ * Event Store Integrate API
  *
  * Manages third-party integrations with the Event Store Cloud.
  *
@@ -16,17 +16,17 @@ pub async fn create_configuration(
     sender: &EscRequestSender,
     organization_id: crate::types::OrgId,
     project_id: crate::types::ProjectId,
-    create_configuration_request: crate::integrations::models::CreateConfigurationRequest,
-) -> crate::Result<crate::integrations::models::CreateConfigurationResponse> {
+    create_configuration_request: crate::integrate::models::CreateConfigurationRequest,
+) -> crate::Result<crate::integrate::models::CreateConfigurationResponse> {
     let url = format!(
-        "/integrations/v1/organizations/{organizationId}/projects/{projectId}/configurations",
+        "/integrate/v1/organizations/{organizationId}/projects/{projectId}/configurations",
         organizationId = crate::utils::urlencode(organization_id),
         projectId = crate::utils::urlencode(project_id)
     );
 
     sender.send_request::<
         super::super::CreateConfigurationRequest,
-        crate::integrations::models::CreateConfigurationResponse
+        crate::integrate::models::CreateConfigurationResponse
     >(
         Method::POST,
         url,
@@ -40,7 +40,7 @@ pub async fn delete_configuration(
     project_id: crate::types::ProjectId,
     configuration_id: crate::types::ConfigurationId,
 ) -> crate::Result<()> {
-    let url = format!("/integrations/v1/organizations/{organizationId}/projects/{projectId}/configurations/{configurationId}", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), configurationId=crate::utils::urlencode(configuration_id));
+    let url = format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/configurations/{configurationId}", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), configurationId=crate::utils::urlencode(configuration_id));
 
     sender
         .send_request::<(), ()>(Method::DELETE, url, None, Some(()))
@@ -52,11 +52,11 @@ pub async fn get_configuration(
     organization_id: crate::types::OrgId,
     project_id: crate::types::ProjectId,
     configuration_id: crate::types::ConfigurationId,
-) -> crate::Result<crate::integrations::models::GetConfigurationResponse> {
-    let url = format!("/integrations/v1/organizations/{organizationId}/projects/{projectId}/configurations/{configurationId}", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), configurationId=crate::utils::urlencode(configuration_id));
+) -> crate::Result<crate::integrate::models::GetConfigurationResponse> {
+    let url = format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/configurations/{configurationId}", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), configurationId=crate::utils::urlencode(configuration_id));
 
     sender
-        .send_request::<(), crate::integrations::models::GetConfigurationResponse>(
+        .send_request::<(), crate::integrate::models::GetConfigurationResponse>(
             Method::GET,
             url,
             None,
@@ -69,15 +69,15 @@ pub async fn list_configurations(
     sender: &EscRequestSender,
     organization_id: crate::types::OrgId,
     project_id: crate::types::ProjectId,
-) -> crate::Result<crate::integrations::models::ListConfigurationsResponse> {
+) -> crate::Result<crate::integrate::models::ListConfigurationsResponse> {
     let url = format!(
-        "/integrations/v1/organizations/{organizationId}/projects/{projectId}/configurations",
+        "/integrate/v1/organizations/{organizationId}/projects/{projectId}/configurations",
         organizationId = crate::utils::urlencode(organization_id),
         projectId = crate::utils::urlencode(project_id)
     );
 
     sender
-        .send_request::<(), crate::integrations::models::ListConfigurationsResponse>(
+        .send_request::<(), crate::integrate::models::ListConfigurationsResponse>(
             Method::GET,
             url,
             None,
@@ -91,9 +91,9 @@ pub async fn update_configuration(
     organization_id: crate::types::OrgId,
     project_id: crate::types::ProjectId,
     configuration_id: crate::types::ConfigurationId,
-    update_configuration_request: crate::integrations::models::UpdateConfigurationRequest,
+    update_configuration_request: crate::integrate::models::UpdateConfigurationRequest,
 ) -> crate::Result<()> {
-    let url = format!("/integrations/v1/organizations/{organizationId}/projects/{projectId}/configurations/{configurationId}", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), configurationId=crate::utils::urlencode(configuration_id));
+    let url = format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/configurations/{configurationId}", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), configurationId=crate::utils::urlencode(configuration_id));
 
     sender
         .send_request::<super::super::UpdateConfigurationRequest, ()>(
@@ -119,8 +119,8 @@ impl<'a> Configurations {
         &self,
         organization_id: crate::types::OrgId,
         project_id: crate::types::ProjectId,
-        create_configuration_request: crate::integrations::models::CreateConfigurationRequest,
-    ) -> crate::Result<crate::integrations::models::CreateConfigurationResponse> {
+        create_configuration_request: crate::integrate::models::CreateConfigurationRequest,
+    ) -> crate::Result<crate::integrate::models::CreateConfigurationResponse> {
         create_configuration(
             &self.sender,
             organization_id,
@@ -146,7 +146,7 @@ impl<'a> Configurations {
         organization_id: crate::types::OrgId,
         project_id: crate::types::ProjectId,
         configuration_id: crate::types::ConfigurationId,
-    ) -> crate::Result<crate::integrations::models::GetConfigurationResponse> {
+    ) -> crate::Result<crate::integrate::models::GetConfigurationResponse> {
         get_configuration(&self.sender, organization_id, project_id, configuration_id).await
     }
 
@@ -155,7 +155,7 @@ impl<'a> Configurations {
         &self,
         organization_id: crate::types::OrgId,
         project_id: crate::types::ProjectId,
-    ) -> crate::Result<crate::integrations::models::ListConfigurationsResponse> {
+    ) -> crate::Result<crate::integrate::models::ListConfigurationsResponse> {
         list_configurations(&self.sender, organization_id, project_id).await
     }
 
@@ -165,7 +165,7 @@ impl<'a> Configurations {
         organization_id: crate::types::OrgId,
         project_id: crate::types::ProjectId,
         configuration_id: crate::types::ConfigurationId,
-        update_configuration_request: crate::integrations::models::UpdateConfigurationRequest,
+        update_configuration_request: crate::integrate::models::UpdateConfigurationRequest,
     ) -> crate::Result<()> {
         update_configuration(
             &self.sender,

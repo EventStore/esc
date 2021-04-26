@@ -43,7 +43,7 @@ impl ListConfigurations {
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrations::paths::Configurations::new(sender)
+        let result = esc_api::integrate::paths::Configurations::new(sender)
             .list(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
@@ -73,19 +73,19 @@ impl CreateConfiguration {
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrations::paths::Configurations::new(sender)
+        let result = esc_api::integrate::paths::Configurations::new(sender)
             .create(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
-                esc_api::integrations::CreateConfigurationRequest {
+                esc_api::integrate::CreateConfigurationRequest {
                     data: match &self.data {
                         ConfigurationData::OpsGenie(args) => {
-                            esc_api::integrations::ConfigurationData::OpsGenieConfiguration {
+                            esc_api::integrate::ConfigurationData::OpsGenieConfiguration {
                                 api_key: args.api_key.clone(),
                             }
                         }
                         ConfigurationData::Slack(args) => {
-                            esc_api::integrations::ConfigurationData::SlackConfiguration {
+                            esc_api::integrate::ConfigurationData::SlackConfiguration {
                                 channel_id: args.channel_id.clone(),
                                 token: args.token.clone(),
                             }
@@ -115,7 +115,7 @@ impl DeleteConfiguration {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let sender = cfg.create_request_sender();
 
-        esc_api::integrations::paths::Configurations::new(sender)
+        esc_api::integrate::paths::Configurations::new(sender)
             .delete(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
@@ -144,7 +144,7 @@ impl GetConfiguration {
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrations::paths::Configurations::new(sender)
+        let result = esc_api::integrate::paths::Configurations::new(sender)
             .get(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
@@ -175,20 +175,20 @@ impl UpdateConfiguration {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let sender = cfg.create_request_sender();
 
-        esc_api::integrations::paths::Configurations::new(sender)
+        esc_api::integrate::paths::Configurations::new(sender)
             .update(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
                 esc_api::ConfigurationId(self.configuration_id.clone()),
-                esc_api::integrations::UpdateConfigurationRequest {
+                esc_api::integrate::UpdateConfigurationRequest {
                     data: match &self.data {
                         ConfigurationData::OpsGenie(args) => {
-                            esc_api::integrations::ConfigurationData::OpsGenieConfiguration {
+                            esc_api::integrate::ConfigurationData::OpsGenieConfiguration {
                                 api_key: args.api_key.clone(),
                             }
                         }
                         ConfigurationData::Slack(args) => {
-                            esc_api::integrations::ConfigurationData::SlackConfiguration {
+                            esc_api::integrate::ConfigurationData::SlackConfiguration {
                                 channel_id: args.channel_id.clone(),
                                 token: args.token.clone(),
                             }

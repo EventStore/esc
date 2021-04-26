@@ -62,7 +62,7 @@ pub struct Opt {
 enum Command {
     Access(crate::apis::access::Command),
     Infra(crate::apis::infra::Command),
-    Integrations(crate::apis::integrations::Command),
+    Integrate(crate::apis::integrate::Command),
     Orchestrate(crate::apis::orchestrate::Command),
     Profiles(Profiles),
     Resources(crate::apis::resources::Command),
@@ -455,7 +455,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             cmd.command.exec(&cc).await?
         }
 
-        Command::Integrations(cmd) => {
+        Command::Integrate(cmd) => {
             let cc = CliConfig {
                 client: client.clone(),
                 token: store.access(opt.refresh_token).await?,
