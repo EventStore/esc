@@ -1,13 +1,33 @@
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Configuration {
+pub struct CreateIntegrationRequest {
+    #[serde(rename = "data")]
+    pub data: crate::integrate::models::IntegrationData,
+    #[serde(rename = "description")]
+    pub description: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CreateIntegrationResponse {
+    #[serde(rename = "id")]
+    pub id: crate::types::IntegrationId,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GetIntegrationResponse {
+    #[serde(rename = "integration")]
+    pub integration: crate::integrate::models::Integration,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Integration {
     #[serde(rename = "created")]
     pub created: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "data")]
-    pub data: crate::integrate::models::ConfigurationData,
+    pub data: crate::integrate::models::IntegrationData,
     #[serde(rename = "description")]
     pub description: String,
     #[serde(rename = "id")]
-    pub id: crate::types::ConfigurationId,
+    pub id: crate::types::IntegrationId,
     #[serde(rename = "organizationId")]
     pub organization_id: crate::types::OrgId,
     #[serde(rename = "projectId")]
@@ -18,15 +38,15 @@ pub struct Configuration {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "sink")]
-pub enum ConfigurationData {
+pub enum IntegrationData {
     #[serde(rename = "OpsGenie")]
-    OpsGenieConfiguration {
+    OpsGenieIntegration {
         /// API key used with the Ops Genie integration API
         #[serde(rename = "api_key")]
         api_key: String,
     },
     #[serde(rename = "Slack")]
-    SlackConfiguration {
+    SlackIntegration {
         /// Slack Channel to send messages to
         #[serde(rename = "channelId")]
         channel_id: String,
@@ -37,35 +57,15 @@ pub enum ConfigurationData {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CreateConfigurationRequest {
-    #[serde(rename = "data")]
-    pub data: crate::integrate::models::ConfigurationData,
-    #[serde(rename = "description")]
-    pub description: String,
+pub struct ListIntegrationsResponse {
+    #[serde(rename = "integrations")]
+    pub integrations: Vec<crate::integrate::models::Integration>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CreateConfigurationResponse {
-    #[serde(rename = "id")]
-    pub id: crate::types::ConfigurationId,
-}
+/// OpsGenieIntegration : Integration for the Ops Genie API integration
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct GetConfigurationResponse {
-    #[serde(rename = "configuration")]
-    pub configuration: crate::integrate::models::Configuration,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ListConfigurationsResponse {
-    #[serde(rename = "configurations")]
-    pub configurations: Vec<crate::integrate::models::Configuration>,
-}
-
-/// OpsGenieConfiguration : Configuration for the Ops Genie API integration
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct OpsGenieConfiguration {
+pub struct OpsGenieIntegration {
     /// API key used with the Ops Genie integration API
     #[serde(rename = "api_key")]
     pub api_key: String,
@@ -87,10 +87,10 @@ pub struct ProblemDetails {
     pub _type: String,
 }
 
-/// SlackConfiguration : Configuration for a Slack bot used by this integration.
+/// SlackIntegration : Integration for a Slack bot used by this integration.
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct SlackConfiguration {
+pub struct SlackIntegration {
     /// Slack Channel to send messages to
     #[serde(rename = "channelId")]
     pub channel_id: String,
@@ -100,9 +100,9 @@ pub struct SlackConfiguration {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct UpdateConfigurationRequest {
+pub struct UpdateIntegrationRequest {
     #[serde(rename = "data")]
-    pub data: crate::integrate::models::ConfigurationData,
+    pub data: crate::integrate::models::IntegrationData,
     #[serde(rename = "description")]
     pub description: String,
 }

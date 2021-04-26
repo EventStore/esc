@@ -476,15 +476,15 @@ pub struct Policy {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ConfigurationId(pub String);
+pub struct IntegrationId(pub String);
 
-impl std::fmt::Display for ConfigurationId {
+impl std::fmt::Display for IntegrationId {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl AsRef<str> for ConfigurationId {
+impl AsRef<str> for IntegrationId {
     fn as_ref(&self) -> &str {
         self.0.as_str()
     }

@@ -1,5 +1,5 @@
 use structopt::StructOpt;
-pub mod configurations;
+pub mod integrations;
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Manages third-party integrations with the Event Store Cloud.")]
@@ -10,13 +10,13 @@ pub struct Command {
 
 #[derive(StructOpt, Debug)]
 pub enum CommandChoices {
-    Configurations(configurations::Command),
+    Integrations(integrations::Command),
 }
 
 impl CommandChoices {
     pub async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         match self {
-            CommandChoices::Configurations(arg) => arg.command.exec(&cfg).await,
+            CommandChoices::Integrations(arg) => arg.command.exec(&cfg).await,
         }
     }
 }

@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "Gathers Configurations commands")]
+#[structopt(about = "Gathers Integrations commands")]
 pub struct Command {
     #[structopt(subcommand)]
     pub command: CommandChoices,
@@ -9,11 +9,11 @@ pub struct Command {
 
 #[derive(Debug, StructOpt)]
 pub enum CommandChoices {
-    List(ListConfigurations),
-    Create(CreateConfiguration),
-    Delete(DeleteConfiguration),
-    Get(GetConfiguration),
-    Update(UpdateConfiguration),
+    List(ListIntegrations),
+    Create(CreateIntegration),
+    Delete(DeleteIntegration),
+    Get(GetIntegration),
+    Update(UpdateIntegration),
 }
 
 impl CommandChoices {
@@ -29,21 +29,21 @@ impl CommandChoices {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "list all configurations")]
-pub struct ListConfigurations {
+#[structopt(about = "list all integrations")]
+pub struct ListIntegrations {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = crate::parse_default_org_id), default_value = "")]
     pub organization_id: String,
     #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
     pub project_id: String,
 }
 
-impl ListConfigurations {
+impl ListIntegrations {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let render_in_json = cfg.render_in_json();
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrate::paths::Configurations::new(sender)
+        let result = esc_api::integrate::paths::Integrations::new(sender)
             .list(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
@@ -55,37 +55,37 @@ impl ListConfigurations {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "Creates a new configuration")]
-pub struct CreateConfiguration {
+#[structopt(about = "Creates a new integration")]
+pub struct CreateIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = crate::parse_default_org_id), default_value = "")]
     pub organization_id: String,
     #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
     pub project_id: String,
     #[structopt(subcommand)]
-    pub data: ConfigurationData,
+    pub data: IntegrationData,
     #[structopt(long)]
     pub description: String,
 }
 
-impl CreateConfiguration {
+impl CreateIntegration {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let render_in_json = cfg.render_in_json();
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrate::paths::Configurations::new(sender)
+        let result = esc_api::integrate::paths::Integrations::new(sender)
             .create(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
-                esc_api::integrate::CreateConfigurationRequest {
+                esc_api::integrate::CreateIntegrationRequest {
                     data: match &self.data {
-                        ConfigurationData::OpsGenie(args) => {
-                            esc_api::integrate::ConfigurationData::OpsGenieConfiguration {
+                        IntegrationData::OpsGenie(args) => {
+                            esc_api::integrate::IntegrationData::OpsGenieIntegration {
                                 api_key: args.api_key.clone(),
                             }
                         }
-                        ConfigurationData::Slack(args) => {
-                            esc_api::integrate::ConfigurationData::SlackConfiguration {
+                        IntegrationData::Slack(args) => {
+                            esc_api::integrate::IntegrationData::SlackIntegration {
                                 channel_id: args.channel_id.clone(),
                                 token: args.token.clone(),
                             }
@@ -101,25 +101,25 @@ impl CreateConfiguration {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "deletes a configuration")]
-pub struct DeleteConfiguration {
+#[structopt(about = "deletes a integration")]
+pub struct DeleteIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = crate::parse_default_org_id), default_value = "")]
     pub organization_id: String,
     #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
     pub project_id: String,
-    #[structopt(long, help = "The id of the configuration")]
-    pub configuration_id: String,
+    #[structopt(long, help = "The id of the integration")]
+    pub integration_id: String,
 }
 
-impl DeleteConfiguration {
+impl DeleteIntegration {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let sender = cfg.create_request_sender();
 
-        esc_api::integrate::paths::Configurations::new(sender)
+        esc_api::integrate::paths::Integrations::new(sender)
             .delete(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
-                esc_api::ConfigurationId(self.configuration_id.clone()),
+                esc_api::IntegrationId(self.integration_id.clone()),
             )
             .await?;
 
@@ -128,27 +128,27 @@ impl DeleteConfiguration {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "retrieves a configuration")]
-pub struct GetConfiguration {
+#[structopt(about = "retrieves a integration")]
+pub struct GetIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = crate::parse_default_org_id), default_value = "")]
     pub organization_id: String,
     #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
     pub project_id: String,
-    #[structopt(long, help = "The id of the configuration")]
-    pub configuration_id: String,
+    #[structopt(long, help = "The id of the integration")]
+    pub integration_id: String,
 }
 
-impl GetConfiguration {
+impl GetIntegration {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let render_in_json = cfg.render_in_json();
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrate::paths::Configurations::new(sender)
+        let result = esc_api::integrate::paths::Integrations::new(sender)
             .get(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
-                esc_api::ConfigurationId(self.configuration_id.clone()),
+                esc_api::IntegrationId(self.integration_id.clone()),
             )
             .await?;
 
@@ -157,38 +157,38 @@ impl GetConfiguration {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "updates a configuration")]
-pub struct UpdateConfiguration {
+#[structopt(about = "updates a integration")]
+pub struct UpdateIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = crate::parse_default_org_id), default_value = "")]
     pub organization_id: String,
     #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
     pub project_id: String,
-    #[structopt(long, help = "The id of the configuration")]
-    pub configuration_id: String,
+    #[structopt(long, help = "The id of the integration")]
+    pub integration_id: String,
     #[structopt(subcommand)]
-    pub data: ConfigurationData,
+    pub data: IntegrationData,
     #[structopt(long)]
     pub description: String,
 }
 
-impl UpdateConfiguration {
+impl UpdateIntegration {
     async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
         let sender = cfg.create_request_sender();
 
-        esc_api::integrate::paths::Configurations::new(sender)
+        esc_api::integrate::paths::Integrations::new(sender)
             .update(
                 esc_api::OrgId(self.organization_id.clone()),
                 esc_api::ProjectId(self.project_id.clone()),
-                esc_api::ConfigurationId(self.configuration_id.clone()),
-                esc_api::integrate::UpdateConfigurationRequest {
+                esc_api::IntegrationId(self.integration_id.clone()),
+                esc_api::integrate::UpdateIntegrationRequest {
                     data: match &self.data {
-                        ConfigurationData::OpsGenie(args) => {
-                            esc_api::integrate::ConfigurationData::OpsGenieConfiguration {
+                        IntegrationData::OpsGenie(args) => {
+                            esc_api::integrate::IntegrationData::OpsGenieIntegration {
                                 api_key: args.api_key.clone(),
                             }
                         }
-                        ConfigurationData::Slack(args) => {
-                            esc_api::integrate::ConfigurationData::SlackConfiguration {
+                        IntegrationData::Slack(args) => {
+                            esc_api::integrate::IntegrationData::SlackIntegration {
                                 channel_id: args.channel_id.clone(),
                                 token: args.token.clone(),
                             }
@@ -204,21 +204,21 @@ impl UpdateConfiguration {
 }
 
 #[derive(Debug, StructOpt)]
-pub enum ConfigurationData {
-    OpsGenie(OpsGenieConfiguration),
-    Slack(SlackConfiguration),
+pub enum IntegrationData {
+    OpsGenie(OpsGenieIntegration),
+    Slack(SlackIntegration),
 }
 
 #[derive(Debug, StructOpt)]
 #[structopt()]
-pub struct OpsGenieConfiguration {
+pub struct OpsGenieIntegration {
     #[structopt(long, help = "API key used with the Ops Genie integration API")]
     pub api_key: String,
 }
 
 #[derive(Debug, StructOpt)]
 #[structopt()]
-pub struct SlackConfiguration {
+pub struct SlackIntegration {
     #[structopt(long, help = "Slack Channel to send messages to")]
     pub channel_id: String,
     #[structopt(long, help = "API token for the Slack bot")]

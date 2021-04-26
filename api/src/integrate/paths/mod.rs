@@ -1,3 +1,3 @@
-pub mod configurations;
+pub mod integrations;
 
-pub use configurations::*;
+pub use integrations::*;
