@@ -1,4 +1,12 @@
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CreateIntegration {
+    #[serde(rename = "data")]
+    pub data: crate::integrate::models::IntegrationData,
+    #[serde(rename = "description")]
+    pub description: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CreateIntegrationRequest {
     #[serde(rename = "data")]
     pub data: crate::integrate::models::IntegrationData,
@@ -32,6 +40,8 @@ pub struct Integration {
     pub organization_id: crate::types::OrgId,
     #[serde(rename = "projectId")]
     pub project_id: crate::types::ProjectId,
+    #[serde(rename = "status")]
+    pub status: crate::integrate::models::IntegrationStatus,
     #[serde(rename = "updated")]
     pub updated: chrono::DateTime<chrono::Utc>,
 }
@@ -54,6 +64,29 @@ pub enum IntegrationData {
         #[serde(rename = "token")]
         token: String,
     },
+}
+
+///
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum IntegrationStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "deleted")]
+    Deleted,
+}
+
+impl IntegrationStatus {
+    pub fn from_str(src: &str) -> Result<IntegrationStatus, String> {
+        match src {
+            "active" => Ok(IntegrationStatus::Active),
+            "deleted" => Ok(IntegrationStatus::Deleted),
+            _ => Err(format!(
+                "Unsupported value \"{}\". Supported values: {:?}",
+                src,
+                ["active", "deleted",]
+            )),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
