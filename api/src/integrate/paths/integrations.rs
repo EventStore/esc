@@ -85,6 +85,19 @@ pub async fn list_integrations(
         )
         .await
 }
+/// Sends a message to an integration sink
+pub async fn test_integration(
+    sender: &EscRequestSender,
+    organization_id: crate::types::OrgId,
+    project_id: crate::types::ProjectId,
+    integration_id: crate::types::IntegrationId,
+) -> crate::Result<()> {
+    let url = format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}/test", organizationId=crate::utils::urlencode(organization_id), projectId=crate::utils::urlencode(project_id), integrationId=crate::utils::urlencode(integration_id));
+
+    sender
+        .send_request::<(), ()>(Method::POST, url, None, Some(()))
+        .await
+}
 /// updates a integration
 pub async fn update_integration(
     sender: &EscRequestSender,
@@ -157,6 +170,16 @@ impl<'a> Integrations {
         project_id: crate::types::ProjectId,
     ) -> crate::Result<crate::integrate::models::ListIntegrationsResponse> {
         list_integrations(&self.sender, organization_id, project_id).await
+    }
+
+    /// Sends a message to an integration sink
+    pub async fn test_integration(
+        &self,
+        organization_id: crate::types::OrgId,
+        project_id: crate::types::ProjectId,
+        integration_id: crate::types::IntegrationId,
+    ) -> crate::Result<()> {
+        test_integration(&self.sender, organization_id, project_id, integration_id).await
     }
 
     /// updates a integration

@@ -14,6 +14,7 @@ pub enum CommandChoices {
     Delete(DeleteIntegration),
     Get(GetIntegration),
     Update(UpdateIntegration),
+    TestIntegration(TestIntegration),
 }
 
 impl CommandChoices {
@@ -24,6 +25,7 @@ impl CommandChoices {
             CommandChoices::Delete(params) => params.exec(cfg).await,
             CommandChoices::Get(params) => params.exec(cfg).await,
             CommandChoices::Update(params) => params.exec(cfg).await,
+            CommandChoices::TestIntegration(params) => params.exec(cfg).await,
         }
     }
 }
@@ -62,7 +64,7 @@ pub struct CreateIntegration {
     #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
     pub project_id: String,
     #[structopt(subcommand)]
-    pub data: IntegrationData,
+    pub data: CreateIntegrationData,
     #[structopt(long)]
     pub description: String,
 }
@@ -73,28 +75,22 @@ impl CreateIntegration {
 
         let sender = cfg.create_request_sender();
 
-        let result = esc_api::integrate::paths::Integrations::new(sender)
-            .create(
-                esc_api::OrgId(self.organization_id.clone()),
-                esc_api::ProjectId(self.project_id.clone()),
-                esc_api::integrate::CreateIntegrationRequest {
-                    data: match &self.data {
-                        IntegrationData::OpsGenie(args) => {
-                            esc_api::integrate::IntegrationData::OpsGenieIntegration {
-                                api_key: args.api_key.clone(),
-                            }
-                        }
-                        IntegrationData::Slack(args) => {
-                            esc_api::integrate::IntegrationData::SlackIntegration {
-                                channel_id: args.channel_id.clone(),
-                                token: args.token.clone(),
-                            }
-                        }
-                    },
-                    description: self.description.clone(),
-                },
-            )
-            .await?;
+        let result = esc_api::integrate::paths::Integrations::new(sender).create(
+            esc_api::OrgId(self.organization_id.clone()),
+            esc_api::ProjectId(self.project_id.clone()),
+        esc_api::integrate::CreateIntegrationRequest{
+data: match &self.data {
+        CreateIntegrationData::opsGenie(args) => esc_api::integrate::CreateIntegrationData::CreateOpsGenieIntegrationData{
+            api_key: args.api_key.clone(),
+},
+        CreateIntegrationData::slack(args) => esc_api::integrate::CreateIntegrationData::CreateSlackIntegrationData{
+            channel_id: args.channel_id.clone(),
+            token: args.token.clone(),
+},
+},
+            description: self.description.clone(),
+            }
+        ).await?;
 
         crate::print_output(render_in_json, result)
     }
@@ -166,9 +162,9 @@ pub struct UpdateIntegration {
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
     #[structopt(subcommand)]
-    pub data: IntegrationData,
+    pub data: Option<UpdateIntegrationData>,
     #[structopt(long)]
-    pub description: String,
+    pub description: Option<String>,
 }
 
 impl UpdateIntegration {
@@ -182,17 +178,12 @@ impl UpdateIntegration {
                 esc_api::IntegrationId(self.integration_id.clone()),
                 esc_api::integrate::UpdateIntegrationRequest {
                     data: match &self.data {
-                        IntegrationData::OpsGenie(args) => {
-                            esc_api::integrate::IntegrationData::OpsGenieIntegration {
-                                api_key: args.api_key.clone(),
-                            }
-                        }
-                        IntegrationData::Slack(args) => {
-                            esc_api::integrate::IntegrationData::SlackIntegration {
-                                channel_id: args.channel_id.clone(),
-                                token: args.token.clone(),
-                            }
-                        }
+                        None => None,
+                        Some(data) => Some(esc_api::integrate::UpdateIntegrationData {
+                            api_key: data.api_key.clone(),
+                            channel_id: data.channel_id.clone(),
+                            token: data.token.clone(),
+                        }),
                     },
                     description: self.description.clone(),
                 },
@@ -204,23 +195,63 @@ impl UpdateIntegration {
 }
 
 #[derive(Debug, StructOpt)]
-pub enum IntegrationData {
-    OpsGenie(OpsGenieIntegration),
-    Slack(SlackIntegration),
+#[structopt(about = "Sends a message to an integration sink")]
+pub struct TestIntegration {
+    #[structopt(long, help="The id of the organization",  parse(try_from_str = crate::parse_default_org_id), default_value = "")]
+    pub organization_id: String,
+    #[structopt(long, help="The id of the project",  parse(try_from_str = crate::parse_default_project_id), default_value = "")]
+    pub project_id: String,
+    #[structopt(long, help = "The id of the integration")]
+    pub integration_id: String,
+}
+
+impl TestIntegration {
+    async fn exec(&self, cfg: &crate::CliConfig) -> Result<(), Box<dyn std::error::Error>> {
+        let render_in_json = cfg.render_in_json();
+
+        let sender = cfg.create_request_sender();
+
+        let result = esc_api::integrate::paths::Integrations::new(sender)
+            .test_integration(
+                esc_api::OrgId(self.organization_id.clone()),
+                esc_api::ProjectId(self.project_id.clone()),
+                esc_api::IntegrationId(self.integration_id.clone()),
+            )
+            .await?;
+
+        crate::print_output(render_in_json, result)
+    }
+}
+
+#[derive(Debug, StructOpt)]
+pub enum CreateIntegrationData {
+    opsGenie(CreateOpsGenieIntegrationData),
+    slack(CreateSlackIntegrationData),
 }
 
 #[derive(Debug, StructOpt)]
 #[structopt()]
-pub struct OpsGenieIntegration {
+pub struct CreateOpsGenieIntegrationData {
     #[structopt(long, help = "API key used with the Ops Genie integration API")]
     pub api_key: String,
 }
 
 #[derive(Debug, StructOpt)]
 #[structopt()]
-pub struct SlackIntegration {
+pub struct CreateSlackIntegrationData {
     #[structopt(long, help = "Slack Channel to send messages to")]
     pub channel_id: String,
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: String,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt()]
+pub struct UpdateIntegrationData {
+    #[structopt(long, help = "API key used with the Ops Genie integration API")]
+    pub api_key: Option<String>,
+    #[structopt(long, help = "Slack Channel to send messages to")]
+    pub channel_id: Option<String>,
+    #[structopt(long, help = "API token for the Slack bot")]
+    pub token: Option<String>,
 }

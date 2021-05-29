@@ -7,9 +7,29 @@ pub struct CreateIntegration {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "sink")]
+pub enum CreateIntegrationData {
+    #[serde(rename = "opsGenie")]
+    CreateOpsGenieIntegrationData {
+        /// API key used with the Ops Genie integration API
+        #[serde(rename = "apiKey")]
+        api_key: String,
+    },
+    #[serde(rename = "slack")]
+    CreateSlackIntegrationData {
+        /// Slack Channel to send messages to
+        #[serde(rename = "channelId")]
+        channel_id: String,
+        /// API token for the Slack bot
+        #[serde(rename = "token")]
+        token: String,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CreateIntegrationRequest {
     #[serde(rename = "data")]
-    pub data: crate::integrate::models::IntegrationData,
+    pub data: crate::integrate::models::CreateIntegrationData,
     #[serde(rename = "description")]
     pub description: String,
 }
@@ -18,6 +38,27 @@ pub struct CreateIntegrationRequest {
 pub struct CreateIntegrationResponse {
     #[serde(rename = "id")]
     pub id: crate::types::IntegrationId,
+}
+
+/// CreateOpsGenieIntegrationData : Create integration for the Ops Genie API integration
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CreateOpsGenieIntegrationData {
+    /// API key used with the Ops Genie integration API
+    #[serde(rename = "apiKey")]
+    pub api_key: String,
+}
+
+/// CreateSlackIntegrationData : Create integration for a Slack bot used by this integration.
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CreateSlackIntegrationData {
+    /// Slack Channel to send messages to
+    #[serde(rename = "channelId")]
+    pub channel_id: String,
+    /// API token for the Slack bot
+    #[serde(rename = "token")]
+    pub token: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -49,20 +90,26 @@ pub struct Integration {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "sink")]
 pub enum IntegrationData {
-    #[serde(rename = "OpsGenie")]
-    OpsGenieIntegration {
+    #[serde(rename = "opsGenie")]
+    OpsGenieIntegrationData {
         /// API key used with the Ops Genie integration API
-        #[serde(rename = "api_key")]
-        api_key: String,
+        #[serde(rename = "apiKeyDisplay")]
+        api_key_display: String,
+        /// Source of data for integration
+        #[serde(rename = "source")]
+        source: String,
     },
-    #[serde(rename = "Slack")]
-    SlackIntegration {
+    #[serde(rename = "slack")]
+    SlackIntegrationData {
         /// Slack Channel to send messages to
         #[serde(rename = "channelId")]
         channel_id: String,
         /// API token for the Slack bot
-        #[serde(rename = "token")]
-        token: String,
+        #[serde(rename = "tokenDisplay")]
+        token_display: String,
+        /// Source of data for integration
+        #[serde(rename = "source")]
+        source: String,
     },
 }
 
@@ -104,6 +151,18 @@ pub struct OpsGenieIntegration {
     pub api_key: String,
 }
 
+/// OpsGenieIntegrationData : Integration for the Ops Genie API integration
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OpsGenieIntegrationData {
+    /// API key used with the Ops Genie integration API
+    #[serde(rename = "apiKeyDisplay")]
+    pub api_key_display: String,
+    /// Source of data for integration
+    #[serde(rename = "source")]
+    pub source: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProblemDetails {
     #[serde(rename = "details")]
@@ -132,10 +191,59 @@ pub struct SlackIntegration {
     pub token: String,
 }
 
+/// SlackIntegrationData : Integration for a Slack bot used by this integration.
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SlackIntegrationData {
+    /// Slack Channel to send messages to
+    #[serde(rename = "channelId")]
+    pub channel_id: String,
+    /// API token for the Slack bot
+    #[serde(rename = "tokenDisplay")]
+    pub token_display: String,
+    /// Source of data for integration
+    #[serde(rename = "source")]
+    pub source: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UpdateIntegrationData {
+    /// API key used with the Ops Genie integration API
+    #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    /// Slack Channel to send messages to
+    #[serde(rename = "channelId", skip_serializing_if = "Option::is_none")]
+    pub channel_id: Option<String>,
+    /// API token for the Slack bot
+    #[serde(rename = "token", skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UpdateIntegrationRequest {
-    #[serde(rename = "data")]
-    pub data: crate::integrate::models::IntegrationData,
-    #[serde(rename = "description")]
-    pub description: String,
+    #[serde(rename = "data", skip_serializing_if = "Option::is_none")]
+    pub data: Option<crate::integrate::models::UpdateIntegrationData>,
+    #[serde(rename = "description", skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// UpdateOpsGenieIntegrationData : Integration for the Ops Genie API integration
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UpdateOpsGenieIntegrationData {
+    /// API key used with the Ops Genie integration API
+    #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+}
+
+/// UpdateSlackIntegrationData : Integration for a Slack bot used by this integration.
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UpdateSlackIntegrationData {
+    /// Slack Channel to send messages to
+    #[serde(rename = "channelId", skip_serializing_if = "Option::is_none")]
+    pub channel_id: Option<String>,
+    /// API token for the Slack bot
+    #[serde(rename = "token", skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
 }
