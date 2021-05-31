@@ -1,5 +1,5 @@
 use crate::http::{authenticated_request, default_error_handler};
-use crate::{Client, Job, JobData, JobId, OrgId, ProjectId, Token};
+use crate::{Client, Token};
 use reqwest::Method;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
