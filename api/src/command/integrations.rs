@@ -279,6 +279,7 @@ impl<'a> Integrations<'a> {
                 projectId = project_id,
             ),
         )
+        .header("Content-Type", "application/json")
         .json(&create_integration_request);
 
         let resp = default_error_handler(req.send().await?).await?;
@@ -360,7 +361,7 @@ impl<'a> Integrations<'a> {
             Method::POST,
             self.token,
             format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}/test", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),
-        );
+        ).header("Content-Type", "application/json");
         let _ = default_error_handler(req.send().await?).await?;
         Ok(())
     }
