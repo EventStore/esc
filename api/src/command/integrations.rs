@@ -273,7 +273,8 @@ impl<'a> Integrations<'a> {
             Method::POST,
             self.token,
             format!(
-                "/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations",
+                "{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations",
+                self.client.base_url,
                 organizationId = organization_id,
                 projectId = project_id,
             ),
@@ -296,7 +297,9 @@ impl<'a> Integrations<'a> {
             Method::DELETE,
             self.token,
             format!(
-                "/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", organizationId=organization_id, projectId=project_id, integrationId=integration_id
+                "{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", 
+                self.client.base_url,
+                organizationId=organization_id, projectId=project_id, integrationId=integration_id
             ),
         );
 
@@ -315,7 +318,7 @@ impl<'a> Integrations<'a> {
             &self.client,
             Method::GET,
             self.token,
-            format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", organizationId=organization_id, projectId=project_id, integrationId=integration_id),
+            format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),
         )
         .header("Content-Type", "application/json");
 
@@ -330,7 +333,8 @@ impl<'a> Integrations<'a> {
         project_id: crate::types::ProjectId,
     ) -> crate::Result<ListIntegrationsResponse> {
         let url = format!(
-            "/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations",
+            "{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations",
+            self.client.base_url,
             organizationId = organization_id,
             projectId = project_id,
         );
@@ -355,7 +359,7 @@ impl<'a> Integrations<'a> {
             &self.client,
             Method::POST,
             self.token,
-            format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}/test", organizationId=organization_id, projectId=project_id, integrationId=integration_id),
+            format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}/test", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),
         );
         let _ = default_error_handler(req.send().await?).await?;
         Ok(())
@@ -372,7 +376,7 @@ impl<'a> Integrations<'a> {
             &self.client,
             Method::PUT,
             self.token,
-            format!("/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", organizationId=organization_id, projectId=project_id, integrationId=integration_id),
+            format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),
         )
         .header("Content-Type", "application/json")
         .json(&update_integration_request);
