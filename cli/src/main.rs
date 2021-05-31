@@ -1091,7 +1091,6 @@ enum IntegrationsCommand {
     TestIntegration(TestIntegration),
 }
 
-
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Creates a new integration")]
 pub struct CreateIntegration {
@@ -1126,8 +1125,6 @@ pub struct CreateSlackIntegrationData {
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: String,
 }
-
-
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "deletes a integration")]
@@ -1196,7 +1193,6 @@ pub struct UpdateIntegrationData {
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: Option<String>,
 }
-
 
 lazy_static! {
     static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
@@ -2167,15 +2163,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Command::Integrations(cmd) => {
-            let token = store.access(opt.refresh_token).await?;            
+            let token = store.access(opt.refresh_token).await?;
             match cmd.integration_command {
                 IntegrationsCommand::List(params) => {
-                    let i = client.integrations(&token).list(params.organization_id, params.project_id).await?;
+                    let i = client
+                        .integrations(&token)
+                        .list(params.organization_id, params.project_id)
+                        .await?;
                     print_output(opt.render_in_json, i)?;
-                },
+                }
                 IntegrationsCommand::Create(params) => {
                     let integration = client.integrations(&token).create(
-                        params.organization_id, 
+                        params.organization_id,
                         params.project_id,
                         esc_api::command::integrations::CreateIntegrationRequest{
                             description: params.description,
@@ -2191,35 +2190,61 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     ).await?;
                     print_output(opt.render_in_json, integration)?;
-                },
+                }
                 IntegrationsCommand::Delete(params) => {
-                    client.integrations(&token).delete(params.organization_id, params.project_id, esc_api::IntegrationId(params.integration_id)).await?;
-                },
+                    client
+                        .integrations(&token)
+                        .delete(
+                            params.organization_id,
+                            params.project_id,
+                            esc_api::IntegrationId(params.integration_id),
+                        )
+                        .await?;
+                }
                 IntegrationsCommand::Get(params) => {
-                    let i = client.integrations(&token).get(params.organization_id, params.project_id, esc_api::IntegrationId(params.integration_id)).await?;
+                    let i = client
+                        .integrations(&token)
+                        .get(
+                            params.organization_id,
+                            params.project_id,
+                            esc_api::IntegrationId(params.integration_id),
+                        )
+                        .await?;
                     print_output(opt.render_in_json, i)?;
-                },
+                }
                 IntegrationsCommand::Update(params) => {
-                    client.integrations(&token).update(
-                        params.organization_id, 
-                        params.project_id, 
-                        esc_api::IntegrationId(params.integration_id), 
-                        esc_api::command::integrations::UpdateIntegrationRequest{
-                            data: match params.data {
-                                None => None,
-                                Some(data) => Some(esc_api::command::integrations::UpdateIntegrationData{
-                                    api_key: data.api_key.clone(),
-                                    channel_id: data.channel_id.clone(),
-                                    token: data.token.clone(),
-                                }),
+                    client
+                        .integrations(&token)
+                        .update(
+                            params.organization_id,
+                            params.project_id,
+                            esc_api::IntegrationId(params.integration_id),
+                            esc_api::command::integrations::UpdateIntegrationRequest {
+                                data: match params.data {
+                                    None => None,
+                                    Some(data) => Some(
+                                        esc_api::command::integrations::UpdateIntegrationData {
+                                            api_key: data.api_key.clone(),
+                                            channel_id: data.channel_id.clone(),
+                                            token: data.token.clone(),
+                                        },
+                                    ),
+                                },
+                                description: params.description,
                             },
-                            description: params.description,
-                        }
-                    ).await?;
-                },
+                        )
+                        .await?;
+                }
                 IntegrationsCommand::TestIntegration(params) => {
-                    client.integrations(&token).test(params.organization_id, params.project_id, esc_api::IntegrationId(params.integration_id)).await?;
-                },
+                    client
+                        .integrations(&token)
+                        .test(
+                            params.organization_id,
+                            params.project_id,
+                            esc_api::IntegrationId(params.integration_id),
+                        )
+                        .await?;
+                }
             }
         }
 
@@ -2233,7 +2258,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         Command::GeneratePowershellCompletion => {
             clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
-        }        
+        }
     };
 
     Ok(())

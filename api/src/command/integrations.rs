@@ -252,7 +252,6 @@ pub struct UpdateSlackIntegrationData {
     pub token: Option<String>,
 }
 
-
 pub struct Integrations<'a> {
     client: &'a Client,
     token: &'a Token,
@@ -325,24 +324,19 @@ impl<'a> Integrations<'a> {
         Ok(result)
     }
 
-
-    pub async fn list(&self, 
+    pub async fn list(
+        &self,
         organization_id: crate::types::OrgId,
-        project_id: crate::types::ProjectId
+        project_id: crate::types::ProjectId,
     ) -> crate::Result<ListIntegrationsResponse> {
         let url = format!(
             "/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations",
             organizationId = organization_id,
             projectId = project_id,
         );
-        
-        let req = authenticated_request(
-            &self.client,
-            Method::GET,
-            self.token,
-            url,
-        )
-        .header("Accept", "application/json");
+
+        let req = authenticated_request(&self.client, Method::GET, self.token, url)
+            .header("Accept", "application/json");
 
         let resp = default_error_handler(req.send().await?).await?;
 
@@ -372,7 +366,7 @@ impl<'a> Integrations<'a> {
         organization_id: crate::types::OrgId,
         project_id: crate::types::ProjectId,
         integration_id: crate::types::IntegrationId,
-        update_integration_request: UpdateIntegrationRequest
+        update_integration_request: UpdateIntegrationRequest,
     ) -> crate::Result<()> {
         let req = authenticated_request(
             &self.client,
@@ -387,5 +381,4 @@ impl<'a> Integrations<'a> {
 
         Ok(())
     }
-
 }
