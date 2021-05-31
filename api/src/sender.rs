@@ -50,6 +50,7 @@ impl RequestSender {
                 "Authorization",
                 format!("{} {}", token.token_type, token.access_token),
             )
+            .header("Content-Type", "application/json")
             .header("Accept", "application/json");
         let req = match body {
             Some(b) => req.json(b),
