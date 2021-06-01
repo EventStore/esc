@@ -1,12 +1,4 @@
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CreateIntegration {
-    #[serde(rename = "data")]
-    pub data: crate::integrate::models::IntegrationData,
-    #[serde(rename = "description")]
-    pub description: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "sink")]
 pub enum CreateIntegrationData {
     #[serde(rename = "opsGenie")]
@@ -14,6 +6,8 @@ pub enum CreateIntegrationData {
         /// API key used with the Ops Genie integration API
         #[serde(rename = "apiKey")]
         api_key: String,
+        #[serde(rename = "source", skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
     },
     #[serde(rename = "slack")]
     CreateSlackIntegrationData {
@@ -23,6 +17,8 @@ pub enum CreateIntegrationData {
         /// API token for the Slack bot
         #[serde(rename = "token")]
         token: String,
+        #[serde(rename = "source", skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
     },
 }
 
@@ -47,6 +43,8 @@ pub struct CreateOpsGenieIntegrationData {
     /// API key used with the Ops Genie integration API
     #[serde(rename = "apiKey")]
     pub api_key: String,
+    #[serde(rename = "source", skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 /// CreateSlackIntegrationData : Create integration for a Slack bot used by this integration.
@@ -59,6 +57,8 @@ pub struct CreateSlackIntegrationData {
     /// API token for the Slack bot
     #[serde(rename = "token")]
     pub token: String,
+    #[serde(rename = "source", skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -142,15 +142,6 @@ pub struct ListIntegrationsResponse {
     pub integrations: Vec<crate::integrate::models::Integration>,
 }
 
-/// OpsGenieIntegration : Integration for the Ops Genie API integration
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct OpsGenieIntegration {
-    /// API key used with the Ops Genie integration API
-    #[serde(rename = "api_key")]
-    pub api_key: String,
-}
-
 /// OpsGenieIntegrationData : Integration for the Ops Genie API integration
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -177,18 +168,6 @@ pub struct ProblemDetails {
     pub title: Option<String>,
     #[serde(rename = "type")]
     pub _type: String,
-}
-
-/// SlackIntegration : Integration for a Slack bot used by this integration.
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct SlackIntegration {
-    /// Slack Channel to send messages to
-    #[serde(rename = "channelId")]
-    pub channel_id: String,
-    /// API token for the Slack bot
-    #[serde(rename = "token")]
-    pub token: String,
 }
 
 /// SlackIntegrationData : Integration for a Slack bot used by this integration.

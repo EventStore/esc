@@ -82,10 +82,12 @@ impl CreateIntegration {
 data: match &self.data {
         CreateIntegrationData::opsGenie(args) => esc_api::integrate::CreateIntegrationData::CreateOpsGenieIntegrationData{
             api_key: args.api_key.clone(),
+            source: args.source.clone(),
 },
         CreateIntegrationData::slack(args) => esc_api::integrate::CreateIntegrationData::CreateSlackIntegrationData{
             channel_id: args.channel_id.clone(),
             token: args.token.clone(),
+            source: args.source.clone(),
 },
 },
             description: self.description.clone(),
@@ -234,6 +236,8 @@ pub enum CreateIntegrationData {
 pub struct CreateOpsGenieIntegrationData {
     #[structopt(long, help = "API key used with the Ops Genie integration API")]
     pub api_key: String,
+    #[structopt(long)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -243,6 +247,8 @@ pub struct CreateSlackIntegrationData {
     pub channel_id: String,
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: String,
+    #[structopt(long)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, StructOpt)]
