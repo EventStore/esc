@@ -31,11 +31,11 @@ impl<'a> TokenStore<'a> {
         };
 
         TokenStore {
-            tokens,
             auth,
-            path,
-            key,
+            tokens,
             validation,
+            key,
+            path,
         }
     }
 

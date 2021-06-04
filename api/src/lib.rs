@@ -92,4 +92,8 @@ impl Client {
     pub fn history<'a>(&'a self, token: &'a Token) -> command::history::History<'a> {
         command::history::History::new(&self, token)
     }
+
+    pub fn integrations<'a>(&'a self, token: &'a Token) -> command::integrations::Integrations<'a> {
+        command::integrations::Integrations::new(&self, token)
+    }
 }
