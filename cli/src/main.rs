@@ -2226,7 +2226,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         esc_api::command::integrations::UpdateIntegrationData {
                                             api_key: data.api_key.clone(),
                                             channel_id: data.channel_id.clone(),
-                                            token: data.token.clone(),
+                                            token: data.token,
                                         },
                                     ),
                                 },

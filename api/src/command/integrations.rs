@@ -126,20 +126,6 @@ pub enum IntegrationStatus {
     Deleted,
 }
 
-impl IntegrationStatus {
-    pub fn from_str(src: &str) -> Result<IntegrationStatus, String> {
-        match src {
-            "active" => Ok(IntegrationStatus::Active),
-            "deleted" => Ok(IntegrationStatus::Deleted),
-            _ => Err(format!(
-                "Unsupported value \"{}\". Supported values: {:?}",
-                src,
-                ["active", "deleted",]
-            )),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ListIntegrationsResponse {
     #[serde(rename = "integrations")]
