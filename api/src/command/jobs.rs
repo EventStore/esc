@@ -78,7 +78,9 @@ impl<'a> Jobs<'a> {
         .header("Content-Type", "application/json");
 
         let resp = default_error_handler(req.send().await?).await?;
-        let result: GetJobResponse = resp.json().await?;
+        // works around serde_json issue 505
+        let data: serde_json::Value = resp.json().await?;
+        let result: GetJobResponse = serde_json::from_value(data)?;
         Ok(result.job)
     }
 
