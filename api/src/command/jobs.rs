@@ -125,7 +125,7 @@ impl<'a> Jobs<'a> {
 
 #[test]
 fn test_job_data_serialization() {
-    use crate::{ClusterId, JobDataScheduledBackup, ScheduleField, ScheduleInfo};
+    use crate::{ClusterId, JobDataScheduledBackup};
     use serde_json;
 
     let d = Job {
@@ -134,21 +134,6 @@ fn test_job_data_serialization() {
         project_id: ProjectId("projectId".to_string()),
         description: "desc".to_string(),
         schedule: "cron".to_string(),
-        schedule_info: Some(ScheduleInfo {
-            rate_in_minutes: 30,
-            minute: ScheduleField {
-                expr_type: "rate".to_string(),
-                number: 38,
-            },
-            hour: ScheduleField {
-                expr_type: "wildcard".to_string(),
-                number: 0,
-            },
-            day_of_week: ScheduleField {
-                expr_type: "number".to_string(),
-                number: 1,
-            },
-        }),
         data: JobData::ScheduledBackup(JobDataScheduledBackup {
             description: "{some-expr-here}".to_string(),
             max_backup_count: 3,
@@ -164,21 +149,6 @@ fn test_job_data_serialization() {
   "projectId": "projectId",
   "description": "desc",
   "schedule": "cron",
-  "scheduleInfo": {
-    "rateInMinutes": 30,
-    "minute": {
-        "exprType": "rate",
-        "number": 38
-    },
-    "hour": {        
-        "exprType": "wildcard",
-        "number": 0
-    },
-    "dayOfWeek": {        
-        "exprType": "number",
-        "number": 1
-    }
-  },
   "type": "ScheduledBackup",
   "data": {
     "description": "{some-expr-here}",
@@ -191,8 +161,6 @@ fn test_job_data_serialization() {
     .unwrap();
 
     let actual = serde_json::to_value(&d).unwrap();
-    // let bytes = serde_json::to_vec_pretty(&d).unwrap();
-    // let actual = String::from_utf8_lossy(&bytes);
     println!("{}", expected);
     println!("{}", actual);
     assert_eq!(expected.to_string(), actual.to_string());
@@ -230,6 +198,47 @@ fn test_job_data_deserialization() {
             assert_eq!(data.description, "{some-expr-here}".to_string());
             assert_eq!(data.max_backup_count, 3);
             assert_eq!(data.cluster_id.0, "source cluster ID".to_string());
+        }
+    }
+}
+
+#[test]
+fn test_job_data_deserialization_2() {
+    use serde_json;
+
+    let input = r#"{
+ "job": {
+  "data": {
+   "clusterId": "c30buunvh5pfpnoj1950",
+   "description": "JOB - {cluster}-{cluster:id} {cluster:provider} {cluster:region} - {index:decimal} - {datetime:RFC3339}",
+   "maxBackupCount": 3
+  },
+  "description": "My backup",
+  "id": "c30buvfvh5pfr34q5jcg",
+  "organizationId": "bqjlpkug10l3jdar2e1g",
+  "projectId": "brcs88ug10l3o051p2pg",
+  "schedule": "0 1 * * *",
+  "status": "running",
+  "type": "ScheduledBackup"
+ }
+}"#;
+
+    let actual: GetJobResponse = serde_json::from_str(input).unwrap();
+
+    assert_eq!(actual.job.id, JobId("c30buvfvh5pfr34q5jcg".to_string()));
+    assert_eq!(actual.job.org_id, OrgId("bqjlpkug10l3jdar2e1g".to_string()));
+    assert_eq!(
+        actual.job.project_id,
+        ProjectId("brcs88ug10l3o051p2pg".to_string())
+    );
+    assert_eq!(actual.job.description, "My backup".to_string());
+    assert_eq!(actual.job.schedule, "0 1 * * *".to_string());
+    assert_eq!(actual.job.status, "running".to_string());
+    match actual.job.data {
+        JobData::ScheduledBackup(data) => {
+            assert_eq!(data.description, "JOB - {cluster}-{cluster:id} {cluster:provider} {cluster:region} - {index:decimal} - {datetime:RFC3339}".to_string());
+            assert_eq!(data.max_backup_count, 3);
+            assert_eq!(data.cluster_id.0, "c30buunvh5pfpnoj1950".to_string());
         }
     }
 }

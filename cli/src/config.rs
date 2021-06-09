@@ -1,4 +1,3 @@
-use serde::export::Formatter;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -200,7 +199,7 @@ struct UrlVisitor {}
 impl<'a> serde::de::Visitor<'a> for UrlVisitor {
     type Value = Option<url::Url>;
 
-    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(formatter, "a valid URL")
     }
 
