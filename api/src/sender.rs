@@ -69,14 +69,24 @@ impl RequestSender {
                     let r: R = match use_return_value {
                         Some(r) => r,
                         None => {
-                            let r: R = serde_json::from_str(&text)?;
+                            // `from_str` must use an intermediary serde_json::Value
+                            // here to avoid an esoteric failure which is seen
+                            // in some cases, see:
+                            // https://github.com/serde-rs/json/issues/505
+                            // let r: R = serde_json::from_str(&text)?;
+                            // When revisiting the code generator this work around
+                            // should only be applied to problematic models as
+                            // it's a little inefficient.
+                            let d: serde_json::Value = serde_json::from_str(&text)?;
+                            let r: R = serde_json::from_value(d)?;
                             r
                         }
                     };
                     Ok(r)
                 }
                 None => {
-                    let r: R = resp.json().await?;
+                    let d: serde_json::Value = resp.json().await?;
+                    let r: R = serde_json::from_value(d)?;
                     Ok(r)
                 }
             };
