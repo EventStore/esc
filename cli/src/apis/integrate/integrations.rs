@@ -89,6 +89,12 @@ data: match &self.data {
             token: args.token.clone(),
             source: args.source.clone(),
 },
+        CreateIntegrationData::pagerDuty(args) => esc_api::integrate::CreateIntegrationData::CreatePagerDutyIntegrationData{
+            auth_token: args.auth_token.clone(),
+            service: args.service.clone(),
+            user: args.user.clone(),
+            source: args.source.clone(),
+},
 },
             description: self.description.clone(),
             }
@@ -229,6 +235,7 @@ impl TestIntegration {
 pub enum CreateIntegrationData {
     opsGenie(CreateOpsGenieIntegrationData),
     slack(CreateSlackIntegrationData),
+    pagerDuty(CreatePagerDutyIntegrationData),
 }
 
 #[derive(Debug, StructOpt)]
@@ -247,6 +254,19 @@ pub struct CreateSlackIntegrationData {
     pub channel_id: String,
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: String,
+    #[structopt(long)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt()]
+pub struct CreatePagerDutyIntegrationData {
+    #[structopt(long, help = "API token for PagerDuty")]
+    pub auth_token: String,
+    #[structopt(long, help = "The name of the service for the integration")]
+    pub service: String,
+    #[structopt(long, help = "The name for the author of incident")]
+    pub user: String,
     #[structopt(long)]
     pub source: Option<String>,
 }
