@@ -133,8 +133,8 @@ pub enum IntegrationData {
     #[serde(rename = "pagerDuty")]
     PagerDutyIntegrationData {
         /// API token for PagerDuty
-        #[serde(rename = "authTokenDisplay", skip_serializing_if = "Option::is_none")]
-        auth_token_display: Option<String>,
+        #[serde(rename = "authTokenDisplay")]
+        auth_token_display: String,
         /// The name of the service for the integration
         #[serde(rename = "service")]
         service: String,
@@ -204,8 +204,8 @@ pub struct OpsGenieIntegrationData {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PagerDutyIntegrationData {
     /// API token for PagerDuty
-    #[serde(rename = "authTokenDisplay", skip_serializing_if = "Option::is_none")]
-    pub auth_token_display: Option<String>,
+    #[serde(rename = "authTokenDisplay")]
+    pub auth_token_display: String,
     /// The name of the service for the integration
     #[serde(rename = "service")]
     pub service: String,
