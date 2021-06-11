@@ -130,6 +130,20 @@ pub enum IntegrationData {
         #[serde(rename = "source")]
         source: String,
     },
+    #[serde(rename = "pagerDuty")]
+    PagerDutyIntegrationData {
+        /// API token for PagerDuty
+        #[serde(rename = "authTokenDisplay", skip_serializing_if = "Option::is_none")]
+        auth_token_display: Option<String>,
+        /// The name of the service for the integration
+        #[serde(rename = "service")]
+        service: String,
+        /// The name for the author of incident
+        #[serde(rename = "user")]
+        user: String,
+        #[serde(rename = "source")]
+        source: String,
+    },
     #[serde(rename = "slack")]
     SlackIntegrationData {
         /// Slack Channel to send messages to
@@ -185,6 +199,23 @@ pub struct OpsGenieIntegrationData {
     pub source: String,
 }
 
+/// PagerDutyIntegrationData : Integration for the PagerDuty API integration
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PagerDutyIntegrationData {
+    /// API token for PagerDuty
+    #[serde(rename = "authTokenDisplay", skip_serializing_if = "Option::is_none")]
+    pub auth_token_display: Option<String>,
+    /// The name of the service for the integration
+    #[serde(rename = "service")]
+    pub service: String,
+    /// The name for the author of incident
+    #[serde(rename = "user")]
+    pub user: String,
+    #[serde(rename = "source")]
+    pub source: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProblemDetails {
     #[serde(rename = "details")]
@@ -227,6 +258,15 @@ pub struct UpdateIntegrationData {
     /// API token for the Slack bot
     #[serde(rename = "token", skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
+    /// API token for PagerDuty
+    #[serde(rename = "authToken", skip_serializing_if = "Option::is_none")]
+    pub auth_token: Option<String>,
+    /// The name of the service for the integration
+    #[serde(rename = "service", skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    /// The name for the author of incident
+    #[serde(rename = "user", skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -244,6 +284,21 @@ pub struct UpdateOpsGenieIntegrationData {
     /// API key used with the Ops Genie integration API
     #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
+}
+
+/// UpdatePagerDutyIntegrationData : Create integration for the PagerDuty API integration
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UpdatePagerDutyIntegrationData {
+    /// API token for PagerDuty
+    #[serde(rename = "authToken", skip_serializing_if = "Option::is_none")]
+    pub auth_token: Option<String>,
+    /// The name of the service for the integration
+    #[serde(rename = "service", skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    /// The name for the author of incident
+    #[serde(rename = "user", skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
 }
 
 /// UpdateSlackIntegrationData : Integration for a Slack bot used by this integration.
