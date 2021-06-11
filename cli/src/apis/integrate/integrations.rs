@@ -191,6 +191,9 @@ impl UpdateIntegration {
                             api_key: data.api_key.clone(),
                             channel_id: data.channel_id.clone(),
                             token: data.token.clone(),
+                            auth_token: data.auth_token.clone(),
+                            service: data.service.clone(),
+                            user: data.user.clone(),
                         }),
                     },
                     description: self.description.clone(),
@@ -280,4 +283,10 @@ pub struct UpdateIntegrationData {
     pub channel_id: Option<String>,
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: Option<String>,
+    #[structopt(long, help = "API token for PagerDuty")]
+    pub auth_token: Option<String>,
+    #[structopt(long, help = "The name of the service for the integration")]
+    pub service: Option<String>,
+    #[structopt(long, help = "The name for the author of incident")]
+    pub user: Option<String>,
 }
