@@ -16,7 +16,7 @@ pub async fn list_history(
     sender: &EscRequestSender,
     organization_id: crate::types::OrgId,
     project_id: crate::types::ProjectId,
-    job_id: Option<String>,
+    _job_id: Option<String>,
 ) -> crate::Result<crate::orchestrate::models::GetHistoryResponse> {
     let url = format!(
         "/orchestrate/v1/organizations/{organizationId}/projects/{projectId}/history",

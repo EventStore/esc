@@ -67,7 +67,7 @@ pub async fn get_group(
 pub async fn list_groups(
     sender: &EscRequestSender,
     organization_id: crate::types::OrgId,
-    linked_resource: Option<String>,
+    _linked_resource: Option<String>,
 ) -> crate::Result<crate::access::models::ListGroupsResponse> {
     let url = format!(
         "/access/v1/organizations/{organizationId}/groups",
