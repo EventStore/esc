@@ -823,6 +823,12 @@ struct CreateCluster {
 
     #[structopt(long, help = "Optional id of backup to restore")]
     source_backup_id: Option<String>,
+
+    #[structopt(long, help = "Optional IOPS number for disk (only AWS)")]
+    pub disk_iops: Option<i32>,
+
+    #[structopt(long, help = "Throughput in Mb/s for disk (only AWS)")]
+    pub disk_throughput: Option<i32>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -888,6 +894,15 @@ struct ExpandCluster {
 
     #[structopt(long, help = "Disk size in GB")]
     disk_size_in_gb: usize,
+
+    #[structopt(long, help = "IOPS number for disk (only AWS)")]
+    disk_iops: Option<i32>,
+
+    #[structopt(long, help = "Throughput in Mb/s for disk (only AWS)")]
+    disk_throughput: Option<i32>,
+
+    #[structopt(long, help = "Optional disk type")]
+    disk_type: Option<String>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1999,6 +2014,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             server_version: params.server_version,
                             projection_level: params.projection_level,
                             source_backup_id: params.source_backup_id,
+                            disk_iops: params.disk_iops,
+                            disk_throughput: params.disk_throughput,
                         };
                         let cluster_id = client
                             .clusters(&token)
@@ -2050,7 +2067,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 params.org_id,
                                 params.project_id,
                                 params.id,
-                                params.disk_size_in_gb,
+                                esc_api::command::clusters::ExpandDisk {
+                                    disk_size_gb: params.disk_size_in_gb,
+                                    disk_iops: params.disk_iops,
+                                    disk_throughput: params.disk_throughput,
+                                    disk_type: params.disk_type,
+                                },
                             )
                             .await?;
                     }

@@ -275,6 +275,10 @@ pub struct Cluster {
     pub projection_level: ProjectionLevel,
     pub status: String,
     pub created: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_iops: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_throughput: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
