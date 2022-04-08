@@ -255,7 +255,7 @@ impl<'a> Integrations<'a> {
         create_integration_request: CreateIntegrationRequest,
     ) -> crate::Result<CreateIntegrationResponse> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -280,7 +280,7 @@ impl<'a> Integrations<'a> {
         integration_id: crate::types::IntegrationId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -302,7 +302,7 @@ impl<'a> Integrations<'a> {
         integration_id: crate::types::IntegrationId,
     ) -> crate::Result<GetIntegrationResponse> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),
@@ -326,7 +326,7 @@ impl<'a> Integrations<'a> {
             projectId = project_id,
         );
 
-        let req = authenticated_request(&self.client, Method::GET, self.token, url)
+        let req = authenticated_request(self.client, Method::GET, self.token, url)
             .header("Accept", "application/json");
 
         let resp = default_error_handler(req.send().await?).await?;
@@ -343,7 +343,7 @@ impl<'a> Integrations<'a> {
         integration_id: crate::types::IntegrationId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}/test", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),
@@ -360,7 +360,7 @@ impl<'a> Integrations<'a> {
         update_integration_request: UpdateIntegrationRequest,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!("{}/integrate/v1/organizations/{organizationId}/projects/{projectId}/integrations/{integrationId}", self.client.base_url, organizationId=organization_id, projectId=project_id, integrationId=integration_id),

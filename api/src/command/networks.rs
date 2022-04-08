@@ -52,7 +52,7 @@ impl<'a> Networks<'a> {
         params: CreateNetworkParams,
     ) -> crate::Result<NetworkId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -77,7 +77,7 @@ impl<'a> Networks<'a> {
         params: UpdateNetworkParams,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -99,7 +99,7 @@ impl<'a> Networks<'a> {
         network_id: NetworkId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -120,7 +120,7 @@ impl<'a> Networks<'a> {
         network_id: NetworkId,
     ) -> crate::Result<Network> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -139,7 +139,7 @@ impl<'a> Networks<'a> {
 
     pub async fn list(self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Network>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(

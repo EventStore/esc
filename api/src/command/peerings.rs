@@ -95,7 +95,7 @@ impl<'a> Peerings<'a> {
         params: CreatePeeringParams,
     ) -> crate::Result<Result<PeeringId, PeeringFailure>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -126,7 +126,7 @@ impl<'a> Peerings<'a> {
         params: UpdatePeeringParams,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -148,7 +148,7 @@ impl<'a> Peerings<'a> {
         peering_id: PeeringId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -169,7 +169,7 @@ impl<'a> Peerings<'a> {
         peering_id: PeeringId,
     ) -> crate::Result<Peering> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -188,7 +188,7 @@ impl<'a> Peerings<'a> {
 
     pub async fn list(self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Peering>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -212,7 +212,7 @@ impl<'a> Peerings<'a> {
         params: DerivePeeringCommandsParams,
     ) -> crate::Result<Vec<PeeringCommand>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(

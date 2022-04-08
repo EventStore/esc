@@ -44,7 +44,7 @@ impl<'a> Projects<'a> {
 
     pub async fn create(&self, org_id: OrgId, name: String) -> crate::Result<ProjectId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -68,7 +68,7 @@ impl<'a> Projects<'a> {
         name: String,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -89,7 +89,7 @@ impl<'a> Projects<'a> {
         proj_id: ProjectId,
     ) -> crate::Result<Option<crate::Project>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -112,7 +112,7 @@ impl<'a> Projects<'a> {
 
     pub async fn delete(&self, org_id: OrgId, proj_id: ProjectId) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -128,7 +128,7 @@ impl<'a> Projects<'a> {
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<crate::Project>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(

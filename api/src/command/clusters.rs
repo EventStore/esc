@@ -71,7 +71,7 @@ impl<'a> Clusters<'a> {
         params: CreateClusterParams,
     ) -> crate::Result<ClusterId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -95,7 +95,7 @@ impl<'a> Clusters<'a> {
         id: ClusterId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -117,7 +117,7 @@ impl<'a> Clusters<'a> {
         id: ClusterId,
     ) -> crate::Result<Cluster> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -141,7 +141,7 @@ impl<'a> Clusters<'a> {
         id: ClusterId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -157,7 +157,7 @@ impl<'a> Clusters<'a> {
 
     pub async fn list(&self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Cluster>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -182,7 +182,7 @@ impl<'a> Clusters<'a> {
         params: ExpandDisk,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(

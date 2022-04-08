@@ -62,7 +62,7 @@ impl<'a> Policies<'a> {
         params: CreatePolicyParams,
     ) -> crate::Result<PolicyId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -87,7 +87,7 @@ impl<'a> Policies<'a> {
     ) -> crate::Result<()> {
         let payload = json!({ "policy": params });
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -104,7 +104,7 @@ impl<'a> Policies<'a> {
 
     pub async fn delete(&self, org_id: OrgId, policy_id: PolicyId) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -120,7 +120,7 @@ impl<'a> Policies<'a> {
 
     pub async fn get(&self, org_id: OrgId, policy_id: PolicyId) -> crate::Result<Policy> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -139,7 +139,7 @@ impl<'a> Policies<'a> {
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<Policy>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(

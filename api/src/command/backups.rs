@@ -44,7 +44,7 @@ impl<'a> Backups<'a> {
         params: CreateBackupParams,
     ) -> crate::Result<BackupId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -68,7 +68,7 @@ impl<'a> Backups<'a> {
         id: BackupId,
     ) -> crate::Result<Backup> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -92,7 +92,7 @@ impl<'a> Backups<'a> {
         id: BackupId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -108,7 +108,7 @@ impl<'a> Backups<'a> {
 
     pub async fn list(&self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Backup>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
