@@ -25,7 +25,7 @@ impl<'a> History<'a> {
         job_id: Option<JobId>,
     ) -> crate::Result<Vec<HistoryItem>> {
         let mut req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(

@@ -44,7 +44,7 @@ impl<'a> Organizations<'a> {
 
     pub async fn list(&self) -> crate::Result<Vec<crate::Organization>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!("{}/resources/v1/organizations", self.client.base_url),
@@ -60,7 +60,7 @@ impl<'a> Organizations<'a> {
 
     pub async fn get(&self, id: OrgId) -> crate::Result<crate::Organization> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!("{}/resources/v1/organizations/{}", self.client.base_url, id),
@@ -76,7 +76,7 @@ impl<'a> Organizations<'a> {
 
     pub async fn create(&self, name: String) -> crate::Result<OrgId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!("{}/resources/v1/organizations", self.client.base_url),
@@ -92,7 +92,7 @@ impl<'a> Organizations<'a> {
 
     pub async fn update(&self, id: OrgId, name: String) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!("{}/resources/v1/organizations/{}", self.client.base_url, id),
@@ -106,7 +106,7 @@ impl<'a> Organizations<'a> {
 
     pub async fn delete(&self, id: OrgId) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!("{}/resources/v1/organizations/{}", self.client.base_url, id),

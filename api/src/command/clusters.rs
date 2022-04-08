@@ -18,6 +18,10 @@ pub struct CreateClusterParams {
     pub projection_level: ProjectionLevel,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_backup_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_iops: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_throughput: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,8 +44,14 @@ struct ListClustersResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ExpandDisk {
-    disk_size_gb: usize,
+pub struct ExpandDisk {
+    pub disk_size_gb: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_iops: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_throughput: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_type: Option<String>,
 }
 
 pub struct Clusters<'a> {
@@ -61,7 +71,7 @@ impl<'a> Clusters<'a> {
         params: CreateClusterParams,
     ) -> crate::Result<ClusterId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -85,7 +95,7 @@ impl<'a> Clusters<'a> {
         id: ClusterId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -107,7 +117,7 @@ impl<'a> Clusters<'a> {
         id: ClusterId,
     ) -> crate::Result<Cluster> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -131,7 +141,7 @@ impl<'a> Clusters<'a> {
         id: ClusterId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -147,7 +157,7 @@ impl<'a> Clusters<'a> {
 
     pub async fn list(&self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Cluster>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -169,10 +179,10 @@ impl<'a> Clusters<'a> {
         org_id: OrgId,
         project_id: ProjectId,
         cluster_id: ClusterId,
-        disk_size_gb: usize,
+        params: ExpandDisk,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -181,7 +191,7 @@ impl<'a> Clusters<'a> {
             ),
         )
         .header("Content-Type", "application/json")
-        .json(&ExpandDisk { disk_size_gb });
+        .json(&params);
 
         let _ = default_error_handler(req.send().await?).await?;
 

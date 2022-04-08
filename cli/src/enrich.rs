@@ -17,10 +17,9 @@ pub struct EnrichedCluster {
 
 pub fn enrich_cluster(cluster: Cluster) -> EnrichedCluster {
     let mut tcp = Vec::new();
-    let grpc;
     let ui = format!("https://{}.mesdb.eventstore.cloud:2113", cluster.id.0);
 
-    if let Topology::ThreeNodeMultiZone = cluster.topology {
+    let grpc = if let Topology::ThreeNodeMultiZone = cluster.topology {
         for idx in 0..3 {
             tcp.push(format!(
                 "{}-{}.mesdb.eventstore.cloud:1113",
@@ -28,14 +27,14 @@ pub fn enrich_cluster(cluster: Cluster) -> EnrichedCluster {
             ));
         }
 
-        grpc = format!(
+        format!(
             "esdb+discover://{}.mesdb.eventstore.cloud:2113",
             cluster.id.0
-        );
+        )
     } else {
         tcp.push(format!("{}.mesdb.eventstore.cloud:1113", cluster.id.0));
-        grpc = format!("esdb://{}.mesdb.eventstore.cloud:2113", cluster.id.0);
-    }
+        format!("esdb://{}.mesdb.eventstore.cloud:2113", cluster.id.0)
+    };
 
     EnrichedCluster {
         cluster,

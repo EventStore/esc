@@ -50,7 +50,7 @@ impl<'a> Invites<'a> {
         groups: Option<Vec<GroupId>>,
     ) -> crate::Result<InviteId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -74,7 +74,7 @@ impl<'a> Invites<'a> {
         user_email: Email,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
@@ -91,7 +91,7 @@ impl<'a> Invites<'a> {
 
     pub async fn get(self, org_id: OrgId, id: InviteId) -> crate::Result<Option<Invite>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -113,7 +113,7 @@ impl<'a> Invites<'a> {
 
     pub async fn delete(self, org_id: OrgId, id: InviteId) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -129,7 +129,7 @@ impl<'a> Invites<'a> {
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<Invite>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(

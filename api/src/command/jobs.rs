@@ -45,7 +45,7 @@ impl<'a> Jobs<'a> {
         params: CreateJobParams,
     ) -> crate::Result<JobId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -67,7 +67,7 @@ impl<'a> Jobs<'a> {
         job_id: JobId,
     ) -> crate::Result<Job> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -89,7 +89,7 @@ impl<'a> Jobs<'a> {
         id: JobId,
     ) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -105,7 +105,7 @@ impl<'a> Jobs<'a> {
 
     pub async fn list(&self, org_id: OrgId, project_id: ProjectId) -> crate::Result<Vec<Job>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(

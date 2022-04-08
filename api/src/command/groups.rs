@@ -47,7 +47,7 @@ impl<'a> Groups<'a> {
 
     pub async fn create(&self, params: CreateGroupParams) -> crate::Result<GroupId> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::POST,
             self.token,
             format!(
@@ -66,7 +66,7 @@ impl<'a> Groups<'a> {
 
     pub async fn get(self, id: GroupId, org_id: OrgId) -> crate::Result<Option<crate::Group>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -89,7 +89,7 @@ impl<'a> Groups<'a> {
 
     pub async fn delete(self, id: GroupId, org_id: OrgId) -> crate::Result<()> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::DELETE,
             self.token,
             format!(
@@ -116,7 +116,7 @@ impl<'a> Groups<'a> {
 
     pub async fn list(&self, org_id: OrgId) -> crate::Result<Vec<crate::Group>> {
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::GET,
             self.token,
             format!(
@@ -173,7 +173,7 @@ impl<'a> UpdateGroup<'a> {
         };
 
         let req = authenticated_request(
-            &self.client,
+            self.client,
             Method::PUT,
             self.token,
             format!(
