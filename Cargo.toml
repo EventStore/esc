@@ -2,5 +2,6 @@
 members = [
   "api",
   "base",
-  "cli"
+  "cli",
+  "generated",
 ]
