@@ -1,10 +1,8 @@
 [package]
-name = "esc-api"
-version = "1.21.6"
-authors = ["Yorick Laupa <yorick.laupa@eventstore.com>"]
+name = "esc-client-base"
+version = "0.1.0"
+authors = ["Tim Simpson <timsimpson4@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serde = "1.0"
@@ -17,3 +15,12 @@ validator = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 bytes = "0.5"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+hyper = "0.14.11"
+
+[dev-dependencies]
+regex = "1.5.4"
+tokio = { version = "1.18", features = ["macros", "fs"] }
+
+[examples]
+name = "create-token"
+path = "examples/create-token.rs"
