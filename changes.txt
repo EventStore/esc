@@ -1,0 +1,4 @@
+`invites update` renamed to `invites resend`
+The CLI had a command to "update" an invite which took an email address. However this request parameter was never honored, and internally the API was called "resend-invite." This was renamed to make that clearer.
+
+`invites get` did not exist on the backend and was removed.

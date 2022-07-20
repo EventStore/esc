@@ -284,7 +284,7 @@ struct ListGroups {
 #[derive(StructOpt, Debug)]
 enum InvitesCommand {
     Create(CreateInvite),
-    Update(UpdateInvite),
+    Resend(ResendInvite),
     Get(GetInvite),
     Delete(DeleteInvite),
     List(ListInvites),
@@ -303,15 +303,12 @@ struct CreateInvite {
 }
 
 #[derive(StructOpt, Debug)]
-struct UpdateInvite {
+struct ResendInvite {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite will relate to")]
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::InviteId,
-
-    #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
-    email: esc_api::Email,
+    id: esc_api::access::InviteId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1573,47 +1570,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             AccessCommand::Invites(invites) => match invites.invites_command {
                 InvitesCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let invite_id = client
-                        .invites(&token)
-                        .create(params.org_id, params.email, params.group)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::create_invite(
+                        &client,
+                        params.org_id,
+                        esc_api::access::CreateInviteRequest {
+                            groups: params.group,
+                            user_email: params.email,
+                        },
+                    )
+                    .await?;
 
-                    println!("{}", invite_id)
+                    println!("{}", resp.id);
+                    Ok(())
                 }
 
                 InvitesCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .invites(&token)
-                        .update(params.org_id, params.id, params.email)
-                        .await?;
-                }
-
-                InvitesCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let invite = client.invites(&token).get(params.org_id, params.id).await?;
-
-                    if let Some(invite) = invite {
-                        print_output(opt.render_in_json, invite)?;
-                    } else {
-                        std::process::exit(-1);
-                    }
+                    let client = client_builder.create().await?;
+                    esc_api::access::resend_invite(
+                        &client,
+                        params.org_id,
+                        esc_api::access::ResendInviteRequest { id: params.id },
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 InvitesCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .invites(&token)
-                        .delete(params.org_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_invite(&client, params.org_id, params.id).await?;
+                    Ok(())
                 }
 
                 InvitesCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let invites = client.invites(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(invites))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::list_invites(&client, params.org_id).await?;
+                    print_output(opt.render_in_json, resp.invites)?;
+                    Ok(())
                 }
             },
 
