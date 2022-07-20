@@ -309,10 +309,13 @@ dependencies = [
  "dirs 2.0.2",
  "env_logger 0.7.1",
  "esc-api",
+ "esc-client-base",
+ "esc-client-store",
  "hyper 0.13.10",
  "jsonwebtoken 7.2.0",
  "lazy_static",
  "log",
+ "reqwest",
  "rpassword 4.0.5",
  "rustyline 6.3.0",
  "serde",
@@ -322,6 +325,7 @@ dependencies = [
  "tokio 0.2.25",
  "toml",
  "url",
+ "validator",
 ]
 
 [[package]]

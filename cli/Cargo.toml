@@ -8,6 +8,9 @@ edition = "2018"
 
 [dependencies]
 esc-api = { path = "../api"}
+esc-client-base = { path = "../base"}
+esc-client-store = { path = "../store"}
+
 structopt = "0.3"
 tokio = { version = "0.2", features = ["macros", "fs"] }
 log = "0.4"
@@ -26,3 +29,5 @@ rpassword = "4.0"
 rustyline = "6.2"
 cidr = "0.1"
 clap = "*"
+reqwest = { version = "0.11", features = ["json", "rustls-tls-native-roots"] }
+validator = "0.10"

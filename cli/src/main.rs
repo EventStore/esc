@@ -12,10 +12,9 @@ extern crate serde_derive;
 mod config;
 mod constants;
 mod enrich;
-mod store;
 
-use crate::store::{Auth, TokenStore};
 use esc_api::{Client, ClientId, GroupId, OrgId};
+use esc_client_store::{Auth, TokenStore};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -794,7 +793,7 @@ struct CreateCluster {
     description: String,
 
     #[structopt(long, parse(try_from_str = parse_topology), help = "Either single-node or three-node-multi-zone")]
-    topology: esc_api::Topology,
+    topology: esc_api::mesdb::Topology,
 
     #[structopt(
         long,
@@ -819,7 +818,7 @@ struct CreateCluster {
         parse(try_from_str = parse_projection_level),
         help = "The projection level of your database. Can be off, system or user "
     )]
-    projection_level: esc_api::ProjectionLevel,
+    projection_level: esc_api::mesdb::ProjectionLevel,
 
     #[structopt(long, help = "Optional id of backup to restore")]
     source_backup_id: Option<String>,
@@ -1230,23 +1229,23 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref CLUSTER_TOPOLOGIES: HashMap<&'static str, esc_api::Topology> = {
+    static ref CLUSTER_TOPOLOGIES: HashMap<&'static str, esc_api::mesdb::Topology> = {
         let mut map = HashMap::new();
-        map.insert("single-node", esc_api::Topology::SingleNode);
+        map.insert("single-node", esc_api::mesdb::Topology::SingleNode);
         map.insert(
             "three-node-multi-zone",
-            esc_api::Topology::ThreeNodeMultiZone,
+            esc_api::mesdb::Topology::ThreeNodeMultiZone,
         );
         map
     };
 }
 
 lazy_static! {
-    static ref CLUSTER_PROJECTION_LEVELS: HashMap<&'static str, esc_api::ProjectionLevel> = {
+    static ref CLUSTER_PROJECTION_LEVELS: HashMap<&'static str, esc_api::mesdb::ProjectionLevel> = {
         let mut map = HashMap::new();
-        map.insert("off", esc_api::ProjectionLevel::Off);
-        map.insert("system", esc_api::ProjectionLevel::System);
-        map.insert("user", esc_api::ProjectionLevel::User);
+        map.insert("off", esc_api::mesdb::ProjectionLevel::Off);
+        map.insert("system", esc_api::mesdb::ProjectionLevel::System);
+        map.insert("user", esc_api::mesdb::ProjectionLevel::User);
         map
     };
 }
@@ -1315,11 +1314,11 @@ fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
     parse_enum(&CONTEXT_PROP_NAMES, src)
 }
 
-fn parse_topology(src: &str) -> Result<esc_api::Topology, String> {
+fn parse_topology(src: &str) -> Result<esc_api::mesdb::Topology, String> {
     parse_enum(&CLUSTER_TOPOLOGIES, src)
 }
 
-fn parse_projection_level(src: &str) -> Result<esc_api::ProjectionLevel, String> {
+fn parse_projection_level(src: &str) -> Result<esc_api::mesdb::ProjectionLevel, String> {
     parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
@@ -1336,9 +1335,9 @@ fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Res
     }
 }
 
-fn parse_email(src: &str) -> Result<esc_api::Email, String> {
-    if let Some(email) = esc_api::Email::parse(src) {
-        return Ok(email);
+fn parse_email(src: &str) -> Result<String, String> {
+    if validator::validate_email(src) {
+        return Ok(src.to_string());
     }
 
     Err("Invalid email".to_string())
@@ -1408,15 +1407,85 @@ where
     }
 }
 
+pub struct StaticAuthorization {
+    pub authorization_header: String,
+}
+
+impl esc_api::Authorization for StaticAuthorization {
+    fn authorization_header(&self) -> String {
+        self.authorization_header.clone()
+    }
+
+    fn refresh(&mut self) -> bool {
+        false
+    }
+}
+
+async fn get_token(
+    refresh_token: Option<String>,
+) -> Result<esc_api::Token, Box<dyn std::error::Error>> {
+    let token_config = esc_api::TokenConfig::default();
+    let client = reqwest::Client::new();
+    match refresh_token {
+        Some(refresh_token) => {
+            let refreshed_token = esc_client_base::identity::operations::refresh(
+                &client,
+                &token_config,
+                &refresh_token,
+            )
+            .await?;
+            Ok(refreshed_token)
+        }
+        None => {
+            let mut store = esc_client_store::token_store(token_config).await?;
+            let token = store.access(&client).await?;
+            Ok(token)
+        }
+    }
+}
+
+struct ClientBuilder {
+    base_url: String,
+    refresh_token: Option<String>,
+}
+
+impl ClientBuilder {
+    pub async fn create(self) -> Result<esc_api::Client, Box<dyn std::error::Error>> {
+        let base_url = config::SETTINGS
+            .get_current_profile()
+            .and_then(|profile| {
+                profile.api_base_url.as_ref().map(|url| {
+                    format!(
+                        "{}://{}",
+                        url.scheme(),
+                        url.host_str().expect("Pre-validated it has a host")
+                    )
+                })
+            })
+            .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
+
+        let token = get_token(self.refresh_token).await?;
+        let authorization = StaticAuthorization {
+            authorization_header: token.authorization_header(),
+        };
+        let sender = esc_api::RequestSender {
+            client: reqwest::Client::new(),
+            observer: None,
+        };
+        let client = esc_api::Client {
+            authorization: std::sync::Arc::new(authorization),
+            base_url: self.base_url,
+            sender,
+        };
+        Ok(client)
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut clap_app = Opt::clap();
     let opt = Opt::from_clap(&clap_app.clone().get_matches());
-    let audience = constants::ES_CLOUD_API_AUDIENCE.parse()?;
-    let auth = Auth {
-        id: ClientId(constants::ES_CLIENT_ID.to_owned()),
-        audience,
-    };
+
     let base_url = config::SETTINGS
         .get_current_profile()
         .and_then(|profile| {
@@ -1430,11 +1499,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
-    let client = Client::new(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string())?;
+    let client_builder = ClientBuilder {
+        base_url,
+        refresh_token: opt.refresh_token,
+    };
 
     config::Settings::configure().await?;
-    let mut store = TokenStore::new(&auth, client.tokens());
-    store.configure().await?;
 
     if opt.debug {
         std::env::set_var("RUST_LOG", "esc_api=debug,esc=debug");
@@ -1445,55 +1515,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Access(access) => match access.access_command {
             AccessCommand::Groups(groups) => match groups.groups_command {
                 GroupsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::groups::CreateGroupParams {
-                        org_id: params.org_id,
+                    let client = client_builder.create().await?;
+                    let create_params = esc_api::access::CreateGroupRequest {
                         name: params.name,
-                        members: params.members,
+                        members: Some(
+                            params
+                                .members
+                                .iter()
+                                .map(|m| esc_api::access::MemberId(m.clone()))
+                                .collect(),
+                        ),
                     };
-                    let group_id = client.groups(&token).create(create_params).await?;
+                    let group_id =
+                        esc_api::access::create_group(&client, params.org_id, create_params)
+                            .await?;
 
                     print_output(opt.render_in_json, group_id)?;
+                    Ok(())
                 }
 
                 GroupsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let mut update_group = client.groups(&token).update(params.id, params.org_id);
-
-                    update_group.set_name(params.name);
-                    update_group.set_members(params.members);
-                    update_group.execute().await?;
+                    let client = client_builder.create().await?;
+                    let body = esc_api::access::UpdateGroupRequest {
+                        members: params.members,
+                        name: params.name,
+                    };
+                    let mut update_group =
+                        esc_api::access::update_group(&client, params.org_id, params.id, body)
+                            .await?;
+                    Ok(())
                 }
 
                 GroupsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let group_id_opt = client.groups(&token).get(params.id, params.org_id).await?;
-
-                    match group_id_opt {
-                        Some(group) => {
-                            print_output(opt.render_in_json, group)?;
-                        }
-
-                        _ => {
-                            eprintln!("Group doesn't exists");
-                            std::process::exit(-1);
-                        }
-                    }
+                    let client = client_builder.create().await?;
+                    let group =
+                        esc_api::access::get_group(&client, params.org_id, params.id).await?;
+                    print_output(opt.render_in_json, group)?;
+                    Ok(())
                 }
 
                 GroupsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .groups(&token)
-                        .delete(params.id, params.org_id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_group(&client, params.org_id, params.id).await?;
+                    Ok(())
                 }
 
                 GroupsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let groups = client.groups(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(groups))?;
+                    let client = client_builder.create().await?;
+                    let groups = esc_api::access::list_groups(&client, params.org_id).await?;
+                    match opt.render_in_json {
+                        true => print_output(true, groups)?,
+                        false => print_output(false, List(groups.groups))?,
+                    }
+                    Ok(())
                 }
             },
 
@@ -1551,32 +1625,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         rpassword::read_password_from_tty(Some("Password: "))
                     }?;
 
-                    let audience = TokenStore::build_audience_str(&auth.audience);
-
-                    let token = client
-                        .tokens()
-                        .create(
-                            &auth.id,
-                            params.email.as_str(),
-                            password.as_str(),
-                            audience.as_str(),
-                        )
-                        .await?;
-
-                    let refresh = client
-                        .tokens()
-                        .refresh(&auth.id, token.refresh_token().unwrap().as_str())
-                        .await?;
-
-                    let token = token.update_access_token(refresh.access_token());
-                    let new_token_bytes = serde_json::to_vec(&token)?;
-
-                    let token_path = TokenStore::token_dirs()
-                        .join(auth.audience.host().expect("We have a host in this URI"));
-
-                    tokio::fs::write(&token_path, &new_token_bytes).await?;
-
-                    println!("Token created for audience {}", audience.as_str());
+                    let mut store =
+                        esc_client_store::token_store(esc_api::TokenConfig::default()).await?;
+                    let token = store.access(&reqwest::Client::new()).await?;
                     println!("{}", token.refresh_token().unwrap().as_str());
                 }
                 TokensCommand::Display(_params) => {
