@@ -1,4 +1,5 @@
-use esc_api::{Cluster, Topology};
+use esc_api::mesdb::Cluster;
+use esc_api::mesdb::Topology;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]

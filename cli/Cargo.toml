@@ -29,5 +29,6 @@ rpassword = "4.0"
 rustyline = "6.2"
 cidr = "0.1"
 clap = "*"
+clap_complete = "*"
 reqwest = { version = "0.11", features = ["json", "rustls-tls-native-roots"] }
 validator = "0.10"

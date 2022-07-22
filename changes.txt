@@ -9,6 +9,10 @@ The CLI had a command to "update" an invite which took an email address. However
 
 `mesdb clusters update` was broken as it sent the wrong request body.
 
+`access policy updates` allowed multiple fields to be optional. However my bet is that doing this blanks all of these out. I need to double check the API to see if I'm correct. If so the option should dissappear from the CLI. If I'm wrong I need to change the schema.
+
+When creating a slack integration it's now possible to specify a source
+
 ## TODO
 
 [ ] check that the `access` `tokens` commands work identically
@@ -18,3 +22,5 @@ The CLI had a command to "update" an invite which took an email address. However
 [ ] `integrate create` is missing optional source parameter for OpsGenie
 [ ] `integrate create` is missing PagerDuty (!!)
 [ ] `integrate create` is missing AwsCloudWatchLogs
+[ ] code completion
+[ ] `access policy updates` allowed multiple fields to be optional. However my bet is that doing this blanks all of these out. I need to double check the API to see if I'm correct. If so the option should dissappear from the CLI. If I'm wrong I need to change the schema.

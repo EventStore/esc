@@ -147,7 +147,7 @@ impl TokenStore {
                 self.refresh_active_token_provided_token(client, previous_token)
                     .await
             }
-            None => self.create_token_from_prompt(client, None).await,
+            None => self.create_token_from_prompt(client).await,
         }
     }
 

@@ -1,7 +1,4 @@
-#![allow(clippy::unnecessary_wraps)]
-
-#[macro_use]
-extern crate log;
+// #![allow(clippy::unnecessary_wraps)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -12,9 +9,9 @@ extern crate serde_derive;
 mod config;
 mod constants;
 mod enrich;
+mod utils;
 
-use esc_api::{Client, ClientId, GroupId, OrgId};
-use esc_client_store::{Auth, TokenStore};
+use esc_api::{GroupId, OrgId};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -175,15 +172,15 @@ struct UpdatePolicy {
     #[structopt(long, short, parse(try_from_str = parse_policy_id), help = "Policy's id")]
     policy: esc_api::PolicyId,
     #[structopt(long, short, help = "Policy's name")]
-    name: Option<String>,
+    name: String,
     #[structopt(long, short, help = "Policy's subjects")]
-    subjects: Option<Vec<String>>,
+    subjects: Vec<String>,
     #[structopt(long, short, help = "Policy's resources")]
-    resources: Option<Vec<String>>,
+    resources: Vec<String>,
     #[structopt(long, short, help = "Policy's actions")]
-    actions: Option<Vec<String>>,
+    actions: Vec<String>,
     #[structopt(long, short, help = "Policy's effect")]
-    effect: Option<String>,
+    effect: String,
 }
 
 #[derive(StructOpt, Debug)]
@@ -285,7 +282,6 @@ struct ListGroups {
 enum InvitesCommand {
     Create(CreateInvite),
     Resend(ResendInvite),
-    Get(GetInvite),
     Delete(DeleteInvite),
     List(ListInvites),
 }
@@ -296,7 +292,7 @@ struct CreateInvite {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
-    email: esc_api::Email,
+    email: String,
 
     #[structopt(long, short, parse(try_from_str = parse_group_id), help = "Group(s) the invite will associate the member with after confirmation")]
     group: Option<Vec<GroupId>>,
@@ -317,7 +313,7 @@ struct GetInvite {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::InviteId,
+    id: esc_api::access::InviteId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -326,13 +322,13 @@ struct DeleteInvite {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::InviteId,
+    id: esc_api::access::InviteId,
 }
 
 #[derive(StructOpt, Debug)]
 struct ListInvites {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invites relate to")]
-    org_id: OrgId,
+    org_id: esc_api::resources::OrganizationId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -368,13 +364,13 @@ enum NetworksCommand {
 #[structopt(about = "Create a network")]
 struct CreateNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network will relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_provider), help = "The cloud provider: aws, gcp or azure")]
-    provider: esc_api::Provider,
+    provider: esc_api::infra::Provider,
 
     #[structopt(long, parse(try_from_str = parse_cidr), help = "Classless Inter-Domain Routing block (CIDR)")]
     cidr_block: cidr::Ipv4Cidr,
@@ -390,49 +386,49 @@ struct CreateNetwork {
 #[structopt(about = "Delete a network")]
 struct DeleteNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
-    id: esc_api::NetworkId,
+    id: esc_api::infra::NetworkId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Read a network information")]
 struct GetNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
-    id: esc_api::NetworkId,
+    id: esc_api::infra::NetworkId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "List networks of an organization, given a project")]
 struct ListNetworks {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the networks relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the networks relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Update network")]
 struct UpdateNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
-    id: esc_api::NetworkId,
+    id: esc_api::infra::NetworkId,
 
     #[structopt(long, help = "A human-readable network's description")]
     description: String,
@@ -458,13 +454,13 @@ enum PeeringsCommand {
 #[structopt(about = "Create a peering")]
 struct CreatePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering will relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_network_id), default_value = "", help = "The network id the peering will relate to")]
-    network_id: esc_api::NetworkId,
+    network_id: esc_api::infra::NetworkId,
 
     #[structopt(long, help = "Your cloud provider account id")]
     peer_account_id: String,
@@ -486,10 +482,10 @@ struct CreatePeering {
 #[structopt(about = "Delete a peering")]
 struct DeletePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
@@ -499,10 +495,10 @@ struct DeletePeering {
 #[structopt(about = "Read a peering information")]
 struct GetPeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
@@ -512,20 +508,20 @@ struct GetPeering {
 #[structopt(about = "List all peering related an organization, given a project id")]
 struct ListPeerings {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peerings relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peerings relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Update a peering")]
 struct UpdatePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
@@ -711,7 +707,7 @@ struct UpdateProject {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to update")]
-    id: esc_api::ProjectId,
+    id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, help = "New project's name")]
     name: String,
@@ -724,7 +720,7 @@ struct GetProject {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to read information from")]
-    id: esc_api::ProjectId,
+    id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -734,7 +730,7 @@ struct DeleteProject {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_project_id), help = "The id of the project you want to delete")]
-    id: esc_api::ProjectId,
+    id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -781,10 +777,10 @@ struct CreateCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
-    network_id: esc_api::NetworkId,
+    network_id: esc_api::infra::NetworkId,
 
     #[structopt(long, help = "A human-readable description of the cluster")]
     description: String,
@@ -799,7 +795,7 @@ struct CreateCluster {
     instance_type: String,
 
     #[structopt(long, help = "Total disk capacity in Gigabytes (GB)")]
-    disk_size_in_gb: usize,
+    disk_size_in_gb: i32,
 
     #[structopt(
         long,
@@ -834,7 +830,7 @@ struct GetCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Cluster's id")]
     id: esc_api::ClusterId,
@@ -847,7 +843,7 @@ struct ListClusters {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -857,7 +853,7 @@ struct UpdateCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
     id: esc_api::ClusterId,
@@ -873,7 +869,7 @@ struct DeleteCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to delete")]
     id: esc_api::ClusterId,
@@ -886,13 +882,13 @@ struct ExpandCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to expand")]
     id: esc_api::ClusterId,
 
     #[structopt(long, help = "Disk size in GB")]
-    disk_size_in_gb: usize,
+    disk_size_in_gb: i32,
 
     #[structopt(long, help = "IOPS number for disk (only AWS)")]
     disk_iops: Option<i32>,
@@ -926,7 +922,7 @@ struct CreateBackup {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_cluster_id), help = "The id of the cluster to create backup of")]
     source_cluster_id: esc_api::ClusterId,
@@ -942,7 +938,7 @@ struct GetBackup {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Backup's id")]
     id: esc_api::BackupId,
@@ -955,7 +951,7 @@ struct ListBackups {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -965,7 +961,7 @@ struct DeleteBackup {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Id of the backup you want to delete")]
     id: esc_api::BackupId,
@@ -1006,7 +1002,7 @@ struct CreateJob {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the job will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, help = "A human-readable description of the job")]
     description: String,
@@ -1041,7 +1037,7 @@ struct GetJob {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_job_id), help = "Job's id")]
     id: esc_api::JobId,
@@ -1054,7 +1050,7 @@ struct ListJobs {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1064,7 +1060,7 @@ struct DeleteJob {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_job_id), help = "Id of the job you want to delete")]
     id: esc_api::JobId,
@@ -1089,7 +1085,7 @@ struct ListHistory {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
     job_id: Option<esc_api::JobId>,
@@ -1111,7 +1107,7 @@ pub struct CreateIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(subcommand)]
     pub data: CreateIntegrationData,
     #[structopt(long)]
@@ -1136,6 +1132,8 @@ pub struct CreateOpsGenieIntegrationData {
 pub struct CreateSlackIntegrationData {
     #[structopt(long, help = "Slack Channel to send messages to")]
     pub channel_id: String,
+    #[structopt(long, help = "Integration source")]
+    pub source: Option<String>,
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: String,
 }
@@ -1146,7 +1144,7 @@ pub struct DeleteIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
 }
@@ -1157,7 +1155,7 @@ pub struct GetIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
 }
@@ -1168,7 +1166,7 @@ pub struct ListIntegrations {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1177,7 +1175,7 @@ pub struct TestIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
 }
@@ -1188,7 +1186,7 @@ pub struct UpdateIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
     #[structopt(subcommand)]
@@ -1209,11 +1207,11 @@ pub struct UpdateIntegrationData {
 }
 
 lazy_static! {
-    static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
+    static ref PROVIDERS: HashMap<&'static str, esc_api::infra::Provider> = {
         let mut map = HashMap::new();
-        map.insert("aws", esc_api::Provider::Aws);
-        map.insert("gcp", esc_api::Provider::Gcp);
-        map.insert("azure", esc_api::Provider::Azure);
+        map.insert("aws", esc_api::infra::Provider::Aws);
+        map.insert("gcp", esc_api::infra::Provider::Gcp);
+        map.insert("azure", esc_api::infra::Provider::Azure);
         map
     };
 }
@@ -1250,7 +1248,7 @@ lazy_static! {
     };
 }
 
-fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
+fn parse_org_id(src: &str) -> Result<esc_api::resources::OrganizationId, String> {
     if src.trim().is_empty() {
         let profile_opt = crate::config::SETTINGS.get_current_profile();
 
@@ -1261,10 +1259,10 @@ fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
         return Err("Not provided and you don't have an org-id property set in the [context] section of your settings.toml file".to_string());
     }
 
-    Ok(esc_api::OrgId(src.to_string()))
+    Ok(esc_api::resources::OrganizationId(src.to_string()))
 }
 
-fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
+fn parse_project_id(src: &str) -> Result<esc_api::resources::ProjectId, String> {
     if src.trim().is_empty() {
         let profile_opt = crate::config::SETTINGS.get_current_profile();
 
@@ -1275,11 +1273,11 @@ fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
         return Err("Not provided and you don't have an project-id property set in the [context] section of your settings.toml file".to_string());
     }
 
-    Ok(esc_api::ProjectId(src.to_string()))
+    Ok(esc_api::resources::ProjectId(src.to_string()))
 }
 
-fn parse_network_id(src: &str) -> Result<esc_api::NetworkId, String> {
-    Ok(esc_api::NetworkId(src.to_string()))
+fn parse_network_id(src: &str) -> Result<esc_api::infra::NetworkId, String> {
+    Ok(esc_api::infra::NetworkId(src.to_string()))
 }
 
 fn parse_group_id(src: &str) -> Result<esc_api::GroupId, String> {
@@ -1306,7 +1304,7 @@ fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
     Ok(esc_api::PolicyId(src.to_string()))
 }
 
-fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
+fn parse_provider(src: &str) -> Result<esc_api::infra::Provider, String> {
     parse_enum(&PROVIDERS, src)
 }
 
@@ -1322,7 +1320,7 @@ fn parse_projection_level(src: &str) -> Result<esc_api::mesdb::ProjectionLevel, 
     parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
-fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
+fn parse_enum<A: Clone>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
         Some(p) => Ok(*p),
         None => {
@@ -1343,8 +1341,8 @@ fn parse_email(src: &str) -> Result<String, String> {
     Err("Invalid email".to_string())
 }
 
-fn parse_invite_id(src: &str) -> Result<esc_api::InviteId, String> {
-    Ok(esc_api::InviteId(src.to_string()))
+fn parse_invite_id(src: &str) -> Result<esc_api::access::InviteId, String> {
+    Ok(esc_api::access::InviteId(src.to_string()))
 }
 
 fn parse_cidr(src: &str) -> Result<cidr::Ipv4Cidr, cidr::NetworkParseError> {
@@ -1588,7 +1586,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(())
                 }
 
-                InvitesCommand::Update(params) => {
+                InvitesCommand::Resend(params) => {
                     let client = client_builder.create().await?;
                     esc_api::access::resend_invite(
                         &client,
@@ -1620,15 +1618,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut store = esc_client_store::token_store(token_config).await?;
 
                     let token = match params.email {
-                        Some(email) => match params.password {
-                            Some(password) => token_config.create_token(&client, email, password),
+                        Some(email) => match params.unsafe_password {
+                            Some(password) => store.create_token(&client, email, password).await,
                             None => {
-                                token_config.create_token_from_prompt_password_only(&client, email)
+                                store
+                                    .create_token_from_prompt_password_only(&client, email)
+                                    .await
                             }
                         },
-                        None => token_config.create_token_from_prompt(&client),
-                    }
-                    .await?;
+                        None => store.create_token_from_prompt(&client).await,
+                    }?;
                     let token = store.access(&reqwest::Client::new()).await?;
                     println!("{}", token.refresh_token().unwrap().as_str());
                     Ok(())
@@ -1637,7 +1636,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let token_config = esc_api::TokenConfig::default();
                     let mut store = esc_client_store::token_store(token_config).await?;
 
-                    let token = store.active_token().await?;
+                    let token = store.show().await?;
                     if let Some(token) = token {
                         println!("{}", token.refresh_token().unwrap());
                     } else {
@@ -1652,11 +1651,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let client = client_builder.create().await?;
                     let policy = esc_api::access::create_policy(
                         &client,
-                        paramsorg_id,
+                        params.org_id,
                         esc_api::access::CreatePolicyRequest {
                             policy: esc_api::access::CreatePolicy {
-                                actions: params.actions,
-                                effect: params.effect,
+                                actions: utils::actions_from_str_vec(params.actions),
+                                effect: utils::effect_from_str(&params.effect),
                                 name: params.name,
                                 resources: params.resources,
                                 subjects: params.subjects,
@@ -1676,8 +1675,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.policy,
                         esc_api::access::UpdatePolicyRequest {
                             policy: esc_api::access::UpdatePolicy {
-                                actions: params.actions,
-                                effect: params.effect,
+                                actions: utils::actions_from_str_vec(params.actions),
+                                effect: utils::effect_from_str(&params.effect),
                                 name: params.name,
                                 resources: params.resources,
                                 subjects: params.subjects,
@@ -1704,8 +1703,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
-                    let policies = esc_api::access::list_policies(&client, params.org_id).await?;
-                    print_output(opt.render_in_json, List(policies))?;
+                    let resp = esc_api::access::list_policies(&client, params.org_id).await?;
+                    print_output(opt.render_in_json, List(resp.policies))?;
                     Ok(())
                 }
             },
@@ -1722,7 +1721,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::infra::CreateNetworkRequest {
                             cidr_block: params.cidr_block.to_string(),
                             description: params.description,
-                            provider: params.provider,
+                            provider: params.provider.to_string(),
                             region: params.region,
                         },
                     )
@@ -1737,6 +1736,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &client,
                         params.org_id,
                         params.project_id,
+                        params.id,
                         esc_api::infra::UpdateNetworkRequest {
                             description: params.description,
                         },
@@ -1789,7 +1789,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.project_id,
                         esc_api::infra::CreatePeeringRequest {
                             description: params.description,
-                            network_id: params.network_id,
+                            network_id: params.network_id.to_string(),
                             peer_account_id: params.peer_account_id,
                             peer_network_id: params.peer_network_id,
                             peer_network_region: params.peer_network_region,
@@ -1807,31 +1807,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         )
                         .await?;
 
-                        let derive_peering_commands_params =
-                            esc_api::infra::create_peering_commands(
-                                &client,
-                                params.org_id,
-                                params.project_id,
-                                esc_api::infra::CreatePeeringCOmmandsRequest {
-                                    provider: network.provider,
-                                    peer_account_id: params.peer_account_id,
-                                    peer_network_id: params.peer_network_id,
-                                },
-                            )
-                            .await?;
+                        let resp = esc_api::infra::create_peering_commands(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            esc_api::infra::CreatePeeringCommandsRequest {
+                                provider: network.network.provider,
+                                peer_account_id: params.peer_account_id,
+                                peer_network_id: params.peer_network_id,
+                            },
+                        )
+                        .await?;
 
                         if opt.render_in_json {
-                            print_output(opt.render_in_json, commands)?;
+                            print_output(opt.render_in_json, resp.commands)?;
                         } else {
                             println!("Upstream provider requires configuration.");
-                            for command in commands {
+                            for command in resp.commands {
                                 println!();
                                 println!("{}:", command.title);
                                 println!("{}", command.value);
                             }
                         }
-                        Ok(())
                     }
+                    Ok(())
                 }
 
                 PeeringsCommand::Update(params) => {
@@ -1840,6 +1839,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &client,
                         params.org_id,
                         params.project_id,
+                        params.id,
                         esc_api::infra::UpdatePeeringRequest {
                             description: params.description,
                         },
@@ -1891,11 +1891,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 match params.name {
                     ProfilePropName::ProjectId => {
-                        profile.project_id = Some(esc_api::ProjectId(params.value));
+                        profile.project_id = Some(esc_api::resources::ProjectId(params.value));
                     }
 
                     ProfilePropName::OrgId => {
-                        profile.org_id = Some(esc_api::OrgId(params.value));
+                        profile.org_id = Some(esc_api::resources::OrganizationId(params.value));
                     }
 
                     ProfilePropName::ApiBaseUrl => {
@@ -1913,13 +1913,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(name) = params.name {
                         match name {
                             ProfilePropName::ProjectId => {
-                                let default = Default::default();
+                                // TODO: not sure why ProjectID ever had a default that gave it a blank string.
+                                // But that's what "default" used to be here. It would be ideal to make this
+                                // Option<ProjectId>.
+                                let default = esc_api::resources::ProjectId("".to_string());
                                 let value = profile.project_id.as_ref().unwrap_or(&default);
                                 serde_json::to_writer_pretty(std::io::stdout(), value)?;
                             }
 
                             ProfilePropName::OrgId => {
-                                let default = Default::default();
+                                // TODO: same issue, not sure why it works this way
+                                let default = esc_api::resources::OrganizationId("".to_string());
                                 let value = profile.org_id.as_ref().unwrap_or(&default);
                                 serde_json::to_writer_pretty(std::io::stdout(), value)?;
                             }
@@ -2083,7 +2087,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
 
         Command::Mesdb(mesdb) => {
-            let token = store.access(opt.refresh_token).await?;
             match mesdb.mesdb_command {
                 MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
                     ClustersCommand::Create(params) => {
@@ -2095,7 +2098,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             esc_api::mesdb::CreateClusterRequest {
                                 description: params.description,
                                 disk_iops: params.disk_iops,
-                                disk_size_gb: params.disk_size_gb,
+                                disk_size_gb: params.disk_size_in_gb,
                                 disk_throughput: params.disk_throughput,
                                 disk_type: params.disk_type,
                                 instance_type: params.instance_type,
@@ -2350,8 +2353,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     CreateIntegrationData::Slack(args) => {
                         esc_api::integrate::CreateIntegrationData::Slack(
-                            esc_api::integrate::CreateIntegrationData::SlackData {
+                            esc_api::integrate::CreateSlackIntegrationData {
                                 channel_id: args.channel_id,
+                                source: args.source,
                                 token: args.token,
                             },
                         )
@@ -2376,7 +2380,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &client,
                     params.organization_id,
                     params.project_id,
-                    params.integration_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
                 )
                 .await?;
                 Ok(())
@@ -2387,7 +2391,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &client,
                     params.organization_id,
                     params.project_id,
-                    params.integration_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
                 )
                 .await?;
                 print_output(opt.render_in_json, resp)?;
@@ -2396,24 +2400,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             IntegrationsCommand::Update(params) => {
                 use esc_api::integrate::*;
                 // TODO: rework this. It's probably saner to force the user to say the type of sink they're updating
-                let data: Option<UpdateIntegrationData> = match params.data.api_key {
-                    Some(api_key) => Some(UpdateIntegrationData::UpdateOpsGenieIntegrationData(
-                        UpdateOpsGenieIntegrationData {
-                            api_key: Some(api_key),
-                        },
-                    )),
-                    None => {
-                        if params.data.channel_id.is_some() || params.data.token.is_some() {
-                            Some(UpdateIntegrationData::UpdateSlackIntegrationData(
-                                UpdateSlackIntegrationData {
-                                    channel_id: params.data.channel_id,
-                                    token: params.data.token,
+                let data: Option<UpdateIntegrationData> = match params.data {
+                    Some(data) => match data.api_key {
+                        Some(api_key) => {
+                            Some(UpdateIntegrationData::UpdateOpsGenieIntegrationData(
+                                UpdateOpsGenieIntegrationData {
+                                    api_key: Some(api_key),
                                 },
                             ))
-                        } else {
-                            None
                         }
-                    }
+                        None => {
+                            if data.channel_id.is_some() || data.token.is_some() {
+                                Some(UpdateIntegrationData::UpdateSlackIntegrationData(
+                                    UpdateSlackIntegrationData {
+                                        channel_id: data.channel_id,
+                                        token: data.token,
+                                    },
+                                ))
+                            } else {
+                                None
+                            }
+                        }
+                    },
+                    None => None,
                 };
 
                 let client = client_builder.create().await?;
@@ -2421,7 +2430,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &client,
                     params.organization_id,
                     params.project_id,
-                    params.integration_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
                     UpdateIntegrationRequest {
                         description: params.description,
                         data,
@@ -2436,25 +2445,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &client,
                     params.organization_id,
                     params.project_id,
-                    params.integration_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
                 )
                 .await?;
                 Ok(())
             }
         },
 
+        // TODO: somehow this is all changed.
+        // May need to use this newer code [here](https://docs.rs/clap_complete/latest/clap_complete/generator/fn.generate_to.html)
         Command::GenerateBashCompletion => {
-            clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
+            eprintln!("TODO");
+            // clap_app.gen_completions_to("esc", clap::completions::Shell::Bash, &mut std::io::stdout());
             Ok(())
         }
 
         Command::GenerateZshCompletion => {
-            clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
+            eprintln!("TODO");
+            // clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
             Ok(())
         }
 
         Command::GeneratePowershellCompletion => {
-            clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
+            eprintln!("TODO");
+            // clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
             Ok(())
         }
     };
