@@ -332,7 +332,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "structopt",
- "tokio 0.2.25",
+ "tokio 1.20.0",
  "toml",
  "url",
  "validator",
@@ -1030,6 +1030,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "num_cpus"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
+dependencies = [
+ "hermit-abi",
+ "libc",
 ]
 
 [[package]]
@@ -1758,7 +1768,6 @@ dependencies = [
  "mio 0.6.23",
  "pin-project-lite 0.1.12",
  "slab",
- "tokio-macros 0.2.6",
 ]
 
 [[package]]
@@ -1772,22 +1781,12 @@ dependencies = [
  "libc",
  "memchr",
  "mio 0.8.4",
+ "num_cpus",
  "once_cell",
  "pin-project-lite 0.2.9",
  "socket2 0.4.4",
- "tokio-macros 1.8.0",
+ "tokio-macros",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "tokio-macros"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e44da00bfc73a25f814cd8d7e57a68a5c31b74b3152a0a1d1f590c97ed06265a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
