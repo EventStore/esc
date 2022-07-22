@@ -308,15 +308,6 @@ struct ResendInvite {
 }
 
 #[derive(StructOpt, Debug)]
-struct GetInvite {
-    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::access::InviteId,
-}
-
-#[derive(StructOpt, Debug)]
 struct DeleteInvite {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite relates to")]
     org_id: OrgId,
@@ -450,7 +441,7 @@ enum PeeringsCommand {
     Update(UpdatePeering),
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Clone, Debug)]
 #[structopt(about = "Create a peering")]
 struct CreatePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering will relate to")]
@@ -1086,9 +1077,9 @@ struct ListHistory {
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
     project_id: esc_api::resources::ProjectId,
-
-    #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
-    job_id: Option<esc_api::JobId>,
+    // TODO: add this back
+    // #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
+    // job_id: Option<esc_api::JobId>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1322,7 +1313,7 @@ fn parse_projection_level(src: &str) -> Result<esc_api::mesdb::ProjectionLevel, 
 
 fn parse_enum<A: Clone>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
-        Some(p) => Ok(*p),
+        Some(p) => Ok(p.clone()),
         None => {
             let supported: Vec<&&str> = env.keys().collect();
             Err(format!(
@@ -1449,19 +1440,6 @@ struct ClientBuilder {
 
 impl ClientBuilder {
     pub async fn create(self) -> Result<esc_api::Client, Box<dyn std::error::Error>> {
-        let base_url = config::SETTINGS
-            .get_current_profile()
-            .and_then(|profile| {
-                profile.api_base_url.as_ref().map(|url| {
-                    format!(
-                        "{}://{}",
-                        url.scheme(),
-                        url.host_str().expect("Pre-validated it has a host")
-                    )
-                })
-            })
-            .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
-
         let token = get_token(self.refresh_token).await?;
         let authorization = StaticAuthorization {
             authorization_header: token.authorization_header(),
@@ -1481,7 +1459,7 @@ impl ClientBuilder {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut clap_app = Opt::clap();
+    let clap_app = Opt::clap();
     let opt = Opt::from_clap(&clap_app.clone().get_matches());
 
     let base_url = config::SETTINGS
@@ -1529,7 +1507,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .await?;
 
                     print_output(opt.render_in_json, group_id)?;
-                    Ok(())
                 }
 
                 GroupsCommand::Update(params) => {
@@ -1538,10 +1515,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         members: params.members,
                         name: params.name,
                     };
-                    let mut update_group =
-                        esc_api::access::update_group(&client, params.org_id, params.id, body)
-                            .await?;
-                    Ok(())
+                    esc_api::access::update_group(&client, params.org_id, params.id, body).await?;
                 }
 
                 GroupsCommand::Get(params) => {
@@ -1549,13 +1523,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let group =
                         esc_api::access::get_group(&client, params.org_id, params.id).await?;
                     print_output(opt.render_in_json, group)?;
-                    Ok(())
                 }
 
                 GroupsCommand::Delete(params) => {
                     let client = client_builder.create().await?;
                     esc_api::access::delete_group(&client, params.org_id, params.id).await?;
-                    Ok(())
                 }
 
                 GroupsCommand::List(params) => {
@@ -1564,8 +1536,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match opt.render_in_json {
                         true => print_output(true, groups)?,
                         false => print_output(false, List(groups.groups))?,
-                    }
-                    Ok(())
+                    };
                 }
             },
 
@@ -1583,7 +1554,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await?;
 
                     println!("{}", resp.id);
-                    Ok(())
                 }
 
                 InvitesCommand::Resend(params) => {
@@ -1594,20 +1564,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::access::ResendInviteRequest { id: params.id },
                     )
                     .await?;
-                    Ok(())
                 }
 
                 InvitesCommand::Delete(params) => {
                     let client = client_builder.create().await?;
                     esc_api::access::delete_invite(&client, params.org_id, params.id).await?;
-                    Ok(())
                 }
 
                 InvitesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_invites(&client, params.org_id).await?;
                     print_output(opt.render_in_json, resp.invites)?;
-                    Ok(())
                 }
             },
 
@@ -1628,13 +1595,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                         None => store.create_token_from_prompt(&client).await,
                     }?;
-                    let token = store.access(&reqwest::Client::new()).await?;
                     println!("{}", token.refresh_token().unwrap().as_str());
-                    Ok(())
                 }
                 TokensCommand::Display(_params) => {
                     let token_config = esc_api::TokenConfig::default();
-                    let mut store = esc_client_store::token_store(token_config).await?;
+                    let store = esc_client_store::token_store(token_config).await?;
 
                     let token = store.show().await?;
                     if let Some(token) = token {
@@ -1642,7 +1607,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     } else {
                         println!("No active refresh token");
                     }
-                    Ok(())
                 }
             },
 
@@ -1664,7 +1628,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, policy.id)?;
-                    Ok(())
                 }
 
                 PoliciesCommand::Update(params) => {
@@ -1684,13 +1647,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     )
                     .await?;
-                    Ok(())
                 }
 
                 PoliciesCommand::Delete(params) => {
                     let client = client_builder.create().await?;
                     esc_api::access::delete_policy(&client, params.org_id, params.policy).await?;
-                    Ok(())
                 }
 
                 PoliciesCommand::Get(params) => {
@@ -1698,14 +1659,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let policy =
                         esc_api::access::get_policy(&client, params.org_id, params.policy).await?;
                     print_output(opt.render_in_json, policy)?;
-                    Ok(())
                 }
 
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_policies(&client, params.org_id).await?;
                     print_output(opt.render_in_json, List(resp.policies))?;
-                    Ok(())
                 }
             },
         },
@@ -1727,7 +1686,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, resp.id)?;
-                    Ok(())
                 }
 
                 NetworksCommand::Update(params) => {
@@ -1742,7 +1700,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     )
                     .await?;
-                    Ok(())
                 }
 
                 NetworksCommand::Delete(params) => {
@@ -1754,7 +1711,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.id,
                     )
                     .await?;
-                    Ok(())
                 }
 
                 NetworksCommand::Get(params) => {
@@ -1767,7 +1723,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, resp.network)?;
-                    Ok(())
                 }
 
                 NetworksCommand::List(params) => {
@@ -1776,7 +1731,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::infra::list_networks(&client, params.org_id, params.project_id)
                             .await?;
                     print_output(opt.render_in_json, List(resp.networks))?;
-                    Ok(())
                 }
             },
 
@@ -1785,13 +1739,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let client = client_builder.create().await?;
                     let result = esc_api::infra::create_peering(
                         &client,
-                        params.org_id,
-                        params.project_id,
+                        params.org_id.clone(),
+                        params.project_id.clone(),
                         esc_api::infra::CreatePeeringRequest {
                             description: params.description,
                             network_id: params.network_id.to_string(),
-                            peer_account_id: params.peer_account_id,
-                            peer_network_id: params.peer_network_id,
+                            peer_account_id: params.peer_account_id.clone(),
+                            peer_network_id: params.peer_network_id.clone(),
                             peer_network_region: params.peer_network_region,
                             routes: params.routes,
                         },
@@ -1801,8 +1755,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Err(_err) = result {
                         let network = esc_api::infra::get_network(
                             &client,
-                            params.org_id,
-                            params.project_id,
+                            params.org_id.clone(),
+                            params.project_id.clone(),
                             params.network_id,
                         )
                         .await?;
@@ -1830,7 +1784,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                     }
-                    Ok(())
                 }
 
                 PeeringsCommand::Update(params) => {
@@ -1845,7 +1798,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     )
                     .await?;
-                    Ok(())
                 }
 
                 PeeringsCommand::Delete(params) => {
@@ -1857,7 +1809,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.id,
                     )
                     .await?;
-                    Ok(())
                 }
 
                 PeeringsCommand::Get(params) => {
@@ -1870,7 +1821,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, peering)?;
-                    Ok(())
                 }
 
                 PeeringsCommand::List(params) => {
@@ -1879,7 +1829,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::infra::list_peerings(&client, params.org_id, params.project_id)
                             .await?;
                     print_output(opt.render_in_json, List(resp.peerings))?;
-                    Ok(())
                 }
             },
         },
@@ -1905,7 +1854,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 settings.persist().await?;
-                Ok(())
             }
 
             ProfilesCommand::Get(params) => {
@@ -1938,12 +1886,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         serde_json::to_writer_pretty(std::io::stdout(), profile)?;
                     }
                 }
-                Ok(())
             }
 
             ProfilesCommand::List => {
                 serde_json::to_writer_pretty(std::io::stdout(), &crate::config::SETTINGS.profiles)?;
-                Ok(())
             }
 
             ProfilesCommand::Delete(params) => {
@@ -1965,7 +1911,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 settings.persist().await?;
-                Ok(())
             }
 
             ProfilesCommand::Default(default) => match default.default_command {
@@ -1981,14 +1926,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             std::process::exit(-1)
                         }
                     }
-                    Ok(())
                 }
 
                 ProfileDefaultCommand::Set(params) => {
                     let mut settings = crate::config::SETTINGS.clone();
                     settings.default_profile = Some(params.value);
                     settings.persist().await?;
-                    Ok(())
                 }
             },
         },
@@ -2003,7 +1946,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, resp.id)?;
-                    Ok(())
                 }
 
                 OrganizationsCommand::Update(params) => {
@@ -2014,27 +1956,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::resources::UpdateOrganizationRequest { name: params.name },
                     )
                     .await?;
-                    Ok(())
                 }
 
                 OrganizationsCommand::Delete(params) => {
                     let client = client_builder.create().await?;
                     esc_api::resources::delete_organization(&client, params.id).await?;
-                    Ok(())
                 }
 
                 OrganizationsCommand::Get(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::get_organization(&client, params.id).await?;
                     print_output(opt.render_in_json, resp.organization)?;
-                    Ok(())
                 }
 
                 OrganizationsCommand::List(_) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_organizations(&client).await?;
                     print_output(opt.render_in_json, List(resp.organizations))?;
-                    Ok(())
                 }
             },
 
@@ -2048,7 +1986,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, resp.id)?;
-                    Ok(())
                 }
 
                 ProjectsCommand::Update(params) => {
@@ -2060,7 +1997,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::resources::UpdateProjectRequest { name: params.name },
                     )
                     .await?;
-                    Ok(())
                 }
 
                 ProjectsCommand::Get(params) => {
@@ -2068,20 +2004,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::resources::get_project(&client, params.org_id, params.id).await?;
                     print_output(opt.render_in_json, resp.project)?;
-                    Ok(())
                 }
 
                 ProjectsCommand::Delete(params) => {
                     let client = client_builder.create().await?;
                     esc_api::resources::delete_project(&client, params.org_id, params.id).await?;
-                    Ok(())
                 }
 
                 ProjectsCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_projects(&client, params.org_id).await?;
                     print_output(opt.render_in_json, List(resp.projects))?;
-                    Ok(())
                 }
             },
         },
@@ -2113,7 +2046,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await?;
                         let cluster_id = resp.id;
                         print_output(opt.render_in_json, cluster_id)?;
-                        Ok(())
                     }
 
                     ClustersCommand::Get(params) => {
@@ -2126,7 +2058,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         )
                         .await?;
                         print_output(opt.render_in_json, enrich::enrich_cluster(resp.cluster))?;
-                        Ok(())
                     }
 
                     ClustersCommand::Delete(params) => {
@@ -2138,7 +2069,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             params.id,
                         )
                         .await?;
-                        Ok(())
                     }
 
                     ClustersCommand::Update(params) => {
@@ -2153,7 +2083,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             },
                         )
                         .await?;
-                        Ok(())
                     }
 
                     ClustersCommand::List(params) => {
@@ -2173,7 +2102,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     .collect(),
                             ),
                         )?;
-                        Ok(())
                     }
 
                     ClustersCommand::Expand(params) => {
@@ -2191,7 +2119,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             },
                         )
                         .await?;
-                        Ok(())
                     }
                 },
                 MesdbCommand::Backups(clusters) => match clusters.backups_command {
@@ -2208,7 +2135,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         )
                         .await?;
                         print_output(opt.render_in_json, resp.id)?;
-                        Ok(())
                     }
 
                     BackupsCommand::Get(params) => {
@@ -2221,7 +2147,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         )
                         .await?;
                         print_output(opt.render_in_json, resp.backup)?;
-                        Ok(())
                     }
 
                     BackupsCommand::Delete(params) => {
@@ -2233,7 +2158,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             params.id,
                         )
                         .await?;
-                        Ok(())
                     }
 
                     BackupsCommand::List(params) => {
@@ -2242,7 +2166,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             esc_api::mesdb::list_backups(&client, params.org_id, params.project_id)
                                 .await?;
                         print_output(opt.render_in_json, List(resp.backups))?;
-                        Ok(())
                     }
                 },
             }
@@ -2275,7 +2198,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, resp.id)?;
-                    Ok(())
                 }
 
                 JobsCommand::Get(params) => {
@@ -2288,7 +2210,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, resp.job)?;
-                    Ok(())
                 }
 
                 JobsCommand::Delete(params) => {
@@ -2300,7 +2221,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.id,
                     )
                     .await?;
-                    Ok(())
                 }
 
                 JobsCommand::List(params) => {
@@ -2309,7 +2229,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::orchestrate::list_jobs(&client, params.org_id, params.project_id)
                             .await?;
                     print_output(opt.render_in_json, List(resp.jobs))?;
-                    Ok(())
                 }
             },
             OrchestrateCommand::History(history) => match history.history_command {
@@ -2323,7 +2242,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
                     print_output(opt.render_in_json, List(resp.items))?;
-                    Ok(())
                 }
             },
         },
@@ -2338,7 +2256,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await?;
                 print_output(opt.render_in_json, resp)?;
-                Ok(())
             }
             IntegrationsCommand::Create(params) => {
                 let client = client_builder.create().await?;
@@ -2372,7 +2289,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await?;
                 print_output(opt.render_in_json, resp)?;
-                Ok(())
             }
             IntegrationsCommand::Delete(params) => {
                 let client = client_builder.create().await?;
@@ -2383,7 +2299,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     esc_api::integrate::IntegrationId(params.integration_id),
                 )
                 .await?;
-                Ok(())
             }
             IntegrationsCommand::Get(params) => {
                 let client = client_builder.create().await?;
@@ -2395,7 +2310,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await?;
                 print_output(opt.render_in_json, resp)?;
-                Ok(())
             }
             IntegrationsCommand::Update(params) => {
                 use esc_api::integrate::*;
@@ -2437,7 +2351,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     },
                 )
                 .await?;
-                Ok(())
             }
             IntegrationsCommand::TestIntegration(params) => {
                 let client = client_builder.create().await?;
@@ -2448,7 +2361,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     esc_api::integrate::IntegrationId(params.integration_id),
                 )
                 .await?;
-                Ok(())
             }
         },
 
@@ -2457,19 +2369,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::GenerateBashCompletion => {
             eprintln!("TODO");
             // clap_app.gen_completions_to("esc", clap::completions::Shell::Bash, &mut std::io::stdout());
-            Ok(())
         }
 
         Command::GenerateZshCompletion => {
             eprintln!("TODO");
             // clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
-            Ok(())
         }
 
         Command::GeneratePowershellCompletion => {
             eprintln!("TODO");
             // clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
-            Ok(())
         }
     };
 
