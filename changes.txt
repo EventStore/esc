@@ -1,4 +1,12 @@
+- check tokens 
+
 `invites update` renamed to `invites resend`
 The CLI had a command to "update" an invite which took an email address. However this request parameter was never honored, and internally the API was called "resend-invite." This was renamed to make that clearer.
 
 `invites get` did not exist on the backend and was removed.
+
+
+## TODO
+
+[ ] check that the `access` `tokens` commands work identically
+[ ] peering create is complicated because if it fails it woould call `DerivePeerignCommands` (which everywhere else is called `CreatePeeringCommands`- should it be changed?) and then print out some stuff. But it should probably check for a specific error code and also message ot the user what is happening, so if it fails when creating the peering commands the error message isn't a mystery.

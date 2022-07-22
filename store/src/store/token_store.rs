@@ -73,10 +73,28 @@ impl TokenStore {
         let email = read_email_from_user().map_err(|_| {
             StoreError::new("can't create token - reading email from prompt failed")
         })?;
+        self.create_token_from_prompt_password_only(client, email)
+            .await
+    }
+
+    pub async fn create_token_from_prompt_password_only(
+        &mut self,
+        client: &reqwest::Client,
+        email: String,
+    ) -> Result<Token> {
         let password = rpassword::read_password_from_tty(Some("Password: ")).map_err(|err| {
             StoreError::new("can't create token - reading password from prompt failed")
                 .source(Box::new(err))
         })?;
+        self.create_token(client, email, password).await
+    }
+
+    pub async fn create_token(
+        &mut self,
+        client: &reqwest::Client,
+        email: String,
+        password: String,
+    ) -> Result<Token> {
         let new_token = operations::create(client, &self.token_config, &email, &password)
             .await
             .map_err(|err| {
@@ -129,7 +147,7 @@ impl TokenStore {
                 self.refresh_active_token_provided_token(client, previous_token)
                     .await
             }
-            None => self.create_token_from_prompt(client).await,
+            None => self.create_token_from_prompt(client, None).await,
         }
     }
 

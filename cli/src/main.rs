@@ -103,7 +103,7 @@ enum TokensCommand {
 #[structopt(about = "Create an access token")]
 struct CreateToken {
     #[structopt(long, short, parse(try_from_str = parse_email), help = "The email you used to create an EventStoreDB Cloud")]
-    email: esc_api::Email,
+    email: Option<String>,
 
     #[structopt(
         long,
@@ -1612,84 +1612,98 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             AccessCommand::Tokens(tokens) => match tokens.tokens_command {
                 TokensCommand::Create(params) => {
-                    let password = if let Some(passw) = params.unsafe_password {
-                        Ok(passw)
-                    } else {
-                        rpassword::read_password_from_tty(Some("Password: "))
-                    }?;
+                    let token_config = esc_api::TokenConfig::default();
+                    let client = reqwest::Client::new();
+                    let mut store = esc_client_store::token_store(token_config).await?;
 
-                    let mut store =
-                        esc_client_store::token_store(esc_api::TokenConfig::default()).await?;
+                    let token = match params.email {
+                        Some(email) => match params.password {
+                            Some(password) => token_config.create_token(&client, email, password),
+                            None => {
+                                token_config.create_token_from_prompt_password_only(&client, email)
+                            }
+                        },
+                        None => token_config.create_token_from_prompt(&client),
+                    }
+                    .await?;
                     let token = store.access(&reqwest::Client::new()).await?;
                     println!("{}", token.refresh_token().unwrap().as_str());
+                    Ok(())
                 }
                 TokensCommand::Display(_params) => {
+                    let token_config = esc_api::TokenConfig::default();
+                    let mut store = esc_client_store::token_store(token_config).await?;
+
                     let token = store.active_token().await?;
                     if let Some(token) = token {
                         println!("{}", token.refresh_token().unwrap());
                     } else {
                         println!("No active refresh token");
                     }
+                    Ok(())
                 }
             },
 
             AccessCommand::Policies(policies) => match policies.policies_command {
                 PoliciesCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::policies::CreatePolicyParams {
-                        name: params.name,
-                        subjects: params.subjects,
-                        resources: params.resources,
-                        actions: params.actions,
-                        effect: params.effect,
-                    };
-                    let id = client
-                        .policies(&token)
-                        .create(params.org_id, create_params)
-                        .await?;
-
-                    print_output(opt.render_in_json, id)?;
+                    let client = client_builder.create().await?;
+                    let policy = esc_api::access::create_policy(
+                        &client,
+                        paramsorg_id,
+                        esc_api::access::CreatePolicyRequest {
+                            policy: esc_api::access::CreatePolicy {
+                                actions: params.actions,
+                                effect: params.effect,
+                                name: params.name,
+                                resources: params.resources,
+                                subjects: params.subjects,
+                            },
+                        },
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, policy.id)?;
+                    Ok(())
                 }
 
                 PoliciesCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::policies::UpdatePolicyParams {
-                        name: params.name,
-                        subjects: params.subjects,
-                        resources: params.resources,
-                        actions: params.actions,
-                        effect: params.effect,
-                    };
-
-                    client
-                        .policies(&token)
-                        .update(params.org_id, params.policy, update_params)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::update_policy(
+                        &client,
+                        params.org_id,
+                        params.policy,
+                        esc_api::access::UpdatePolicyRequest {
+                            policy: esc_api::access::UpdatePolicy {
+                                actions: params.actions,
+                                effect: params.effect,
+                                name: params.name,
+                                resources: params.resources,
+                                subjects: params.subjects,
+                            },
+                        },
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 PoliciesCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .policies(&token)
-                        .delete(params.org_id, params.policy)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_policy(&client, params.org_id, params.policy).await?;
+                    Ok(())
                 }
 
                 PoliciesCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let policy = client
-                        .policies(&token)
-                        .get(params.org_id, params.policy)
-                        .await?;
-
+                    let client = client_builder.create().await?;
+                    let policy =
+                        esc_api::access::get_policy(&client, params.org_id, params.policy).await?;
                     print_output(opt.render_in_json, policy)?;
+                    Ok(())
                 }
 
                 PoliciesCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let policies = client.policies(&token).list(params.org_id).await?;
-
+                    let client = client_builder.create().await?;
+                    let policies = esc_api::access::list_policies(&client, params.org_id).await?;
                     print_output(opt.render_in_json, List(policies))?;
+                    Ok(())
                 }
             },
         },
@@ -1697,104 +1711,109 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Infra(infra) => match infra.infra_command {
             InfraCommand::Networks(networks) => match networks.networks_command {
                 NetworksCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::networks::CreateNetworkParams {
-                        provider: params.provider,
-                        cidr_block: params.cidr_block.to_string(),
-                        description: params.description,
-                        region: params.region,
-                    };
-                    let network_id = client
-                        .networks(&token)
-                        .create(params.org_id, params.project_id, create_params)
-                        .await?;
-
-                    print_output(opt.render_in_json, network_id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::create_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::infra::CreateNetworkRequest {
+                            cidr_block: params.cidr_block.to_string(),
+                            description: params.description,
+                            provider: params.provider,
+                            region: params.region,
+                        },
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, resp.id)?;
+                    Ok(())
                 }
 
                 NetworksCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::networks::UpdateNetworkParams {
-                        description: params.description,
-                    };
-                    client
-                        .networks(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::update_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::infra::UpdateNetworkRequest {
+                            description: params.description,
+                        },
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 NetworksCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .networks(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::delete_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 NetworksCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let network = client
-                        .networks(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
-                    print_output(opt.render_in_json, network)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::get_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, resp.network)?;
+                    Ok(())
                 }
 
                 NetworksCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let networks = client
-                        .networks(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    print_output(opt.render_in_json, List(networks))?;
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::infra::list_networks(&client, params.org_id, params.project_id)
+                            .await?;
+                    print_output(opt.render_in_json, List(resp.networks))?;
+                    Ok(())
                 }
             },
 
             InfraCommand::Peerings(peerings) => match peerings.peerings_command {
                 PeeringsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::peerings::CreatePeeringParams {
-                        network_id: params.network_id.clone(),
-                        description: params.description,
-                        peer_account_id: params.peer_account_id.clone(),
-                        peer_network_id: params.peer_network_id.clone(),
-                        peer_network_region: params.peer_network_region,
-                        routes: params.routes,
-                    };
-                    let result = client
-                        .peerings(&token)
-                        .create(
-                            params.org_id.clone(),
-                            params.project_id.clone(),
-                            create_params,
+                    let client = client_builder.create().await?;
+                    let result = esc_api::infra::create_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::infra::CreatePeeringRequest {
+                            description: params.description,
+                            network_id: params.network_id,
+                            peer_account_id: params.peer_account_id,
+                            peer_network_id: params.peer_network_id,
+                            peer_network_region: params.peer_network_region,
+                            routes: params.routes,
+                        },
+                    )
+                    .await;
+
+                    if let Err(_err) = result {
+                        let network = esc_api::infra::get_network(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.network_id,
                         )
                         .await?;
 
-                    if let Err(_err) = result {
-                        let network = client
-                            .networks(&token)
-                            .get(
-                                params.org_id.clone(),
-                                params.project_id.clone(),
-                                params.network_id,
-                            )
-                            .await?;
-
                         let derive_peering_commands_params =
-                            esc_api::command::peerings::DerivePeeringCommandsParams {
-                                provider: network.provider,
-                                peer_account_id: params.peer_account_id,
-                                peer_network_id: params.peer_network_id,
-                            };
-
-                        let commands = client
-                            .peerings(&token)
-                            .derive_peering_commands(
+                            esc_api::infra::create_peering_commands(
+                                &client,
                                 params.org_id,
                                 params.project_id,
-                                derive_peering_commands_params,
+                                esc_api::infra::CreatePeeringCOmmandsRequest {
+                                    provider: network.provider,
+                                    peer_account_id: params.peer_account_id,
+                                    peer_network_id: params.peer_network_id,
+                                },
                             )
                             .await?;
 
@@ -1808,46 +1827,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 println!("{}", command.value);
                             }
                         }
+                        Ok(())
                     }
                 }
 
                 PeeringsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::peerings::UpdatePeeringParams {
-                        description: params.description,
-                    };
-                    client
-                        .peerings(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::update_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::infra::UpdatePeeringRequest {
+                            description: params.description,
+                        },
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 PeeringsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .peerings(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::delete_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 PeeringsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let peering = client
-                        .peerings(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
+                    let client = client_builder.create().await?;
+                    let peering = esc_api::infra::get_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
                     print_output(opt.render_in_json, peering)?;
+                    Ok(())
                 }
 
                 PeeringsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let peerings = client
-                        .peerings(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    print_output(opt.render_in_json, List(peerings))?;
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::infra::list_peerings(&client, params.org_id, params.project_id)
+                            .await?;
+                    print_output(opt.render_in_json, List(resp.peerings))?;
+                    Ok(())
                 }
             },
         },
@@ -1873,6 +1902,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 settings.persist().await?;
+                Ok(())
             }
 
             ProfilesCommand::Get(params) => {
@@ -1901,10 +1931,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         serde_json::to_writer_pretty(std::io::stdout(), profile)?;
                     }
                 }
+                Ok(())
             }
 
             ProfilesCommand::List => {
                 serde_json::to_writer_pretty(std::io::stdout(), &crate::config::SETTINGS.profiles)?;
+                Ok(())
             }
 
             ProfilesCommand::Delete(params) => {
@@ -1926,6 +1958,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 settings.persist().await?;
+                Ok(())
             }
 
             ProfilesCommand::Default(default) => match default.default_command {
@@ -1941,12 +1974,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             std::process::exit(-1)
                         }
                     }
+                    Ok(())
                 }
 
                 ProfileDefaultCommand::Set(params) => {
                     let mut settings = crate::config::SETTINGS.clone();
                     settings.default_profile = Some(params.value);
                     settings.persist().await?;
+                    Ok(())
                 }
             },
         },
