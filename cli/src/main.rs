@@ -861,6 +861,9 @@ struct UpdateCluster {
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
     id: esc_api::ClusterId,
+
+    #[structopt(long, help = "A human-readable description of the cluster")]
+    description: String,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1989,91 +1992,92 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Resources(res) => match res.resources_command {
             ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
                 OrganizationsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let org_id = client.organizations(&token).create(params.name).await?;
-
-                    print_output(opt.render_in_json, org_id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::create_organization(
+                        &client,
+                        esc_api::resources::CreateOrganizationRequest { name: params.name },
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, resp.id)?;
+                    Ok(())
                 }
 
                 OrganizationsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .organizations(&token)
-                        .update(params.id, params.name)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::update_organization(
+                        &client,
+                        params.id,
+                        esc_api::resources::UpdateOrganizationRequest { name: params.name },
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 OrganizationsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client.organizations(&token).delete(params.id).await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::delete_organization(&client, params.id).await?;
+                    Ok(())
                 }
 
                 OrganizationsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let org = client.organizations(&token).get(params.id).await?;
-
-                    print_output(opt.render_in_json, org)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::get_organization(&client, params.id).await?;
+                    print_output(opt.render_in_json, resp.organization)?;
+                    Ok(())
                 }
 
                 OrganizationsCommand::List(_) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let orgs = client.organizations(&token).list().await?;
-
-                    print_output(opt.render_in_json, List(orgs))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::list_organizations(&client).await?;
+                    print_output(opt.render_in_json, List(resp.organizations))?;
+                    Ok(())
                 }
             },
 
             ResourcesCommand::Projects(projs) => match projs.projects_command {
                 ProjectsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let proj_id = client
-                        .projects(&token)
-                        .create(params.org_id, params.name)
-                        .await?;
-
-                    print_output(opt.render_in_json, proj_id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::create_project(
+                        &client,
+                        params.org_id,
+                        esc_api::resources::CreateProjectRequest { name: params.name },
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, resp.id)?;
+                    Ok(())
                 }
 
                 ProjectsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .projects(&token)
-                        .update(params.org_id, params.id, params.name)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::update_project(
+                        &client,
+                        params.org_id,
+                        params.id,
+                        esc_api::resources::UpdateProjectRequest { name: params.name },
+                    )
+                    .await?;
+                    Ok(())
                 }
 
                 ProjectsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let project_opt = client
-                        .projects(&token)
-                        .get(params.org_id, params.id)
-                        .await?;
-
-                    match project_opt {
-                        Some(proj) => {
-                            print_output(opt.render_in_json, proj)?;
-                        }
-
-                        _ => {
-                            eprintln!("Project doesn't exists");
-                            std::process::exit(-1);
-                        }
-                    }
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::resources::get_project(&client, params.org_id, params.id).await?;
+                    print_output(opt.render_in_json, resp.project)?;
+                    Ok(())
                 }
 
                 ProjectsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .projects(&token)
-                        .delete(params.org_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::delete_project(&client, params.org_id, params.id).await?;
+                    Ok(())
                 }
 
                 ProjectsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let projs = client.projects(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(projs))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::list_projects(&client, params.org_id).await?;
+                    print_output(opt.render_in_json, List(resp.projects))?;
+                    Ok(())
                 }
             },
         },
@@ -2083,116 +2087,159 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match mesdb.mesdb_command {
                 MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
                     ClustersCommand::Create(params) => {
-                        let create_params = esc_api::command::clusters::CreateClusterParams {
-                            network_id: params.network_id,
-                            description: params.description,
-                            topology: params.topology,
-                            instance_type: params.instance_type,
-                            disk_size_gb: params.disk_size_in_gb,
-                            disk_type: params.disk_type,
-                            server_version: params.server_version,
-                            projection_level: params.projection_level,
-                            source_backup_id: params.source_backup_id,
-                            disk_iops: params.disk_iops,
-                            disk_throughput: params.disk_throughput,
-                        };
-                        let cluster_id = client
-                            .clusters(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::create_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            esc_api::mesdb::CreateClusterRequest {
+                                description: params.description,
+                                disk_iops: params.disk_iops,
+                                disk_size_gb: params.disk_size_gb,
+                                disk_throughput: params.disk_throughput,
+                                disk_type: params.disk_type,
+                                instance_type: params.instance_type,
+                                network_id: params.network_id,
+                                projection_level: params.projection_level,
+                                server_version: params.server_version,
+                                source_backup_id: params.source_backup_id,
+                                source_node_index: None, // TODO: add source_node_index
+                                topology: params.topology,
+                            },
+                        )
+                        .await?;
+                        let cluster_id = resp.id;
                         print_output(opt.render_in_json, cluster_id)?;
+                        Ok(())
                     }
 
                     ClustersCommand::Get(params) => {
-                        let cluster = client
-                            .clusters(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, enrich::enrich_cluster(cluster))?;
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::get_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                        print_output(opt.render_in_json, enrich::enrich_cluster(resp.cluster))?;
+                        Ok(())
                     }
 
                     ClustersCommand::Delete(params) => {
-                        client
-                            .clusters(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::delete_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                        Ok(())
                     }
 
                     ClustersCommand::Update(params) => {
-                        client
-                            .clusters(&token)
-                            .update(params.org_id, params.project_id, params.id)
-                            .await?;
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::update_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                            esc_api::mesdb::UpdateClusterRequest {
+                                description: params.description,
+                            },
+                        )
+                        .await?;
+                        Ok(())
                     }
 
                     ClustersCommand::List(params) => {
-                        let clusters = client
-                            .clusters(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::list_clusters(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                        )
+                        .await?;
                         print_output(
                             opt.render_in_json,
-                            List(clusters.into_iter().map(enrich::enrich_cluster).collect()),
+                            List(
+                                resp.clusters
+                                    .into_iter()
+                                    .map(enrich::enrich_cluster)
+                                    .collect(),
+                            ),
                         )?;
+                        Ok(())
                     }
 
                     ClustersCommand::Expand(params) => {
-                        client
-                            .clusters(&token)
-                            .expand(
-                                params.org_id,
-                                params.project_id,
-                                params.id,
-                                esc_api::command::clusters::ExpandDisk {
-                                    disk_size_gb: params.disk_size_in_gb,
-                                    disk_iops: params.disk_iops,
-                                    disk_throughput: params.disk_throughput,
-                                    disk_type: params.disk_type,
-                                },
-                            )
-                            .await?;
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::expand_cluster_disk(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                            esc_api::mesdb::ExpandClusterDiskRequest {
+                                disk_iops: params.disk_iops,
+                                disk_size_gb: params.disk_size_in_gb,
+                                disk_throughput: params.disk_throughput,
+                                disk_type: params.disk_type,
+                            },
+                        )
+                        .await?;
+                        Ok(())
                     }
                 },
                 MesdbCommand::Backups(clusters) => match clusters.backups_command {
                     BackupsCommand::Create(params) => {
-                        let create_params = esc_api::command::backups::CreateBackupParams {
-                            source_cluster_id: params.source_cluster_id,
-                            description: params.description,
-                        };
-                        let backup_id = client
-                            .backups(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
-                        print_output(opt.render_in_json, backup_id)?;
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::create_backup(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            esc_api::mesdb::CreateBackupRequest {
+                                description: params.description,
+                                source_cluster_id: params.source_cluster_id,
+                            },
+                        )
+                        .await?;
+                        print_output(opt.render_in_json, resp.id)?;
+                        Ok(())
                     }
 
                     BackupsCommand::Get(params) => {
-                        let backup = client
-                            .backups(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, backup)?;
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::get_backup(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                        print_output(opt.render_in_json, resp.backup)?;
+                        Ok(())
                     }
 
                     BackupsCommand::Delete(params) => {
-                        client
-                            .backups(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::delete_backup(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                        Ok(())
                     }
 
                     BackupsCommand::List(params) => {
-                        let backups = client
-                            .backups(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(backups))?;
+                        let client = client_builder.create().await?;
+                        let resp =
+                            esc_api::mesdb::list_backups(&client, params.org_id, params.project_id)
+                                .await?;
+                        print_output(opt.render_in_json, List(resp.backups))?;
+                        Ok(())
                     }
                 },
             }

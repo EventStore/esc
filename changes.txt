@@ -5,8 +5,12 @@ The CLI had a command to "update" an invite which took an email address. However
 
 `invites get` did not exist on the backend and was removed.
 
+`projects get` appeared to look for 404s and print out `project does not exist` if it got one, but I couldn't make this work and in practice printing the error response from the server is OK
+
+`mesdb clusters update` was broken as it sent the wrong request body.
 
 ## TODO
 
 [ ] check that the `access` `tokens` commands work identically
 [ ] peering create is complicated because if it fails it woould call `DerivePeerignCommands` (which everywhere else is called `CreatePeeringCommands`- should it be changed?) and then print out some stuff. But it should probably check for a specific error code and also message ot the user what is happening, so if it fails when creating the peering commands the error message isn't a mystery.
+[ ] `node_index` needs to be added to Mesdb Create cluster
