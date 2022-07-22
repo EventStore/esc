@@ -14,3 +14,7 @@ The CLI had a command to "update" an invite which took an email address. However
 [ ] check that the `access` `tokens` commands work identically
 [ ] peering create is complicated because if it fails it woould call `DerivePeerignCommands` (which everywhere else is called `CreatePeeringCommands`- should it be changed?) and then print out some stuff. But it should probably check for a specific error code and also message ot the user what is happening, so if it fails when creating the peering commands the error message isn't a mystery.
 [ ] `node_index` needs to be added to Mesdb Create cluster
+[ ] `orchestrate history list` could optionally accept a job id which it added as a request parameter. This is no longer possible (!!)
+[ ] `integrate create` is missing optional source parameter for OpsGenie
+[ ] `integrate create` is missing PagerDuty (!!)
+[ ] `integrate create` is missing AwsCloudWatchLogs

@@ -2245,167 +2245,217 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        Command::Orchestrate(orchestrate) => {
-            let token = store.access(opt.refresh_token).await?;
-            match orchestrate.orchestrate_command {
-                OrchestrateCommand::Jobs(jobs) => match jobs.jobs_command {
-                    JobsCommand::Create(params) => {
-                        let data: esc_api::JobData = match params.job_type {
-                            CreateJobType::ScheduledBackup(args) => {
-                                esc_api::JobData::ScheduledBackup(esc_api::JobDataScheduledBackup {
+        Command::Orchestrate(orchestrate) => match orchestrate.orchestrate_command {
+            OrchestrateCommand::Jobs(jobs) => match jobs.jobs_command {
+                JobsCommand::Create(params) => {
+                    let client = client_builder.create().await?;
+                    let data = match params.job_type {
+                        CreateJobType::ScheduledBackup(args) => {
+                            esc_api::orchestrate::JobData::ScheduledBackup(
+                                esc_api::orchestrate::ScheduledBackupData {
+                                    cluster_id: args.cluster_id,
                                     description: args.description,
                                     max_backup_count: args.max_backup_count,
-                                    cluster_id: args.cluster_id,
-                                })
-                            }
-                        };
-                        let create_params = esc_api::command::jobs::CreateJobParams {
+                                },
+                            )
+                        }
+                    };
+                    let resp = esc_api::orchestrate::create_job(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::orchestrate::CreateJobRequest {
+                            data,
                             description: params.description,
                             schedule: params.schedule,
-                            data,
-                        };
-                        let job_id = client
-                            .jobs(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
-                        print_output(opt.render_in_json, job_id)?;
-                    }
-
-                    JobsCommand::Get(params) => {
-                        let job = client
-                            .jobs(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, job)?;
-                    }
-
-                    JobsCommand::Delete(params) => {
-                        client
-                            .jobs(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    JobsCommand::List(params) => {
-                        let jobs = client
-                            .jobs(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(jobs))?;
-                    }
-                },
-                OrchestrateCommand::History(history) => match history.history_command {
-                    HistoryCommand::List(params) => {
-                        let items = client
-                            .history(&token)
-                            .list(params.org_id, params.project_id, params.job_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(items))?;
-                    }
-                },
-            }
-        }
-
-        Command::Integrations(cmd) => {
-            let token = store.access(opt.refresh_token).await?;
-            match cmd.integration_command {
-                IntegrationsCommand::List(params) => {
-                    let i = client
-                        .integrations(&token)
-                        .list(params.organization_id, params.project_id)
-                        .await?;
-                    print_output(opt.render_in_json, i)?;
+                        },
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, resp.id)?;
+                    Ok(())
                 }
-                IntegrationsCommand::Create(params) => {
-                    let integration = client.integrations(&token).create(
-                        params.organization_id,
+
+                JobsCommand::Get(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::orchestrate::get_job(
+                        &client,
+                        params.org_id,
                         params.project_id,
-                        esc_api::command::integrations::CreateIntegrationRequest{
-                            description: params.description,
-                            data: match params.data {
-                                CreateIntegrationData::OpsGenie(args) => esc_api::command::integrations::CreateIntegrationData::CreateOpsGenieIntegrationData{
-                                    api_key: args.api_key
-                                },
-                                CreateIntegrationData::Slack(args) => esc_api::command::integrations::CreateIntegrationData::CreateSlackIntegrationData{
-                                    channel_id: args.channel_id,
-                                    token: args.token,
-                                },
-                            }
-                        }
-                    ).await?;
-                    print_output(opt.render_in_json, integration)?;
+                        params.id,
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, resp.job)?;
+                    Ok(())
                 }
-                IntegrationsCommand::Delete(params) => {
-                    client
-                        .integrations(&token)
-                        .delete(
-                            params.organization_id,
-                            params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
-                        )
-                        .await?;
+
+                JobsCommand::Delete(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::orchestrate::delete_job(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    Ok(())
                 }
-                IntegrationsCommand::Get(params) => {
-                    let i = client
-                        .integrations(&token)
-                        .get(
-                            params.organization_id,
-                            params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
-                        )
-                        .await?;
-                    print_output(opt.render_in_json, i)?;
+
+                JobsCommand::List(params) => {
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::orchestrate::list_jobs(&client, params.org_id, params.project_id)
+                            .await?;
+                    print_output(opt.render_in_json, List(resp.jobs))?;
+                    Ok(())
                 }
-                IntegrationsCommand::Update(params) => {
-                    client
-                        .integrations(&token)
-                        .update(
-                            params.organization_id,
-                            params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
-                            esc_api::command::integrations::UpdateIntegrationRequest {
-                                data: match params.data {
-                                    None => None,
-                                    Some(data) => Some(
-                                        esc_api::command::integrations::UpdateIntegrationData {
-                                            api_key: data.api_key.clone(),
-                                            channel_id: data.channel_id.clone(),
-                                            token: data.token,
-                                        },
-                                    ),
-                                },
-                                description: params.description,
+            },
+            OrchestrateCommand::History(history) => match history.history_command {
+                HistoryCommand::List(params) => {
+                    let client = client_builder.create().await?;
+                    // TODO: find a way to wedge `params.job_id,` back in there
+                    let resp = esc_api::orchestrate::list_history(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                    )
+                    .await?;
+                    print_output(opt.render_in_json, List(resp.items))?;
+                    Ok(())
+                }
+            },
+        },
+
+        Command::Integrations(cmd) => match cmd.integration_command {
+            IntegrationsCommand::List(params) => {
+                let client = client_builder.create().await?;
+                let resp = esc_api::integrate::list_integrations(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                )
+                .await?;
+                print_output(opt.render_in_json, resp)?;
+                Ok(())
+            }
+            IntegrationsCommand::Create(params) => {
+                let client = client_builder.create().await?;
+                let data: esc_api::integrate::CreateIntegrationData = match params.data {
+                    CreateIntegrationData::OpsGenie(args) => {
+                        esc_api::integrate::CreateIntegrationData::OpsGenie(
+                            esc_api::integrate::CreateOpsGenieIntegrationData {
+                                api_key: args.api_key,
+                                source: None,
                             },
                         )
-                        .await?;
-                }
-                IntegrationsCommand::TestIntegration(params) => {
-                    client
-                        .integrations(&token)
-                        .test(
-                            params.organization_id,
-                            params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
+                    }
+                    CreateIntegrationData::Slack(args) => {
+                        esc_api::integrate::CreateIntegrationData::Slack(
+                            esc_api::integrate::CreateIntegrationData::SlackData {
+                                channel_id: args.channel_id,
+                                token: args.token,
+                            },
                         )
-                        .await?;
-                }
+                    }
+                };
+                let resp = esc_api::integrate::create_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    esc_api::integrate::CreateIntegrationRequest {
+                        data,
+                        description: params.description,
+                    },
+                )
+                .await?;
+                print_output(opt.render_in_json, resp)?;
+                Ok(())
             }
-        }
+            IntegrationsCommand::Delete(params) => {
+                let client = client_builder.create().await?;
+                esc_api::integrate::delete_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    params.integration_id,
+                )
+                .await?;
+                Ok(())
+            }
+            IntegrationsCommand::Get(params) => {
+                let client = client_builder.create().await?;
+                let resp = esc_api::integrate::get_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    params.integration_id,
+                )
+                .await?;
+                print_output(opt.render_in_json, resp)?;
+                Ok(())
+            }
+            IntegrationsCommand::Update(params) => {
+                use esc_api::integrate::*;
+                // TODO: rework this. It's probably saner to force the user to say the type of sink they're updating
+                let data: Option<UpdateIntegrationData> = match params.data.api_key {
+                    Some(api_key) => Some(UpdateIntegrationData::UpdateOpsGenieIntegrationData(
+                        UpdateOpsGenieIntegrationData {
+                            api_key: Some(api_key),
+                        },
+                    )),
+                    None => {
+                        if params.data.channel_id.is_some() || params.data.token.is_some() {
+                            Some(UpdateIntegrationData::UpdateSlackIntegrationData(
+                                UpdateSlackIntegrationData {
+                                    channel_id: params.data.channel_id,
+                                    token: params.data.token,
+                                },
+                            ))
+                        } else {
+                            None
+                        }
+                    }
+                };
+
+                let client = client_builder.create().await?;
+                esc_api::integrate::update_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    params.integration_id,
+                    UpdateIntegrationRequest {
+                        description: params.description,
+                        data,
+                    },
+                )
+                .await?;
+                Ok(())
+            }
+            IntegrationsCommand::TestIntegration(params) => {
+                let client = client_builder.create().await?;
+                esc_api::integrate::test_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    params.integration_id,
+                )
+                .await?;
+                Ok(())
+            }
+        },
 
         Command::GenerateBashCompletion => {
             clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
+            Ok(())
         }
 
         Command::GenerateZshCompletion => {
             clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
+            Ok(())
         }
 
         Command::GeneratePowershellCompletion => {
             clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
+            Ok(())
         }
     };
 
