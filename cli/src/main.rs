@@ -10,10 +10,10 @@ mod config;
 mod constants;
 mod enrich;
 mod utils;
+mod v1;
 
 use esc_api::{GroupId, OrgId};
-use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use std::collections::HashMap;
 use structopt::StructOpt;
 
@@ -1364,35 +1364,30 @@ fn print_output<A: std::fmt::Debug + Serialize>(
     Ok(())
 }
 
-struct List<A>(Vec<A>);
+struct Printer {
+    pub render_in_json: bool,
+    pub render_as_v1: bool,
+}
 
-impl<A> std::fmt::Debug for List<A>
-where
-    A: std::fmt::Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for value in self.0.iter() {
-            writeln!(f, "{:?}", value)?;
+impl Printer {
+    pub fn print<A: std::fmt::Debug + Serialize + v1::ToV1>(
+        &self,
+        value: A,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if self.render_as_v1 {
+            let value = value.to_v1();
+            if self.render_in_json {
+                serde_json::to_writer_pretty(std::io::stdout(), &value)?;
+            } else {
+                println!("{:?}", value);
+            }
+        } else if self.render_in_json {
+            serde_json::to_writer_pretty(std::io::stdout(), &value)?;
+        } else {
+            println!("{:?}", value);
         }
 
         Ok(())
-    }
-}
-
-impl<A> serde::ser::Serialize for List<A>
-where
-    A: serde::ser::Serialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
-        for elem in self.0.iter() {
-            seq.serialize_element(elem)?;
-        }
-
-        seq.end()
     }
 }
 
@@ -1480,6 +1475,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         refresh_token: opt.refresh_token,
     };
 
+    let printer = Printer {
+        render_in_json: opt.render_in_json,
+        render_as_v1: true,
+    };
+
     config::Settings::configure().await?;
 
     if opt.debug {
@@ -1502,11 +1502,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 .collect(),
                         ),
                     };
-                    let group_id =
-                        esc_api::access::create_group(&client, params.org_id, create_params)
-                            .await?;
+                    let resp = esc_api::access::create_group(&client, params.org_id, create_params)
+                        .await?;
 
-                    print_output(opt.render_in_json, group_id)?;
+                    printer.print(resp)?;
                 }
 
                 GroupsCommand::Update(params) => {
@@ -1520,9 +1519,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 GroupsCommand::Get(params) => {
                     let client = client_builder.create().await?;
-                    let group =
+                    let resp =
                         esc_api::access::get_group(&client, params.org_id, params.id).await?;
-                    print_output(opt.render_in_json, group)?;
+                    printer.print(resp)?;
                 }
 
                 GroupsCommand::Delete(params) => {
@@ -1532,11 +1531,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 GroupsCommand::List(params) => {
                     let client = client_builder.create().await?;
-                    let groups = esc_api::access::list_groups(&client, params.org_id).await?;
-                    match opt.render_in_json {
-                        true => print_output(true, groups)?,
-                        false => print_output(false, List(groups.groups))?,
-                    };
+                    let resp = esc_api::access::list_groups(&client, params.org_id).await?;
+                    printer.print(resp)?;
                 }
             },
 
@@ -1664,7 +1660,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_policies(&client, params.org_id).await?;
-                    print_output(opt.render_in_json, List(resp.policies))?;
+                    print_output(opt.render_in_json, v1::List(resp.policies))?;
                 }
             },
         },
@@ -1730,7 +1726,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::infra::list_networks(&client, params.org_id, params.project_id)
                             .await?;
-                    print_output(opt.render_in_json, List(resp.networks))?;
+                    print_output(opt.render_in_json, v1::List(resp.networks))?;
                 }
             },
 
@@ -1828,7 +1824,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::infra::list_peerings(&client, params.org_id, params.project_id)
                             .await?;
-                    print_output(opt.render_in_json, List(resp.peerings))?;
+                    print_output(opt.render_in_json, v1::List(resp.peerings))?;
                 }
             },
         },
@@ -1972,7 +1968,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 OrganizationsCommand::List(_) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_organizations(&client).await?;
-                    print_output(opt.render_in_json, List(resp.organizations))?;
+                    print_output(opt.render_in_json, v1::List(resp.organizations))?;
                 }
             },
 
@@ -2014,7 +2010,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ProjectsCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_projects(&client, params.org_id).await?;
-                    print_output(opt.render_in_json, List(resp.projects))?;
+                    print_output(opt.render_in_json, v1::List(resp.projects))?;
                 }
             },
         },
@@ -2095,7 +2091,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await?;
                         print_output(
                             opt.render_in_json,
-                            List(
+                            v1::List(
                                 resp.clusters
                                     .into_iter()
                                     .map(enrich::enrich_cluster)
@@ -2165,7 +2161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let resp =
                             esc_api::mesdb::list_backups(&client, params.org_id, params.project_id)
                                 .await?;
-                        print_output(opt.render_in_json, List(resp.backups))?;
+                        print_output(opt.render_in_json, v1::List(resp.backups))?;
                     }
                 },
             }
@@ -2228,7 +2224,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::orchestrate::list_jobs(&client, params.org_id, params.project_id)
                             .await?;
-                    print_output(opt.render_in_json, List(resp.jobs))?;
+                    print_output(opt.render_in_json, v1::List(resp.jobs))?;
                 }
             },
             OrchestrateCommand::History(history) => match history.history_command {
@@ -2241,7 +2237,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.project_id,
                     )
                     .await?;
-                    print_output(opt.render_in_json, List(resp.items))?;
+                    print_output(opt.render_in_json, v1::List(resp.items))?;
                 }
             },
         },

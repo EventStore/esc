@@ -121,7 +121,7 @@ pub struct GetSettingsResponse {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub id: GroupId,
     pub linked_resource: String,
     pub members: Vec<MemberId>,

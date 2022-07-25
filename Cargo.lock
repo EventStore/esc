@@ -130,7 +130,7 @@ dependencies = [
  "ansi_term",
  "atty",
  "bitflags",
- "strsim 0.8.0",
+ "strsim",
  "textwrap 0.11.0",
  "unicode-width",
  "vec_map",
@@ -142,12 +142,9 @@ version = "3.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab8b79fe3946ceb4a0b1c080b4018992b8d27e9ff363644c1c9b6387c854614d"
 dependencies = [
- "atty",
  "bitflags",
  "clap_lex",
  "indexmap",
- "strsim 0.10.0",
- "termcolor",
  "textwrap 0.15.0",
 ]
 
@@ -310,11 +307,11 @@ dependencies = [
 
 [[package]]
 name = "esc"
-version = "1.21.6"
+version = "2.0.0"
 dependencies = [
  "chrono",
  "cidr",
- "clap 3.2.12",
+ "clap 2.34.0",
  "clap_complete",
  "dirs 2.0.2",
  "env_logger 0.7.1",
@@ -1609,12 +1606,6 @@ name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
-
-[[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "structopt"
