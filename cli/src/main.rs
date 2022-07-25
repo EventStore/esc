@@ -39,6 +39,13 @@ pub struct Opt {
     render_in_json: bool,
 
     #[structopt(
+        long = "output-v2",
+        help = "Renders in the new style of ESC output, which is truer to the API",
+        global = true
+    )]
+    render_as_v2: bool,
+
+    #[structopt(
         long,
         help = "Refresh token, useful if you intend to use esc in a CI/scripting setting for example",
         global = true
@@ -1477,7 +1484,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let printer = Printer {
         render_in_json: opt.render_in_json,
-        render_as_v1: true,
+        render_as_v1: !opt.render_as_v2,
     };
 
     config::Settings::configure().await?;
