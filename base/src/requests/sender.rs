@@ -114,25 +114,31 @@ impl Sender {
                     Ok(r)
                 }
                 None => {
-                    let d: serde_json::Value =
-                        resp.json().await.map_err(|s| CommunicationError {
-                            debug: format!(
-                                "method={}, url={}, status code={}",
-                                method, url, status_code
-                            ),
-                            message: "Error reading or deserializing the request response"
-                                .to_string(),
-                            source: Box::new(s),
-                        })?;
-                    let r: R = serde_json::from_value(d).map_err(|s| CommunicationError {
-                        debug: format!(
-                            "method={}, url={}, status code={}",
-                            method, url, status_code
-                        ),
-                        message: "Error deserializing response text into specific client type"
-                            .to_string(),
-                        source: Box::new(s),
-                    })?;
+                    let r: R = match use_return_value {
+                        Some(r) => r,
+                        None => {
+                            let d: serde_json::Value =
+                                resp.json().await.map_err(|s| CommunicationError {
+                                    debug: format!(
+                                        "method={}, url={}, status code={}",
+                                        method, url, status_code
+                                    ),
+                                    message: "Error reading or deserializing the request response"
+                                        .to_string(),
+                                    source: Box::new(s),
+                                })?;
+                            let r: R = serde_json::from_value(d).map_err(|s| CommunicationError {
+                                debug: format!(
+                                    "method={}, url={}, status code={}",
+                                    method, url, status_code
+                                ),
+                                message: "Error deserializing response text into specific client type"
+                                    .to_string(),
+                                source: Box::new(s),
+                            })?;
+                            r
+                        }
+                    };
                     Ok(r)
                 }
             };
