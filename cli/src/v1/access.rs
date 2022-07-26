@@ -152,3 +152,24 @@ impl ToV1 for esc_api::access::ListInvitesResponse {
         List(invites)
     }
 }
+
+impl ToV1 for esc_api::access::CreatePolicyResponse {
+    type V1Type = esc_api::access::PolicyId;
+    fn to_v1(self) -> Self::V1Type {
+        self.id
+    }
+}
+
+impl ToV1 for esc_api::access::GetPolicyResponse {
+    type V1Type = Self;
+    fn to_v1(self) -> Self::V1Type {
+        self
+    }
+}
+
+impl ToV1 for esc_api::access::ListPoliciesResponse {
+    type V1Type = Self;
+    fn to_v1(self) -> Self::V1Type {
+        self
+    }
+}

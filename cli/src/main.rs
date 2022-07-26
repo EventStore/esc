@@ -1646,7 +1646,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             AccessCommand::Policies(policies) => match policies.policies_command {
                 PoliciesCommand::Create(params) => {
                     let client = client_builder.create().await?;
-                    let policy = esc_api::access::create_policy(
+                    let resp = esc_api::access::create_policy(
                         &client,
                         params.org_id,
                         esc_api::access::CreatePolicyRequest {
@@ -1660,7 +1660,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     )
                     .await?;
-                    print_output(opt.render_in_json, policy.id)?;
+                    printer.print(resp)?;
                 }
 
                 PoliciesCommand::Update(params) => {
@@ -1689,15 +1689,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 PoliciesCommand::Get(params) => {
                     let client = client_builder.create().await?;
-                    let policy =
+                    let resp =
                         esc_api::access::get_policy(&client, params.org_id, params.policy).await?;
-                    print_output(opt.render_in_json, policy)?;
+                    printer.print(resp)?;
                 }
 
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_policies(&client, params.org_id).await?;
-                    print_output(opt.render_in_json, v1::List(resp.policies))?;
+                    printer.print(resp)?;
                 }
             },
         },

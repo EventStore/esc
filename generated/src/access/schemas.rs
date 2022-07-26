@@ -73,7 +73,7 @@ pub struct CreatePolicyRequest {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePolicyResponse {
-    pub id: String,
+    pub id: PolicyId,
 }
 
 /// the policy's effect
