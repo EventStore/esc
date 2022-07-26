@@ -1807,7 +1807,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await?;
 
                         if opt.render_in_json {
-                            print_output(opt.render_in_json, resp.commands)?;
+                            printer.print(resp)?;
                         } else {
                             println!("Upstream provider requires configuration.");
                             for command in resp.commands {
@@ -1846,14 +1846,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 PeeringsCommand::Get(params) => {
                     let client = client_builder.create().await?;
-                    let peering = esc_api::infra::get_peering(
+                    let resp = esc_api::infra::get_peering(
                         &client,
                         params.org_id,
                         params.project_id,
                         params.id,
                     )
                     .await?;
-                    print_output(opt.render_in_json, peering)?;
+                    printer.print(resp)?;
                 }
 
                 PeeringsCommand::List(params) => {
@@ -1861,7 +1861,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::infra::list_peerings(&client, params.org_id, params.project_id)
                             .await?;
-                    print_output(opt.render_in_json, v1::List(resp.peerings))?;
+                    printer.print(resp)?;
                 }
             },
         },

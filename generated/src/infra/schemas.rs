@@ -102,10 +102,10 @@ pub struct Network {
 pub struct Peering {
     pub created: String,
     pub description: String,
-    pub id: String,
-    pub network_id: String,
+    pub id: PeeringId,
+    pub network_id: NetworkId,
     pub network_cidr_block: String,
-    pub project_id: String,
+    pub project_id: ProjectId,
     pub provider: String,
     pub peer_account_id: String,
     pub peer_network_id: String,
