@@ -1525,7 +1525,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client_builder = ClientBuilder {
         base_url,
         observer,
-        refresh_token: opt.refresh_token,
+        refresh_token: opt.refresh_token.clone(),
     };
 
     let printer = Printer {
@@ -1543,6 +1543,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env_logger::init();
     }
 
+    let silence_errors = !opt.output_format.is_v1();
+    let result = call_api(opt, client_builder, printer).await;
+    if !silence_errors {
+        result
+    } else if let Err(err) = result {
+        if let Some(esc_api::Error::ApiResponse(resp)) = err.downcast_ref::<esc_api::Error>() {
+            if !resp.status_code.is_success() {
+                // The traffic observer has already shown the error to the user, so don't show
+                // additional error information.
+                std::process::exit(1);
+            }
+        }
+        Err(err)
+    } else {
+        result
+    }
+}
+
+async fn call_api(
+    opt: Opt,
+    client_builder: ClientBuilder,
+    printer: Printer,
+) -> Result<(), Box<dyn std::error::Error>> {
     match opt.cmd {
         Command::Access(access) => match access.access_command {
             AccessCommand::Groups(groups) => match groups.groups_command {
