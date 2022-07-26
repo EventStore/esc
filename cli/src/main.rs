@@ -15,6 +15,7 @@ mod v1;
 use esc_api::{GroupId, OrgId};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -51,6 +52,9 @@ pub struct Opt {
         global = true
     )]
     refresh_token: Option<String>,
+
+    #[structopt(long, help = "Show all request / response traffic", global = true)]
+    show_traffic: bool,
 
     #[structopt(subcommand)]
     cmd: Command,
@@ -1435,8 +1439,27 @@ async fn get_token(
     }
 }
 
+struct TrafficSpy {}
+
+impl esc_api::RequestObserver for TrafficSpy {
+    fn on_request(&self, method: &str, url: &str, body: &str) {
+        println!("{} {}", method, url);
+        if body.len() > 0 {
+            println!("{}", body);
+        }
+    }
+
+    fn on_response(&self, status: &str, body: &str) {
+        println!("status: {}", status);
+        if body.len() > 0 {
+            println!("{}", body);
+        };
+    }
+}
+
 struct ClientBuilder {
     base_url: String,
+    observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>>,
     refresh_token: Option<String>,
 }
 
@@ -1448,7 +1471,7 @@ impl ClientBuilder {
         };
         let sender = esc_api::RequestSender {
             client: reqwest::Client::new(),
-            observer: None,
+            observer: self.observer,
         };
         let client = esc_api::Client {
             authorization: std::sync::Arc::new(authorization),
@@ -1477,8 +1500,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
+    let observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>> = if opt.show_traffic {
+        Some(Arc::new(TrafficSpy {}))
+    } else {
+        None
+    };
+
     let client_builder = ClientBuilder {
         base_url,
+        observer,
         refresh_token: opt.refresh_token,
     };
 
@@ -1556,7 +1586,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await?;
 
-                    println!("{}", resp.id);
+                    printer.print(resp)?;
                 }
 
                 InvitesCommand::Resend(params) => {
@@ -1577,7 +1607,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 InvitesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_invites(&client, params.org_id).await?;
-                    print_output(opt.render_in_json, resp.invites)?;
+                    printer.print(resp)?;
                 }
             },
 

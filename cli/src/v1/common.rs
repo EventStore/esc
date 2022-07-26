@@ -5,6 +5,21 @@ pub trait ToV1 {
     fn to_v1(self) -> Self::V1Type;
 }
 
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct StringNoQuotes(pub String);
+
+impl std::fmt::Display for StringNoQuotes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::fmt::Debug for StringNoQuotes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> core::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
 pub struct List<A>(pub Vec<A>);
 
 impl<A> std::fmt::Debug for List<A>

@@ -133,11 +133,12 @@ pub struct Group {
 #[serde(rename_all = "camelCase")]
 pub struct Invite {
     pub accepted: bool,
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub email: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expired: Option<bool>,
-    pub groups: Vec<GroupId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<GroupId>>,
     pub id: InviteId,
     pub organization_id: OrganizationId,
 }
