@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
-use esc_api::orchestrate::ScheduledBackupData;
 
-use super::common::{List, StringNoQuotes, ToV1};
+use super::common::{List, ToV1};
 use super::resources::OrgId;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,5 +80,42 @@ impl ToV1 for esc_api::orchestrate::ListJobsResponse {
     type V1Type = List<Job>;
     fn to_v1(self) -> Self::V1Type {
         List(self.jobs.into_iter().map(|j| j.to_v1()).collect())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub project_id: esc_api::resources::ProjectId,
+    pub job_id: esc_api::orchestrate::JobId,
+    pub status: String,
+    pub details: String,
+    pub linked_resource: String,
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
+}
+
+impl ToV1 for esc_api::orchestrate::HistoryItem {
+    type V1Type = HistoryItem;
+    fn to_v1(self) -> Self::V1Type {
+        HistoryItem {
+            details: self.details,
+            end_time: self.end_time,
+            job_id: self.job_id,
+            linked_resource: self.linked_resource,
+            org_id: self.organization_id.to_v1(),
+            project_id: self.project_id,
+            start_time: self.start_time,
+            status: self.status,
+        }
+    }
+}
+
+impl ToV1 for esc_api::orchestrate::GetHistoryResponse {
+    type V1Type = List<HistoryItem>;
+    fn to_v1(self) -> Self::V1Type {
+        List(self.items.into_iter().map(|i| i.to_v1()).collect())
     }
 }

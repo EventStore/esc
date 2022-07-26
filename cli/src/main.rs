@@ -8,7 +8,6 @@ extern crate serde_derive;
 
 mod config;
 mod constants;
-mod enrich;
 mod utils;
 mod v1;
 
@@ -1088,9 +1087,9 @@ struct ListHistory {
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
     project_id: esc_api::resources::ProjectId,
-    // TODO: add this back
-    // #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
-    // job_id: Option<esc_api::JobId>,
+
+    #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
+    job_id: Option<esc_api::JobId>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -2257,6 +2256,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             OrchestrateCommand::History(history) => match history.history_command {
                 HistoryCommand::List(params) => {
+                    if params.job_id.is_some() {
+                        eprintln!("Passing job ID is not yet supported in the V2 cli.");
+                        std::process::exit(1);
+                    }
                     let client = client_builder.create().await?;
                     // TODO: find a way to wedge `params.job_id,` back in there
                     let resp = esc_api::orchestrate::list_history(
@@ -2265,7 +2268,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.project_id,
                     )
                     .await?;
-                    print_output(opt.render_in_json, v1::List(resp.items))?;
+                    printer.print(resp)?;
                 }
             },
         },
