@@ -1977,7 +1977,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::resources::CreateOrganizationRequest { name: params.name },
                     )
                     .await?;
-                    print_output(opt.render_in_json, resp.id)?;
+                    printer.print(resp)?;
                 }
 
                 OrganizationsCommand::Update(params) => {
@@ -1998,13 +1998,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 OrganizationsCommand::Get(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::get_organization(&client, params.id).await?;
-                    print_output(opt.render_in_json, resp.organization)?;
+                    printer.print(resp)?;
                 }
 
                 OrganizationsCommand::List(_) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_organizations(&client).await?;
-                    print_output(opt.render_in_json, v1::List(resp.organizations))?;
+                    printer.print(resp)?;
                 }
             },
 
@@ -2017,7 +2017,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         esc_api::resources::CreateProjectRequest { name: params.name },
                     )
                     .await?;
-                    print_output(opt.render_in_json, resp.id)?;
+                    printer.print(resp)?;
                 }
 
                 ProjectsCommand::Update(params) => {
@@ -2035,7 +2035,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let client = client_builder.create().await?;
                     let resp =
                         esc_api::resources::get_project(&client, params.org_id, params.id).await?;
-                    print_output(opt.render_in_json, resp.project)?;
+                    printer.print(resp)?;
                 }
 
                 ProjectsCommand::Delete(params) => {
@@ -2046,7 +2046,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ProjectsCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_projects(&client, params.org_id).await?;
-                    print_output(opt.render_in_json, v1::List(resp.projects))?;
+                    printer.print(resp)?;
                 }
             },
         },

@@ -1,4 +1,6 @@
 use super::formats::*;
+use chrono::DateTime;
+use chrono::Utc;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -54,7 +56,7 @@ pub struct ListProjectsResponse {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Organization {
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub id: OrganizationId,
     pub name: String,
     pub provisioning_enabled: bool,
@@ -63,7 +65,7 @@ pub struct Organization {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub id: ProjectId,
     pub name: String,
     pub organization_id: OrganizationId,
