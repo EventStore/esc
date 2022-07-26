@@ -2158,7 +2158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             },
                         )
                         .await?;
-                        print_output(opt.render_in_json, resp.id)?;
+                        printer.print(resp)?;
                     }
 
                     BackupsCommand::Get(params) => {
@@ -2170,7 +2170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             params.id,
                         )
                         .await?;
-                        print_output(opt.render_in_json, resp.backup)?;
+                        printer.print(resp)?;
                     }
 
                     BackupsCommand::Delete(params) => {
@@ -2189,7 +2189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let resp =
                             esc_api::mesdb::list_backups(&client, params.org_id, params.project_id)
                                 .await?;
-                        print_output(opt.render_in_json, v1::List(resp.backups))?;
+                        printer.print(resp)?;
                     }
                 },
             }

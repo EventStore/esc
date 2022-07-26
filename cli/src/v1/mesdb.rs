@@ -114,3 +114,60 @@ impl ToV1 for esc_api::mesdb::ListClustersResponse {
         List(l)
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Backup {
+    pub id: esc_api::mesdb::BackupId,
+    pub project_id: esc_api::resources::ProjectId,
+    pub source_cluster_id: esc_api::mesdb::ClusterId,
+    pub source_cluster_description: String,
+    pub description: String,
+    pub size_gb: usize,
+    pub provider: Provider,
+    pub region: String,
+    pub status: String,
+    pub created: String,
+    pub linked_resource: Option<String>,
+}
+
+impl ToV1 for esc_api::mesdb::Backup {
+    type V1Type = Backup;
+    fn to_v1(self) -> Self::V1Type {
+        Backup {
+            created: self.created.to_rfc3339(),
+            description: self.description,
+            id: self.id,
+            linked_resource: self.linked_resource,
+            project_id: self.project_id,
+            provider: Provider::from_string(&self.provider),
+            region: self.region,
+            size_gb: self.size_gb as usize,
+            source_cluster_description: self.source_cluster_description,
+            source_cluster_id: self.source_cluster_id,
+            status: self.status,
+        }
+    }
+}
+
+impl ToV1 for esc_api::mesdb::CreateBackupResponse {
+    type V1Type = esc_api::mesdb::BackupId;
+    fn to_v1(self) -> Self::V1Type {
+        self.id
+    }
+}
+
+impl ToV1 for esc_api::mesdb::GetBackupResponse {
+    type V1Type = Backup;
+    fn to_v1(self) -> Self::V1Type {
+        self.backup.to_v1()
+    }
+}
+
+impl ToV1 for esc_api::mesdb::ListBackupsResponse {
+    type V1Type = List<Backup>;
+    fn to_v1(self) -> Self::V1Type {
+        let l = self.backups.into_iter().map(|b| b.to_v1()).collect();
+        List(l)
+    }
+}
