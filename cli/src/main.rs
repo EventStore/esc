@@ -8,12 +8,15 @@ extern crate serde_derive;
 
 mod config;
 mod constants;
+mod output;
 mod utils;
 mod v1;
 
 use esc_api::{GroupId, OrgId};
+use output::OutputFormat;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use structopt::StructOpt;
 
@@ -33,17 +36,13 @@ pub struct Opt {
 
     #[structopt(
         long = "json",
-        help = "Render read-command output in JSON",
+        help = "Renders the classic ESC output as JSON (some differences from API)",
         global = true
     )]
     render_in_json: bool,
 
-    #[structopt(
-        long = "output-v2",
-        help = "Renders in the new style of ESC output, which is truer to the API",
-        global = true
-    )]
-    render_as_v2: bool,
+    #[structopt(long = "fmt", parse(try_from_str = parse_output_format), default_value = "", help = "Selects the output format", global = true)]
+    output_format: OutputFormat,
 
     #[structopt(
         long,
@@ -51,9 +50,6 @@ pub struct Opt {
         global = true
     )]
     refresh_token: Option<String>,
-
-    #[structopt(long, help = "Show all request / response traffic", global = true)]
-    show_traffic: bool,
 
     #[structopt(subcommand)]
     cmd: Command,
@@ -609,6 +605,7 @@ enum ProfilePropName {
     OrgId,
     ProjectId,
     ApiBaseUrl,
+    Fmt,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1223,6 +1220,7 @@ lazy_static! {
         map.insert("project-id", ProfilePropName::ProjectId);
         map.insert("org-id", ProfilePropName::OrgId);
         map.insert("api-base-url", ProfilePropName::ApiBaseUrl);
+        map.insert("fmt", ProfilePropName::Fmt);
         map
     };
 }
@@ -1247,6 +1245,21 @@ lazy_static! {
         map.insert("user", esc_api::mesdb::ProjectionLevel::User);
         map
     };
+}
+
+fn parse_output_format(src: &str) -> Result<OutputFormat, String> {
+    if src.trim().is_empty() {
+        let profile_opt = crate::config::SETTINGS.get_current_profile();
+
+        if let Some(value) = profile_opt.and_then(|p| p.output_format.as_ref()) {
+            return Ok(value.clone());
+        }
+        return Ok(OutputFormat::Cli);
+    }
+    match OutputFormat::from_str(src) {
+        Ok(fmt) => Ok(fmt),
+        Err(err) => Err(err),
+    }
 }
 
 fn parse_org_id(src: &str) -> Result<esc_api::resources::OrganizationId, String> {
@@ -1391,12 +1404,7 @@ impl Printer {
             } else {
                 println!("{:?}", value);
             }
-        } else if self.render_in_json {
-            serde_json::to_writer_pretty(std::io::stdout(), &value)?;
-        } else {
-            println!("{:?}", value);
         }
-
         Ok(())
     }
 }
@@ -1438,19 +1446,25 @@ async fn get_token(
     }
 }
 
-struct TrafficSpy {}
+struct TrafficSpy {
+    verbose: bool,
+}
 
 impl esc_api::RequestObserver for TrafficSpy {
     fn on_request(&self, method: &str, url: &str, body: &str) {
-        println!("{} {}", method, url);
-        if body.len() > 0 {
+        if self.verbose {
+            println!("{} {}", method, url);
+        }
+        if !body.is_empty() {
             println!("{}", body);
         }
     }
 
     fn on_response(&self, status: &str, body: &str) {
-        println!("status: {}", status);
-        if body.len() > 0 {
+        if self.verbose || !(status.len() == 3 && status.starts_with('2')) {
+            println!("status: {}", status);
+        }
+        if !body.is_empty() {
             println!("{}", body);
         };
     }
@@ -1499,11 +1513,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
-    let observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>> = if opt.show_traffic {
-        Some(Arc::new(TrafficSpy {}))
-    } else {
-        None
-    };
+    let observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>> =
+        if !opt.output_format.is_v1() {
+            Some(Arc::new(TrafficSpy {
+                verbose: matches!(opt.output_format, OutputFormat::ApiVerbose),
+            }))
+        } else {
+            None
+        };
 
     let client_builder = ClientBuilder {
         base_url,
@@ -1512,8 +1529,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let printer = Printer {
-        render_in_json: opt.render_in_json,
-        render_as_v1: !opt.render_as_v2,
+        render_in_json: match opt.output_format {
+            OutputFormat::CliJson => true,
+            _ => opt.render_in_json,
+        },
+        render_as_v1: opt.output_format.is_v1(),
     };
 
     config::Settings::configure().await?;
@@ -1883,6 +1903,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let url = config::parse_url(params.value.as_str())?;
                         profile.api_base_url = Some(url);
                     }
+
+                    ProfilePropName::Fmt => {
+                        let fmt = OutputFormat::from_str(params.value.as_str())?;
+                        profile.output_format = Some(fmt);
+                    }
                 }
 
                 settings.persist().await?;
@@ -1913,6 +1938,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     serde_json::to_writer_pretty(std::io::stdout(), url.as_str())?;
                                 }
                             }
+
+                            ProfilePropName::Fmt => {
+                                if let Some(fmt) = profile.output_format.as_ref() {
+                                    serde_json::to_writer_pretty(std::io::stdout(), fmt.as_str())?;
+                                }
+                            }
                         }
                     } else {
                         serde_json::to_writer_pretty(std::io::stdout(), profile)?;
@@ -1939,6 +1970,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     ProfilePropName::ApiBaseUrl => {
                         profile.api_base_url = None;
+                    }
+
+                    ProfilePropName::Fmt => {
+                        profile.output_format = None;
                     }
                 }
 

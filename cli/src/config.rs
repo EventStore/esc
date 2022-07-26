@@ -2,6 +2,8 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
+use crate::output::OutputFormat;
+
 lazy_static! {
     pub static ref ESC_DIR: PathBuf = {
         let home_dir = dirs::home_dir().expect("Not supported platform: can't find home directory");
@@ -131,6 +133,9 @@ pub struct Profile {
         default
     )]
     pub api_base_url: Option<url::Url>,
+
+    #[serde(rename = "fmt", skip_serializing_if = "Option::is_none")]
+    pub output_format: Option<OutputFormat>,
 }
 
 struct InvalidUrl {}

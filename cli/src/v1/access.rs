@@ -135,10 +135,9 @@ impl ToV1 for esc_api::access::Invite {
             accepted: self.accepted,
             created: self.created,
             email: Email(self.email),
-            groups: match self.groups {
-                Some(groups) => Some(groups.into_iter().map(|g| g.to_v1()).collect()),
-                None => None,
-            },
+            groups: self
+                .groups
+                .map(|groups| groups.into_iter().map(|g| g.to_v1()).collect()),
             id: self.id,
             org_id: self.organization_id.to_v1(),
         }

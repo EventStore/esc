@@ -1,7 +1,7 @@
 [package]
 name = "esc"
-version = "1.21.6"
-authors = ["Yorick Laupa <yorick.laupa@eventstore.com>"]
+version = "1.22.0"
+authors = ["Yorick Laupa <yorick.laupa@eventstore.com>", "Tim Simpson <tim.simpson@eventstore.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

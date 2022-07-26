@@ -57,6 +57,18 @@ You can find more information about `profiles` by entering:
 esc profiles --help
 ```
 
+## Output Formats
+
+This tool has historically shown output using it's own custom format instead of what the API returns. This will be deprecated in the future.
+
+To view all the data returned from the API, pass `--fmt api`.
+
+It is possible to tell `esc` to always use this format by setting it in your profile:
+
+```
+esc profiles set --profile my_profile --name fmt --value api
+```
+
 ## JSON commands output rendering
 You can render any read command output in JSON by using the `--json` flag.
 

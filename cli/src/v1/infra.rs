@@ -7,7 +7,6 @@ impl ToV1 for esc_api::infra::CreateNetworkResponse {
     }
 }
 
-// insert gif of cat scratching frantically on window here
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
