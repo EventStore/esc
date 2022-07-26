@@ -2221,7 +2221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     )
                     .await?;
-                    print_output(opt.render_in_json, resp.id)?;
+                    printer.print(resp)?;
                 }
 
                 JobsCommand::Get(params) => {
@@ -2233,7 +2233,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.id,
                     )
                     .await?;
-                    print_output(opt.render_in_json, resp.job)?;
+                    printer.print(resp)?;
                 }
 
                 JobsCommand::Delete(params) => {
@@ -2252,7 +2252,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::orchestrate::list_jobs(&client, params.org_id, params.project_id)
                             .await?;
-                    print_output(opt.render_in_json, v1::List(resp.jobs))?;
+                    printer.print(resp)?;
                 }
             },
             OrchestrateCommand::History(history) => match history.history_command {
