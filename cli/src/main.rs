@@ -1776,7 +1776,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.project_id.clone(),
                         esc_api::infra::CreatePeeringRequest {
                             description: params.description,
-                            network_id: params.network_id.to_string(),
+                            network_id: params.network_id.clone(),
                             peer_account_id: params.peer_account_id.clone(),
                             peer_network_id: params.peer_network_id.clone(),
                             peer_network_region: params.peer_network_region,
@@ -1790,7 +1790,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             &client,
                             params.org_id.clone(),
                             params.project_id.clone(),
-                            params.network_id,
+                            params.network_id.clone(),
                         )
                         .await?;
 
@@ -2077,8 +2077,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             },
                         )
                         .await?;
-                        let cluster_id = resp.id;
-                        print_output(opt.render_in_json, cluster_id)?;
+                        printer.print(resp)?;
                     }
 
                     ClustersCommand::Get(params) => {
@@ -2090,7 +2089,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             params.id,
                         )
                         .await?;
-                        print_output(opt.render_in_json, enrich::enrich_cluster(resp.cluster))?;
+                        printer.print(resp)?;
                     }
 
                     ClustersCommand::Delete(params) => {
@@ -2126,15 +2125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             params.project_id,
                         )
                         .await?;
-                        print_output(
-                            opt.render_in_json,
-                            v1::List(
-                                resp.clusters
-                                    .into_iter()
-                                    .map(enrich::enrich_cluster)
-                                    .collect(),
-                            ),
-                        )?;
+                        printer.print(resp)?;
                     }
 
                     ClustersCommand::Expand(params) => {

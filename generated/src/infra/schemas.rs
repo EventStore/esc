@@ -44,7 +44,7 @@ pub struct CreatePeeringCommandsResponse {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePeeringRequest {
-    pub network_id: String,
+    pub network_id: NetworkId,
     pub description: String,
     pub peer_account_id: String,
     pub peer_network_id: String,
@@ -55,7 +55,7 @@ pub struct CreatePeeringRequest {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePeeringResponse {
-    pub id: String,
+    pub id: PeeringId,
 }
 
 pub type Fields = HashMap<String, String>;

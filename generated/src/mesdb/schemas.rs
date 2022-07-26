@@ -2,13 +2,15 @@ use super::formats::*;
 use crate::infra::formats::NetworkId;
 use crate::resources::formats::OrganizationId;
 use crate::resources::formats::ProjectId;
+use chrono::DateTime;
+use chrono::Utc;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Backup {
     pub available_node_count: i32,
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linked_resource: Option<String>,
@@ -29,7 +31,7 @@ pub struct Backup {
 pub struct Cluster {
     pub can_expand_disk: bool,
     pub cloud_integrated_authentication: bool,
-    pub created: String,
+    pub created: DateTime<Utc>,
     pub description: String,
     pub disk_size_gb: i32,
     pub disk_type: String,
