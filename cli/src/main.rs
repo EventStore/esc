@@ -1718,7 +1718,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         },
                     )
                     .await?;
-                    print_output(opt.render_in_json, resp.id)?;
+                    printer.print(resp)?;
                 }
 
                 NetworksCommand::Update(params) => {
@@ -1755,7 +1755,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         params.id,
                     )
                     .await?;
-                    print_output(opt.render_in_json, resp.network)?;
+                    printer.print(resp)?;
                 }
 
                 NetworksCommand::List(params) => {
@@ -1763,7 +1763,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let resp =
                         esc_api::infra::list_networks(&client, params.org_id, params.project_id)
                             .await?;
-                    print_output(opt.render_in_json, v1::List(resp.networks))?;
+                    printer.print(resp)?;
                 }
             },
 
