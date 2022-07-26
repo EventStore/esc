@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "esc"
-version = "2.0.0"
+version = "1.22.0"
 dependencies = [
  "chrono",
  "cidr",
