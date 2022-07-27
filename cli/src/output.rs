@@ -16,6 +16,13 @@ pub enum OutputFormat {
     ApiVerbose,
 }
 
+static OUTPUT_FORMAT_HELP: &str = r#"
+Output format options:
+    api - Shows response bodies exactly as they appear in the API.
+    cli - Shows responses using the ESC cli's custom output format. Deprecated. 
+    cli-json - Shows responses using the ESC cli's custom output format, but serialized back into JSON. Deprecated.
+"#;
+
 impl OutputFormat {
     pub fn is_v1(&self) -> bool {
         match self {
@@ -44,7 +51,10 @@ impl std::str::FromStr for OutputFormat {
             "cli-json" => Ok(Self::CliJson),
             "api" => Ok(Self::Api),
             "api-verbose" => Ok(Self::ApiVerbose),
-            _ => Err(format!("unknown output format type: {s}")),
+            _ => {
+                eprintln!("Error parsing `fmt` option: unknown output format type: {s}\n{OUTPUT_FORMAT_HELP}");
+                Err(format!("unknown output format type: {s}"))
+            }
         }
     }
 }
