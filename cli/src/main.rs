@@ -1610,7 +1610,10 @@ async fn call_api(
 
                 GroupsCommand::List(params) => {
                     let client = client_builder.create().await?;
-                    let resp = esc_api::access::list_groups(&client, params.org_id).await?;
+                    let linked_resource = None; // TODO: add this as a parameter
+                    let resp =
+                        esc_api::access::list_groups(&client, params.org_id, linked_resource)
+                            .await?;
                     printer.print(resp)?;
                 }
             },
@@ -2314,16 +2317,12 @@ async fn call_api(
             },
             OrchestrateCommand::History(history) => match history.history_command {
                 HistoryCommand::List(params) => {
-                    if params.job_id.is_some() {
-                        eprintln!("Passing job ID is not yet supported in the V2 cli.");
-                        std::process::exit(1);
-                    }
                     let client = client_builder.create().await?;
-                    // TODO: find a way to wedge `params.job_id,` back in there
                     let resp = esc_api::orchestrate::list_history(
                         &client,
                         params.org_id,
                         params.project_id,
+                        params.job_id,
                     )
                     .await?;
                     printer.print(resp)?;

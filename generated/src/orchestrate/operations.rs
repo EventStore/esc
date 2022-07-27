@@ -85,16 +85,22 @@ pub async fn get_job(
 ///
 /// * `organization_id` - The id of the organization
 /// * `project_id` - The id of the project
+/// * `job_id` - Filter by job id
 pub async fn list_history(
     client: &Client,
     organization_id: OrganizationId,
     project_id: ProjectId,
+    job_id: Option<JobId>,
 ) -> Result<GetHistoryResponse> {
     let url = format!(
         "/orchestrate/v1/organizations/{organizationId}/projects/{projectId}/history",
         organizationId = urlencode(organization_id),
         projectId = urlencode(project_id),
     );
+    let url = match job_id {
+        Some(v) => format!("{url}?jobId={jobId}", jobId = urlencode(v),),
+        None => url,
+    };
     client
         .send_request::<(), GetHistoryResponse>(Method::GET, url, None, None)
         .await

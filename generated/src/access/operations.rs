@@ -255,14 +255,23 @@ pub async fn get_settings(
 /// # Arguments
 ///
 /// * `organization_id` - The id of the organization
+/// * `linked_resource` - Filter by linked resource
 pub async fn list_groups(
     client: &Client,
     organization_id: OrganizationId,
+    linked_resource: Option<String>,
 ) -> Result<ListGroupsResponse> {
     let url = format!(
         "/access/v1/organizations/{organizationId}/groups",
         organizationId = urlencode(organization_id),
     );
+    let url = match linked_resource {
+        Some(v) => format!(
+            "{url}?linked_resource={linked_resource}",
+            linked_resource = urlencode(v),
+        ),
+        None => url,
+    };
     client
         .send_request::<(), ListGroupsResponse>(Method::GET, url, None, None)
         .await
