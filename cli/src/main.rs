@@ -1411,9 +1411,9 @@ impl esc_api::Authorization for StaticAuthorization {
 }
 
 async fn get_token(
+    token_config: esc_api::TokenConfig,
     refresh_token: Option<String>,
 ) -> Result<esc_api::Token, Box<dyn std::error::Error>> {
-    let token_config = esc_api::TokenConfig::default();
     let client = reqwest::Client::new();
     match refresh_token {
         Some(refresh_token) => {
@@ -1461,11 +1461,12 @@ struct ClientBuilder {
     base_url: String,
     observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>>,
     refresh_token: Option<String>,
+    token_config: esc_api::TokenConfig,
 }
 
 impl ClientBuilder {
     pub async fn create(self) -> Result<esc_api::Client, Box<dyn std::error::Error>> {
-        let token = get_token(self.refresh_token).await?;
+        let token = get_token(self.token_config, self.refresh_token).await?;
         let authorization = StaticAuthorization {
             authorization_header: token.authorization_header(),
         };
@@ -1509,12 +1510,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             None
         };
 
-    let client_builder = ClientBuilder {
-        base_url,
-        observer,
-        refresh_token: opt.refresh_token.clone(),
-    };
-
     let printer = Printer {
         render_in_json: match opt.output_format {
             OutputFormat::CliJson => true,
@@ -1530,8 +1525,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env_logger::init();
     }
 
+    // Create the token config
+    let mut token_config = esc_api::TokenConfig::default();
+    // If the user has specified additional token config settings, change them here.
+    // No typical users will ever need to do this, so it's only accessible if the
+    // config file is changed directly.
+    let profile_opt = crate::config::SETTINGS.get_current_profile();
+    if let Some(token_opts) = profile_opt.and_then(|p| p.token_config.as_ref()) {
+        if let Some(value) = &token_opts.audience {
+            token_config.audience = value.clone();
+        }
+        if let Some(value) = &token_opts.client_id {
+            token_config.client_id = value.clone();
+        }
+        if let Some(value) = &token_opts.identity_url {
+            token_config.identity_url = value.clone();
+        }
+        if let Some(value) = &token_opts.public_key {
+            token_config.public_key = value.clone();
+        }
+    }
+
+    let client_builder = ClientBuilder {
+        base_url,
+        observer,
+        refresh_token: opt.refresh_token.clone(),
+        token_config: token_config.clone(),
+    };
+
     let silence_errors = !opt.output_format.is_v1();
-    let result = call_api(clap_app, opt, client_builder, printer).await;
+    let result = call_api(clap_app, opt, client_builder, printer, token_config).await;
     if !silence_errors {
         result
     } else if let Err(err) = result {
@@ -1553,6 +1576,7 @@ async fn call_api<'a, 'b>(
     opt: Opt,
     client_builder: ClientBuilder,
     printer: Printer,
+    token_config: esc_api::TokenConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match opt.cmd {
         Command::Access(access) => match access.access_command {
@@ -1646,7 +1670,6 @@ async fn call_api<'a, 'b>(
 
             AccessCommand::Tokens(tokens) => match tokens.tokens_command {
                 TokensCommand::Create(params) => {
-                    let token_config = esc_api::TokenConfig::default();
                     let client = reqwest::Client::new();
                     let mut store = esc_client_store::token_store(token_config).await?;
 
@@ -1664,7 +1687,6 @@ async fn call_api<'a, 'b>(
                     println!("{}", token.refresh_token().unwrap().as_str());
                 }
                 TokensCommand::Display(_params) => {
-                    let token_config = esc_api::TokenConfig::default();
                     let store = esc_client_store::token_store(token_config).await?;
 
                     let token = store.show().await?;

@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct TokenConfig {
     // Identifies the recipients the JWT is intended for.
     // See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3

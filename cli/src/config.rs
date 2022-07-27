@@ -117,6 +117,15 @@ impl Settings {
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
+pub struct TokenConfigOpts {
+    pub audience: Option<String>,
+    pub client_id: Option<String>,
+    pub identity_url: Option<String>,
+    pub public_key: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
+#[serde(rename_all = "kebab-case")]
 pub struct Profile {
     pub name: String,
 
@@ -136,6 +145,9 @@ pub struct Profile {
 
     #[serde(rename = "fmt", skip_serializing_if = "Option::is_none")]
     pub output_format: Option<OutputFormat>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_config: Option<TokenConfigOpts>,
 }
 
 struct InvalidUrl {}

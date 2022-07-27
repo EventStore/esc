@@ -1,6 +1,7 @@
 use structopt::StructOpt;
 
 #[derive(StructOpt, Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "kebab-case")]
 pub enum OutputFormat {
     #[structopt(about = "Shows responses using the ESC cli's custom output. Deprecated.")]
     Cli,
