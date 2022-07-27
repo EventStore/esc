@@ -1531,7 +1531,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let silence_errors = !opt.output_format.is_v1();
-    let result = call_api(opt, client_builder, printer).await;
+    let result = call_api(clap_app, opt, client_builder, printer).await;
     if !silence_errors {
         result
     } else if let Err(err) = result {
@@ -1548,7 +1548,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-async fn call_api(
+async fn call_api<'a, 'b>(
+    mut clap_app: clap::App<'a, 'b>,
     opt: Opt,
     client_builder: ClientBuilder,
     printer: Printer,
@@ -2435,21 +2436,17 @@ async fn call_api(
             }
         },
 
-        // TODO: somehow this is all changed.
-        // May need to use this newer code [here](https://docs.rs/clap_complete/latest/clap_complete/generator/fn.generate_to.html)
         Command::GenerateBashCompletion => {
-            eprintln!("TODO");
-            // clap_app.gen_completions_to("esc", clap::completions::Shell::Bash, &mut std::io::stdout());
+            // clap_complete::generate_to(clap_complete::shells::Bashg, clap_app, "esc", out_dir)
+            clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
         }
 
         Command::GenerateZshCompletion => {
-            eprintln!("TODO");
-            // clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
+            clap_app.gen_completions_to("esc", clap::Shell::Zsh, &mut std::io::stdout());
         }
 
         Command::GeneratePowershellCompletion => {
-            eprintln!("TODO");
-            // clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
+            clap_app.gen_completions_to("esc", clap::Shell::PowerShell, &mut std::io::stdout());
         }
     };
 
