@@ -1374,19 +1374,6 @@ impl std::fmt::Display for StringError {
 
 impl std::error::Error for StringError {}
 
-fn print_output<A: std::fmt::Debug + Serialize>(
-    render_in_json: bool,
-    value: A,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if render_in_json {
-        serde_json::to_writer_pretty(std::io::stdout(), &value)?;
-    } else {
-        println!("{:?}", value);
-    }
-
-    Ok(())
-}
-
 struct Printer {
     pub render_in_json: bool,
     pub render_as_v1: bool,
@@ -2339,7 +2326,7 @@ async fn call_api(
                     params.project_id,
                 )
                 .await?;
-                print_output(opt.render_in_json, resp)?;
+                printer.print(resp)?;
             }
             IntegrationsCommand::Create(params) => {
                 let client = client_builder.create().await?;
@@ -2372,7 +2359,7 @@ async fn call_api(
                     },
                 )
                 .await?;
-                print_output(opt.render_in_json, resp)?;
+                printer.print(resp)?;
             }
             IntegrationsCommand::Delete(params) => {
                 let client = client_builder.create().await?;
@@ -2393,7 +2380,7 @@ async fn call_api(
                     esc_api::integrate::IntegrationId(params.integration_id),
                 )
                 .await?;
-                print_output(opt.render_in_json, resp)?;
+                printer.print(resp)?;
             }
             IntegrationsCommand::Update(params) => {
                 use esc_api::integrate::*;
