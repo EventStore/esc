@@ -1256,10 +1256,7 @@ fn parse_output_format(src: &str) -> Result<OutputFormat, String> {
         }
         return Ok(OutputFormat::Cli);
     }
-    match OutputFormat::from_str(src) {
-        Ok(fmt) => Ok(fmt),
-        Err(err) => Err(err),
-    }
+    OutputFormat::from_str(src)
 }
 
 fn parse_org_id(src: &str) -> Result<esc_api::resources::OrganizationId, String> {
