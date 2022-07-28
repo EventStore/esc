@@ -10,7 +10,7 @@ jobs:
     name: Release
     strategy:
       matrix:
-        os: [ubuntu-18.04, windows-2019, macos-10.16]
+        os: [ubuntu-18.04, windows-2019, macos-11]
 
     runs-on: ${{ matrix.os }}
 
