@@ -1,7 +1,7 @@
 [CmdletBinding()]
 Param(
   [Parameter(Mandatory=$true)]
-  [ValidateSet("windows-2019", "ubuntu-18.04", "macos-10.15")]
+  [ValidateSet("windows-2019", "ubuntu-18.04", "macos-11")]
   [string]$Runner,
 
   [Parameter(Mandatory=$true)]
@@ -69,7 +69,7 @@ switch($Runner)
     Pop-Location
   }
 
-  macos-10.15
+  macos-11
   {
     cargo build --bin esc --release
 
