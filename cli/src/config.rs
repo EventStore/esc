@@ -1,7 +1,8 @@
-use serde::export::Formatter;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+
+use crate::output::OutputFormat;
 
 lazy_static! {
     pub static ref ESC_DIR: PathBuf = {
@@ -116,6 +117,15 @@ impl Settings {
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
+pub struct TokenConfigOpts {
+    pub audience: Option<String>,
+    pub client_id: Option<String>,
+    pub identity_url: Option<String>,
+    pub public_key: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
+#[serde(rename_all = "kebab-case")]
 pub struct Profile {
     pub name: String,
 
@@ -132,6 +142,12 @@ pub struct Profile {
         default
     )]
     pub api_base_url: Option<url::Url>,
+
+    #[serde(rename = "fmt", skip_serializing_if = "Option::is_none")]
+    pub output_format: Option<OutputFormat>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_config: Option<TokenConfigOpts>,
 }
 
 struct InvalidUrl {}
@@ -200,7 +216,7 @@ struct UrlVisitor {}
 impl<'a> serde::de::Visitor<'a> for UrlVisitor {
     type Value = Option<url::Url>;
 
-    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(formatter, "a valid URL")
     }
 

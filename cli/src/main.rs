@@ -1,7 +1,4 @@
-#![allow(clippy::unnecessary_wraps)]
-
-#[macro_use]
-extern crate log;
+// #![allow(clippy::unnecessary_wraps)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -11,14 +8,16 @@ extern crate serde_derive;
 
 mod config;
 mod constants;
-mod enrich;
-mod store;
+mod output;
+mod utils;
+mod v1;
 
-use crate::store::{Auth, TokenStore};
-use esc_api::{Client, ClientId, GroupId, OrgId};
-use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
+use esc_api::{GroupId, OrgId};
+use output::OutputFormat;
+use serde::Serialize;
 use std::collections::HashMap;
+use std::str::FromStr;
+use std::sync::Arc;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -37,10 +36,13 @@ pub struct Opt {
 
     #[structopt(
         long = "json",
-        help = "Render read-command output in JSON",
+        help = "Renders the classic ESC output as JSON (some differences from API)",
         global = true
     )]
     render_in_json: bool,
+
+    #[structopt(long = "fmt", parse(try_from_str = parse_output_format), default_value = "", help = "Selects the output format", global = true)]
+    output_format: OutputFormat,
 
     #[structopt(
         long,
@@ -104,7 +106,7 @@ enum TokensCommand {
 #[structopt(about = "Create an access token")]
 struct CreateToken {
     #[structopt(long, short, parse(try_from_str = parse_email), help = "The email you used to create an EventStoreDB Cloud")]
-    email: esc_api::Email,
+    email: Option<String>,
 
     #[structopt(
         long,
@@ -176,15 +178,15 @@ struct UpdatePolicy {
     #[structopt(long, short, parse(try_from_str = parse_policy_id), help = "Policy's id")]
     policy: esc_api::PolicyId,
     #[structopt(long, short, help = "Policy's name")]
-    name: Option<String>,
+    name: String,
     #[structopt(long, short, help = "Policy's subjects")]
-    subjects: Option<Vec<String>>,
+    subjects: Vec<String>,
     #[structopt(long, short, help = "Policy's resources")]
-    resources: Option<Vec<String>>,
+    resources: Vec<String>,
     #[structopt(long, short, help = "Policy's actions")]
-    actions: Option<Vec<String>>,
+    actions: Vec<String>,
     #[structopt(long, short, help = "Policy's effect")]
-    effect: Option<String>,
+    effect: String,
 }
 
 #[derive(StructOpt, Debug)]
@@ -285,8 +287,7 @@ struct ListGroups {
 #[derive(StructOpt, Debug)]
 enum InvitesCommand {
     Create(CreateInvite),
-    Update(UpdateInvite),
-    Get(GetInvite),
+    Resend(ResendInvite),
     Delete(DeleteInvite),
     List(ListInvites),
 }
@@ -297,31 +298,19 @@ struct CreateInvite {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
-    email: esc_api::Email,
+    email: String,
 
     #[structopt(long, short, parse(try_from_str = parse_group_id), help = "Group(s) the invite will associate the member with after confirmation")]
     group: Option<Vec<GroupId>>,
 }
 
 #[derive(StructOpt, Debug)]
-struct UpdateInvite {
+struct ResendInvite {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite will relate to")]
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::InviteId,
-
-    #[structopt(long, short, parse(try_from_str = parse_email), help = "The email that will receive the invite")]
-    email: esc_api::Email,
-}
-
-#[derive(StructOpt, Debug)]
-struct GetInvite {
-    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invite relates to")]
-    org_id: OrgId,
-
-    #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::InviteId,
+    id: esc_api::access::InviteId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -330,13 +319,13 @@ struct DeleteInvite {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_invite_id), help = "The invite's id")]
-    id: esc_api::InviteId,
+    id: esc_api::access::InviteId,
 }
 
 #[derive(StructOpt, Debug)]
 struct ListInvites {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the invites relate to")]
-    org_id: OrgId,
+    org_id: esc_api::resources::OrganizationId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -372,13 +361,13 @@ enum NetworksCommand {
 #[structopt(about = "Create a network")]
 struct CreateNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network will relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_provider), help = "The cloud provider: aws, gcp or azure")]
-    provider: esc_api::Provider,
+    provider: esc_api::infra::Provider,
 
     #[structopt(long, parse(try_from_str = parse_cidr), help = "Classless Inter-Domain Routing block (CIDR)")]
     cidr_block: cidr::Ipv4Cidr,
@@ -394,49 +383,49 @@ struct CreateNetwork {
 #[structopt(about = "Delete a network")]
 struct DeleteNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
-    id: esc_api::NetworkId,
+    id: esc_api::infra::NetworkId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Read a network information")]
 struct GetNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
-    id: esc_api::NetworkId,
+    id: esc_api::infra::NetworkId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "List networks of an organization, given a project")]
 struct ListNetworks {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the networks relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the networks relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Update network")]
 struct UpdateNetwork {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the network relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the network relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_network_id), help = "A network's id")]
-    id: esc_api::NetworkId,
+    id: esc_api::infra::NetworkId,
 
     #[structopt(long, help = "A human-readable network's description")]
     description: String,
@@ -458,17 +447,17 @@ enum PeeringsCommand {
     Update(UpdatePeering),
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Clone, Debug)]
 #[structopt(about = "Create a peering")]
 struct CreatePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering will relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_network_id), default_value = "", help = "The network id the peering will relate to")]
-    network_id: esc_api::NetworkId,
+    network_id: esc_api::infra::NetworkId,
 
     #[structopt(long, help = "Your cloud provider account id")]
     peer_account_id: String,
@@ -490,10 +479,10 @@ struct CreatePeering {
 #[structopt(about = "Delete a peering")]
 struct DeletePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
@@ -503,10 +492,10 @@ struct DeletePeering {
 #[structopt(about = "Read a peering information")]
 struct GetPeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
@@ -516,20 +505,20 @@ struct GetPeering {
 #[structopt(about = "List all peering related an organization, given a project id")]
 struct ListPeerings {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peerings relate to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peerings relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Update a peering")]
 struct UpdatePeering {
     #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the peering relates to")]
-    org_id: esc_api::OrgId,
+    org_id: esc_api::resources::OrganizationId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the peering relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_peering_id), help = "The peering's id")]
     id: esc_api::PeeringId,
@@ -616,6 +605,7 @@ enum ProfilePropName {
     OrgId,
     ProjectId,
     ApiBaseUrl,
+    Fmt,
 }
 
 #[derive(Debug, StructOpt)]
@@ -715,7 +705,7 @@ struct UpdateProject {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to update")]
-    id: esc_api::ProjectId,
+    id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, help = "New project's name")]
     name: String,
@@ -728,7 +718,7 @@ struct GetProject {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_project_id), default_value = "", help = "The id of the project you want to read information from")]
-    id: esc_api::ProjectId,
+    id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -738,7 +728,7 @@ struct DeleteProject {
     org_id: OrgId,
 
     #[structopt(long, short, parse(try_from_str = parse_project_id), help = "The id of the project you want to delete")]
-    id: esc_api::ProjectId,
+    id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -785,16 +775,16 @@ struct CreateCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
-    network_id: esc_api::NetworkId,
+    network_id: esc_api::infra::NetworkId,
 
     #[structopt(long, help = "A human-readable description of the cluster")]
     description: String,
 
     #[structopt(long, parse(try_from_str = parse_topology), help = "Either single-node or three-node-multi-zone")]
-    topology: esc_api::Topology,
+    topology: esc_api::mesdb::Topology,
 
     #[structopt(
         long,
@@ -803,7 +793,7 @@ struct CreateCluster {
     instance_type: String,
 
     #[structopt(long, help = "Total disk capacity in Gigabytes (GB)")]
-    disk_size_in_gb: usize,
+    disk_size_in_gb: i32,
 
     #[structopt(
         long,
@@ -819,7 +809,7 @@ struct CreateCluster {
         parse(try_from_str = parse_projection_level),
         help = "The projection level of your database. Can be off, system or user "
     )]
-    projection_level: esc_api::ProjectionLevel,
+    projection_level: esc_api::mesdb::ProjectionLevel,
 
     #[structopt(long, help = "Optional id of backup to restore")]
     source_backup_id: Option<String>,
@@ -838,7 +828,7 @@ struct GetCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Cluster's id")]
     id: esc_api::ClusterId,
@@ -851,7 +841,7 @@ struct ListClusters {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -861,10 +851,13 @@ struct UpdateCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
     id: esc_api::ClusterId,
+
+    #[structopt(long, help = "A human-readable description of the cluster")]
+    description: String,
 }
 
 #[derive(Debug, StructOpt)]
@@ -874,7 +867,7 @@ struct DeleteCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to delete")]
     id: esc_api::ClusterId,
@@ -887,13 +880,13 @@ struct ExpandCluster {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to expand")]
     id: esc_api::ClusterId,
 
     #[structopt(long, help = "Disk size in GB")]
-    disk_size_in_gb: usize,
+    disk_size_in_gb: i32,
 
     #[structopt(long, help = "IOPS number for disk (only AWS)")]
     disk_iops: Option<i32>,
@@ -927,7 +920,7 @@ struct CreateBackup {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_cluster_id), help = "The id of the cluster to create backup of")]
     source_cluster_id: esc_api::ClusterId,
@@ -943,7 +936,7 @@ struct GetBackup {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Backup's id")]
     id: esc_api::BackupId,
@@ -956,7 +949,7 @@ struct ListBackups {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -966,7 +959,7 @@ struct DeleteBackup {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the backup relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_backup_id), help = "Id of the backup you want to delete")]
     id: esc_api::BackupId,
@@ -1007,7 +1000,7 @@ struct CreateJob {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the job will relate to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, help = "A human-readable description of the job")]
     description: String,
@@ -1042,7 +1035,7 @@ struct GetJob {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_job_id), help = "Job's id")]
     id: esc_api::JobId,
@@ -1055,7 +1048,7 @@ struct ListJobs {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1065,7 +1058,7 @@ struct DeleteJob {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, short, parse(try_from_str = parse_job_id), help = "Id of the job you want to delete")]
     id: esc_api::JobId,
@@ -1090,7 +1083,7 @@ struct ListHistory {
     org_id: OrgId,
 
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "An project id that belongs to an organization pointed by --org-id")]
-    project_id: esc_api::ProjectId,
+    project_id: esc_api::resources::ProjectId,
 
     #[structopt(long, parse(try_from_str = parse_job_id), help = "A job ID")]
     job_id: Option<esc_api::JobId>,
@@ -1112,7 +1105,7 @@ pub struct CreateIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(subcommand)]
     pub data: CreateIntegrationData,
     #[structopt(long)]
@@ -1137,6 +1130,8 @@ pub struct CreateOpsGenieIntegrationData {
 pub struct CreateSlackIntegrationData {
     #[structopt(long, help = "Slack Channel to send messages to")]
     pub channel_id: String,
+    #[structopt(long, help = "Integration source")]
+    pub source: Option<String>,
     #[structopt(long, help = "API token for the Slack bot")]
     pub token: String,
 }
@@ -1147,7 +1142,7 @@ pub struct DeleteIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
 }
@@ -1158,7 +1153,7 @@ pub struct GetIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
 }
@@ -1169,7 +1164,7 @@ pub struct ListIntegrations {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -1178,7 +1173,7 @@ pub struct TestIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
 }
@@ -1189,7 +1184,7 @@ pub struct UpdateIntegration {
     #[structopt(long, help="The id of the organization",  parse(try_from_str = parse_org_id), default_value = "")]
     pub organization_id: OrgId,
     #[structopt(long, help="The id of the project",  parse(try_from_str = parse_project_id), default_value = "")]
-    pub project_id: esc_api::ProjectId,
+    pub project_id: esc_api::resources::ProjectId,
     #[structopt(long, help = "The id of the integration")]
     pub integration_id: String,
     #[structopt(subcommand)]
@@ -1210,11 +1205,11 @@ pub struct UpdateIntegrationData {
 }
 
 lazy_static! {
-    static ref PROVIDERS: HashMap<&'static str, esc_api::Provider> = {
+    static ref PROVIDERS: HashMap<&'static str, esc_api::infra::Provider> = {
         let mut map = HashMap::new();
-        map.insert("aws", esc_api::Provider::Aws);
-        map.insert("gcp", esc_api::Provider::Gcp);
-        map.insert("azure", esc_api::Provider::Azure);
+        map.insert("aws", esc_api::infra::Provider::Aws);
+        map.insert("gcp", esc_api::infra::Provider::Gcp);
+        map.insert("azure", esc_api::infra::Provider::Azure);
         map
     };
 }
@@ -1225,33 +1220,46 @@ lazy_static! {
         map.insert("project-id", ProfilePropName::ProjectId);
         map.insert("org-id", ProfilePropName::OrgId);
         map.insert("api-base-url", ProfilePropName::ApiBaseUrl);
+        map.insert("fmt", ProfilePropName::Fmt);
         map
     };
 }
 
 lazy_static! {
-    static ref CLUSTER_TOPOLOGIES: HashMap<&'static str, esc_api::Topology> = {
+    static ref CLUSTER_TOPOLOGIES: HashMap<&'static str, esc_api::mesdb::Topology> = {
         let mut map = HashMap::new();
-        map.insert("single-node", esc_api::Topology::SingleNode);
+        map.insert("single-node", esc_api::mesdb::Topology::SingleNode);
         map.insert(
             "three-node-multi-zone",
-            esc_api::Topology::ThreeNodeMultiZone,
+            esc_api::mesdb::Topology::ThreeNodeMultiZone,
         );
         map
     };
 }
 
 lazy_static! {
-    static ref CLUSTER_PROJECTION_LEVELS: HashMap<&'static str, esc_api::ProjectionLevel> = {
+    static ref CLUSTER_PROJECTION_LEVELS: HashMap<&'static str, esc_api::mesdb::ProjectionLevel> = {
         let mut map = HashMap::new();
-        map.insert("off", esc_api::ProjectionLevel::Off);
-        map.insert("system", esc_api::ProjectionLevel::System);
-        map.insert("user", esc_api::ProjectionLevel::User);
+        map.insert("off", esc_api::mesdb::ProjectionLevel::Off);
+        map.insert("system", esc_api::mesdb::ProjectionLevel::System);
+        map.insert("user", esc_api::mesdb::ProjectionLevel::User);
         map
     };
 }
 
-fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
+fn parse_output_format(src: &str) -> Result<OutputFormat, String> {
+    if src.trim().is_empty() {
+        let profile_opt = crate::config::SETTINGS.get_current_profile();
+
+        if let Some(value) = profile_opt.and_then(|p| p.output_format.as_ref()) {
+            return Ok(value.clone());
+        }
+        return Ok(OutputFormat::Cli);
+    }
+    OutputFormat::from_str(src)
+}
+
+fn parse_org_id(src: &str) -> Result<esc_api::resources::OrganizationId, String> {
     if src.trim().is_empty() {
         let profile_opt = crate::config::SETTINGS.get_current_profile();
 
@@ -1262,10 +1270,10 @@ fn parse_org_id(src: &str) -> Result<esc_api::OrgId, String> {
         return Err("Not provided and you don't have an org-id property set in the [context] section of your settings.toml file".to_string());
     }
 
-    Ok(esc_api::OrgId(src.to_string()))
+    Ok(esc_api::resources::OrganizationId(src.to_string()))
 }
 
-fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
+fn parse_project_id(src: &str) -> Result<esc_api::resources::ProjectId, String> {
     if src.trim().is_empty() {
         let profile_opt = crate::config::SETTINGS.get_current_profile();
 
@@ -1276,11 +1284,11 @@ fn parse_project_id(src: &str) -> Result<esc_api::ProjectId, String> {
         return Err("Not provided and you don't have an project-id property set in the [context] section of your settings.toml file".to_string());
     }
 
-    Ok(esc_api::ProjectId(src.to_string()))
+    Ok(esc_api::resources::ProjectId(src.to_string()))
 }
 
-fn parse_network_id(src: &str) -> Result<esc_api::NetworkId, String> {
-    Ok(esc_api::NetworkId(src.to_string()))
+fn parse_network_id(src: &str) -> Result<esc_api::infra::NetworkId, String> {
+    Ok(esc_api::infra::NetworkId(src.to_string()))
 }
 
 fn parse_group_id(src: &str) -> Result<esc_api::GroupId, String> {
@@ -1307,7 +1315,7 @@ fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
     Ok(esc_api::PolicyId(src.to_string()))
 }
 
-fn parse_provider(src: &str) -> Result<esc_api::Provider, String> {
+fn parse_provider(src: &str) -> Result<esc_api::infra::Provider, String> {
     parse_enum(&PROVIDERS, src)
 }
 
@@ -1315,17 +1323,17 @@ fn parse_context_prop_name(src: &str) -> Result<ProfilePropName, String> {
     parse_enum(&CONTEXT_PROP_NAMES, src)
 }
 
-fn parse_topology(src: &str) -> Result<esc_api::Topology, String> {
+fn parse_topology(src: &str) -> Result<esc_api::mesdb::Topology, String> {
     parse_enum(&CLUSTER_TOPOLOGIES, src)
 }
 
-fn parse_projection_level(src: &str) -> Result<esc_api::ProjectionLevel, String> {
+fn parse_projection_level(src: &str) -> Result<esc_api::mesdb::ProjectionLevel, String> {
     parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
-fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
+fn parse_enum<A: Clone>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
-        Some(p) => Ok(*p),
+        Some(p) => Ok(p.clone()),
         None => {
             let supported: Vec<&&str> = env.keys().collect();
             Err(format!(
@@ -1336,16 +1344,16 @@ fn parse_enum<A: Copy>(env: &'static HashMap<&'static str, A>, src: &str) -> Res
     }
 }
 
-fn parse_email(src: &str) -> Result<esc_api::Email, String> {
-    if let Some(email) = esc_api::Email::parse(src) {
-        return Ok(email);
+fn parse_email(src: &str) -> Result<String, String> {
+    if validator::validate_email(src) {
+        return Ok(src.to_string());
     }
 
     Err("Invalid email".to_string())
 }
 
-fn parse_invite_id(src: &str) -> Result<esc_api::InviteId, String> {
-    Ok(esc_api::InviteId(src.to_string()))
+fn parse_invite_id(src: &str) -> Result<esc_api::access::InviteId, String> {
+    Ok(esc_api::access::InviteId(src.to_string()))
 }
 
 fn parse_cidr(src: &str) -> Result<cidr::Ipv4Cidr, cidr::NetworkParseError> {
@@ -1363,60 +1371,120 @@ impl std::fmt::Display for StringError {
 
 impl std::error::Error for StringError {}
 
-fn print_output<A: std::fmt::Debug + Serialize>(
-    render_in_json: bool,
-    value: A,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if render_in_json {
-        serde_json::to_writer_pretty(std::io::stdout(), &value)?;
-    } else {
-        println!("{:?}", value);
-    }
-
-    Ok(())
+struct Printer {
+    pub render_in_json: bool,
+    pub render_as_v1: bool,
 }
 
-struct List<A>(Vec<A>);
-
-impl<A> std::fmt::Debug for List<A>
-where
-    A: std::fmt::Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for value in self.0.iter() {
-            writeln!(f, "{:?}", value)?;
+impl Printer {
+    pub fn print<A: std::fmt::Debug + Serialize + v1::ToV1>(
+        &self,
+        value: A,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if self.render_as_v1 {
+            let value = value.to_v1();
+            if self.render_in_json {
+                serde_json::to_writer_pretty(std::io::stdout(), &value)?;
+            } else {
+                println!("{:?}", value);
+            }
         }
-
         Ok(())
     }
 }
 
-impl<A> serde::ser::Serialize for List<A>
-where
-    A: serde::ser::Serialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
-        for elem in self.0.iter() {
-            seq.serialize_element(elem)?;
-        }
+pub struct StaticAuthorization {
+    pub authorization_header: String,
+}
 
-        seq.end()
+impl esc_api::Authorization for StaticAuthorization {
+    fn authorization_header(&self) -> String {
+        self.authorization_header.clone()
+    }
+
+    fn refresh(&mut self) -> bool {
+        false
+    }
+}
+
+async fn get_token(
+    token_config: esc_api::TokenConfig,
+    refresh_token: Option<String>,
+) -> Result<esc_api::Token, Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    match refresh_token {
+        Some(refresh_token) => {
+            let refreshed_token = esc_client_base::identity::operations::refresh(
+                &client,
+                &token_config,
+                &refresh_token,
+            )
+            .await?;
+            Ok(refreshed_token)
+        }
+        None => {
+            let mut store = esc_client_store::token_store(token_config).await?;
+            let token = store.access(&client).await?;
+            Ok(token)
+        }
+    }
+}
+
+struct TrafficSpy {
+    verbose: bool,
+}
+
+impl esc_api::RequestObserver for TrafficSpy {
+    fn on_request(&self, method: &str, url: &str, body: &str) {
+        if self.verbose {
+            println!("{} {}", method, url);
+        }
+        if !body.is_empty() {
+            println!("{}", body);
+        }
+    }
+
+    fn on_response(&self, status: &str, body: &str) {
+        if self.verbose || !(status.len() == 3 && status.starts_with('2')) {
+            println!("status: {}", status);
+        }
+        if !body.is_empty() {
+            println!("{}", body);
+        };
+    }
+}
+
+struct ClientBuilder {
+    base_url: String,
+    observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>>,
+    refresh_token: Option<String>,
+    token_config: esc_api::TokenConfig,
+}
+
+impl ClientBuilder {
+    pub async fn create(self) -> Result<esc_api::Client, Box<dyn std::error::Error>> {
+        let token = get_token(self.token_config, self.refresh_token).await?;
+        let authorization = StaticAuthorization {
+            authorization_header: token.authorization_header(),
+        };
+        let sender = esc_api::RequestSender {
+            client: reqwest::Client::new(),
+            observer: self.observer,
+        };
+        let client = esc_api::Client {
+            authorization: std::sync::Arc::new(authorization),
+            base_url: self.base_url,
+            sender,
+        };
+        Ok(client)
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut clap_app = Opt::clap();
+    let clap_app = Opt::clap();
     let opt = Opt::from_clap(&clap_app.clone().get_matches());
-    let audience = constants::ES_CLOUD_API_AUDIENCE.parse()?;
-    let auth = Auth {
-        id: ClientId(constants::ES_CLIENT_ID.to_owned()),
-        audience,
-    };
+
     let base_url = config::SETTINGS
         .get_current_profile()
         .and_then(|profile| {
@@ -1430,157 +1498,195 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unwrap_or_else(|| constants::ES_CLOUD_API_URL.to_string());
 
-    let client = Client::new(base_url, constants::ES_CLOUD_IDENTITY_URL.to_string())?;
+    let observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>> =
+        if !opt.output_format.is_v1() {
+            Some(Arc::new(TrafficSpy {
+                verbose: matches!(opt.output_format, OutputFormat::ApiVerbose),
+            }))
+        } else {
+            None
+        };
+
+    let printer = Printer {
+        render_in_json: match opt.output_format {
+            OutputFormat::CliJson => true,
+            _ => opt.render_in_json,
+        },
+        render_as_v1: opt.output_format.is_v1(),
+    };
 
     config::Settings::configure().await?;
-    let mut store = TokenStore::new(&auth, client.tokens());
-    store.configure().await?;
 
     if opt.debug {
         std::env::set_var("RUST_LOG", "esc_api=debug,esc=debug");
         env_logger::init();
     }
 
+    // Create the token config
+    let mut token_config = esc_api::TokenConfig::default();
+    // If the user has specified additional token config settings, change them here.
+    // No typical users will ever need to do this, so it's only accessible if the
+    // config file is changed directly.
+    let profile_opt = crate::config::SETTINGS.get_current_profile();
+    if let Some(token_opts) = profile_opt.and_then(|p| p.token_config.as_ref()) {
+        if let Some(value) = &token_opts.audience {
+            token_config.audience = value.clone();
+        }
+        if let Some(value) = &token_opts.client_id {
+            token_config.client_id = value.clone();
+        }
+        if let Some(value) = &token_opts.identity_url {
+            token_config.identity_url = value.clone();
+        }
+        if let Some(value) = &token_opts.public_key {
+            token_config.public_key = value.clone();
+        }
+    }
+
+    let client_builder = ClientBuilder {
+        base_url,
+        observer,
+        refresh_token: opt.refresh_token.clone(),
+        token_config: token_config.clone(),
+    };
+
+    let silence_errors = !opt.output_format.is_v1();
+    let result = call_api(clap_app, opt, client_builder, printer, token_config).await;
+    if !silence_errors {
+        result
+    } else if let Err(err) = result {
+        if let Some(esc_api::Error::ApiResponse(resp)) = err.downcast_ref::<esc_api::Error>() {
+            if !resp.status_code.is_success() {
+                // The traffic observer has already shown the error to the user, so don't show
+                // additional error information.
+                std::process::exit(1);
+            }
+        }
+        Err(err)
+    } else {
+        result
+    }
+}
+
+async fn call_api<'a, 'b>(
+    mut clap_app: clap::App<'a, 'b>,
+    opt: Opt,
+    client_builder: ClientBuilder,
+    printer: Printer,
+    token_config: esc_api::TokenConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
     match opt.cmd {
         Command::Access(access) => match access.access_command {
             AccessCommand::Groups(groups) => match groups.groups_command {
                 GroupsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::groups::CreateGroupParams {
-                        org_id: params.org_id,
+                    let client = client_builder.create().await?;
+                    let create_params = esc_api::access::CreateGroupRequest {
                         name: params.name,
-                        members: params.members,
+                        members: Some(
+                            params
+                                .members
+                                .iter()
+                                .map(|m| esc_api::access::MemberId(m.clone()))
+                                .collect(),
+                        ),
                     };
-                    let group_id = client.groups(&token).create(create_params).await?;
+                    let resp = esc_api::access::create_group(&client, params.org_id, create_params)
+                        .await?;
 
-                    print_output(opt.render_in_json, group_id)?;
+                    printer.print(resp)?;
                 }
 
                 GroupsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let mut update_group = client.groups(&token).update(params.id, params.org_id);
-
-                    update_group.set_name(params.name);
-                    update_group.set_members(params.members);
-                    update_group.execute().await?;
+                    let client = client_builder.create().await?;
+                    let body = esc_api::access::UpdateGroupRequest {
+                        members: params.members,
+                        name: params.name,
+                    };
+                    esc_api::access::update_group(&client, params.org_id, params.id, body).await?;
                 }
 
                 GroupsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let group_id_opt = client.groups(&token).get(params.id, params.org_id).await?;
-
-                    match group_id_opt {
-                        Some(group) => {
-                            print_output(opt.render_in_json, group)?;
-                        }
-
-                        _ => {
-                            eprintln!("Group doesn't exists");
-                            std::process::exit(-1);
-                        }
-                    }
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::access::get_group(&client, params.org_id, params.id).await?;
+                    printer.print(resp)?;
                 }
 
                 GroupsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .groups(&token)
-                        .delete(params.id, params.org_id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_group(&client, params.org_id, params.id).await?;
                 }
 
                 GroupsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let groups = client.groups(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(groups))?;
+                    let client = client_builder.create().await?;
+                    let linked_resource = None; // TODO: add this as a parameter
+                    let resp =
+                        esc_api::access::list_groups(&client, params.org_id, linked_resource)
+                            .await?;
+                    printer.print(resp)?;
                 }
             },
 
             AccessCommand::Invites(invites) => match invites.invites_command {
                 InvitesCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let invite_id = client
-                        .invites(&token)
-                        .create(params.org_id, params.email, params.group)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::create_invite(
+                        &client,
+                        params.org_id,
+                        esc_api::access::CreateInviteRequest {
+                            groups: params.group,
+                            user_email: params.email,
+                        },
+                    )
+                    .await?;
 
-                    println!("{}", invite_id)
+                    printer.print(resp)?;
                 }
 
-                InvitesCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .invites(&token)
-                        .update(params.org_id, params.id, params.email)
-                        .await?;
-                }
-
-                InvitesCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let invite = client.invites(&token).get(params.org_id, params.id).await?;
-
-                    if let Some(invite) = invite {
-                        print_output(opt.render_in_json, invite)?;
-                    } else {
-                        std::process::exit(-1);
-                    }
+                InvitesCommand::Resend(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::access::resend_invite(
+                        &client,
+                        params.org_id,
+                        esc_api::access::ResendInviteRequest { id: params.id },
+                    )
+                    .await?;
                 }
 
                 InvitesCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .invites(&token)
-                        .delete(params.org_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_invite(&client, params.org_id, params.id).await?;
                 }
 
                 InvitesCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let invites = client.invites(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(invites))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::list_invites(&client, params.org_id).await?;
+                    printer.print(resp)?;
                 }
             },
 
             AccessCommand::Tokens(tokens) => match tokens.tokens_command {
                 TokensCommand::Create(params) => {
-                    let password = if let Some(passw) = params.unsafe_password {
-                        Ok(passw)
-                    } else {
-                        rpassword::read_password_from_tty(Some("Password: "))
+                    let client = reqwest::Client::new();
+                    let mut store = esc_client_store::token_store(token_config).await?;
+
+                    let token = match params.email {
+                        Some(email) => match params.unsafe_password {
+                            Some(password) => store.create_token(&client, email, password).await,
+                            None => {
+                                store
+                                    .create_token_from_prompt_password_only(&client, email)
+                                    .await
+                            }
+                        },
+                        None => store.create_token_from_prompt(&client).await,
                     }?;
-
-                    let audience = TokenStore::build_audience_str(&auth.audience);
-
-                    let token = client
-                        .tokens()
-                        .create(
-                            &auth.id,
-                            params.email.as_str(),
-                            password.as_str(),
-                            audience.as_str(),
-                        )
-                        .await?;
-
-                    let refresh = client
-                        .tokens()
-                        .refresh(&auth.id, token.refresh_token().unwrap().as_str())
-                        .await?;
-
-                    let token = token.update_access_token(refresh.access_token());
-                    let new_token_bytes = serde_json::to_vec(&token)?;
-
-                    let token_path = TokenStore::token_dirs()
-                        .join(auth.audience.host().expect("We have a host in this URI"));
-
-                    tokio::fs::write(&token_path, &new_token_bytes).await?;
-
-                    println!("Token created for audience {}", audience.as_str());
                     println!("{}", token.refresh_token().unwrap().as_str());
                 }
                 TokensCommand::Display(_params) => {
-                    let token = store.active_token().await?;
+                    let store = esc_client_store::token_store(token_config).await?;
+
+                    let token = store.show().await?;
                     if let Some(token) = token {
                         println!("{}", token.refresh_token().unwrap());
                     } else {
@@ -1591,61 +1697,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             AccessCommand::Policies(policies) => match policies.policies_command {
                 PoliciesCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::policies::CreatePolicyParams {
-                        name: params.name,
-                        subjects: params.subjects,
-                        resources: params.resources,
-                        actions: params.actions,
-                        effect: params.effect,
-                    };
-                    let id = client
-                        .policies(&token)
-                        .create(params.org_id, create_params)
-                        .await?;
-
-                    print_output(opt.render_in_json, id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::create_policy(
+                        &client,
+                        params.org_id,
+                        esc_api::access::CreatePolicyRequest {
+                            policy: esc_api::access::CreatePolicy {
+                                actions: utils::actions_from_str_vec(params.actions),
+                                effect: utils::effect_from_str(&params.effect),
+                                name: params.name,
+                                resources: params.resources,
+                                subjects: params.subjects,
+                            },
+                        },
+                    )
+                    .await?;
+                    printer.print(resp)?;
                 }
 
                 PoliciesCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::policies::UpdatePolicyParams {
-                        name: params.name,
-                        subjects: params.subjects,
-                        resources: params.resources,
-                        actions: params.actions,
-                        effect: params.effect,
-                    };
-
-                    client
-                        .policies(&token)
-                        .update(params.org_id, params.policy, update_params)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::update_policy(
+                        &client,
+                        params.org_id,
+                        params.policy,
+                        esc_api::access::UpdatePolicyRequest {
+                            policy: esc_api::access::UpdatePolicy {
+                                actions: utils::actions_from_str_vec(params.actions),
+                                effect: utils::effect_from_str(&params.effect),
+                                name: params.name,
+                                resources: params.resources,
+                                subjects: params.subjects,
+                            },
+                        },
+                    )
+                    .await?;
                 }
 
                 PoliciesCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .policies(&token)
-                        .delete(params.org_id, params.policy)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_policy(&client, params.org_id, params.policy).await?;
                 }
 
                 PoliciesCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let policy = client
-                        .policies(&token)
-                        .get(params.org_id, params.policy)
-                        .await?;
-
-                    print_output(opt.render_in_json, policy)?;
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::access::get_policy(&client, params.org_id, params.policy).await?;
+                    printer.print(resp)?;
                 }
 
                 PoliciesCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let policies = client.policies(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(policies))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::list_policies(&client, params.org_id).await?;
+                    printer.print(resp)?;
                 }
             },
         },
@@ -1653,112 +1757,112 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Infra(infra) => match infra.infra_command {
             InfraCommand::Networks(networks) => match networks.networks_command {
                 NetworksCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::networks::CreateNetworkParams {
-                        provider: params.provider,
-                        cidr_block: params.cidr_block.to_string(),
-                        description: params.description,
-                        region: params.region,
-                    };
-                    let network_id = client
-                        .networks(&token)
-                        .create(params.org_id, params.project_id, create_params)
-                        .await?;
-
-                    print_output(opt.render_in_json, network_id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::create_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::infra::CreateNetworkRequest {
+                            cidr_block: params.cidr_block.to_string(),
+                            description: params.description,
+                            provider: params.provider.to_string(),
+                            region: params.region,
+                        },
+                    )
+                    .await?;
+                    printer.print(resp)?;
                 }
 
                 NetworksCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::networks::UpdateNetworkParams {
-                        description: params.description,
-                    };
-                    client
-                        .networks(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::update_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                        esc_api::infra::UpdateNetworkRequest {
+                            description: params.description,
+                        },
+                    )
+                    .await?;
                 }
 
                 NetworksCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .networks(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::delete_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
                 }
 
                 NetworksCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let network = client
-                        .networks(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
-                    print_output(opt.render_in_json, network)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::get_network(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    printer.print(resp)?;
                 }
 
                 NetworksCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let networks = client
-                        .networks(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    print_output(opt.render_in_json, List(networks))?;
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::infra::list_networks(&client, params.org_id, params.project_id)
+                            .await?;
+                    printer.print(resp)?;
                 }
             },
 
             InfraCommand::Peerings(peerings) => match peerings.peerings_command {
                 PeeringsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let create_params = esc_api::command::peerings::CreatePeeringParams {
-                        network_id: params.network_id.clone(),
-                        description: params.description,
-                        peer_account_id: params.peer_account_id.clone(),
-                        peer_network_id: params.peer_network_id.clone(),
-                        peer_network_region: params.peer_network_region,
-                        routes: params.routes,
-                    };
-                    let result = client
-                        .peerings(&token)
-                        .create(
+                    let client = client_builder.create().await?;
+                    let result = esc_api::infra::create_peering(
+                        &client,
+                        params.org_id.clone(),
+                        params.project_id.clone(),
+                        esc_api::infra::CreatePeeringRequest {
+                            description: params.description,
+                            network_id: params.network_id.clone(),
+                            peer_account_id: params.peer_account_id.clone(),
+                            peer_network_id: params.peer_network_id.clone(),
+                            peer_network_region: params.peer_network_region,
+                            routes: params.routes,
+                        },
+                    )
+                    .await;
+
+                    if let Err(_err) = result {
+                        let network = esc_api::infra::get_network(
+                            &client,
                             params.org_id.clone(),
                             params.project_id.clone(),
-                            create_params,
+                            params.network_id.clone(),
                         )
                         .await?;
 
-                    if let Err(_err) = result {
-                        let network = client
-                            .networks(&token)
-                            .get(
-                                params.org_id.clone(),
-                                params.project_id.clone(),
-                                params.network_id,
-                            )
-                            .await?;
-
-                        let derive_peering_commands_params =
-                            esc_api::command::peerings::DerivePeeringCommandsParams {
-                                provider: network.provider,
+                        let resp = esc_api::infra::create_peering_commands(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            esc_api::infra::CreatePeeringCommandsRequest {
+                                provider: network.network.provider,
                                 peer_account_id: params.peer_account_id,
                                 peer_network_id: params.peer_network_id,
-                            };
-
-                        let commands = client
-                            .peerings(&token)
-                            .derive_peering_commands(
-                                params.org_id,
-                                params.project_id,
-                                derive_peering_commands_params,
-                            )
-                            .await?;
+                            },
+                        )
+                        .await?;
 
                         if opt.render_in_json {
-                            print_output(opt.render_in_json, commands)?;
+                            printer.print(resp)?;
                         } else {
                             println!("Upstream provider requires configuration.");
-                            for command in commands {
+                            for command in resp.commands {
                                 println!();
                                 println!("{}:", command.title);
                                 println!("{}", command.value);
@@ -1768,42 +1872,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 PeeringsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let update_params = esc_api::command::peerings::UpdatePeeringParams {
-                        description: params.description,
-                    };
-                    client
-                        .peerings(&token)
-                        .update(params.org_id, params.project_id, params.id, update_params)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::update_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                        esc_api::infra::UpdatePeeringRequest {
+                            description: params.description,
+                        },
+                    )
+                    .await?;
                 }
 
                 PeeringsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .peerings(&token)
-                        .delete(params.org_id, params.project_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::infra::delete_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
                 }
 
                 PeeringsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let peering = client
-                        .peerings(&token)
-                        .get(params.org_id, params.project_id, params.id)
-                        .await?;
-
-                    print_output(opt.render_in_json, peering)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::get_peering(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    printer.print(resp)?;
                 }
 
                 PeeringsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let peerings = client
-                        .peerings(&token)
-                        .list(params.org_id, params.project_id)
-                        .await?;
-
-                    print_output(opt.render_in_json, List(peerings))?;
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::infra::list_peerings(&client, params.org_id, params.project_id)
+                            .await?;
+                    printer.print(resp)?;
                 }
             },
         },
@@ -1815,16 +1925,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 match params.name {
                     ProfilePropName::ProjectId => {
-                        profile.project_id = Some(esc_api::ProjectId(params.value));
+                        profile.project_id = Some(esc_api::resources::ProjectId(params.value));
                     }
 
                     ProfilePropName::OrgId => {
-                        profile.org_id = Some(esc_api::OrgId(params.value));
+                        profile.org_id = Some(esc_api::resources::OrganizationId(params.value));
                     }
 
                     ProfilePropName::ApiBaseUrl => {
                         let url = config::parse_url(params.value.as_str())?;
                         profile.api_base_url = Some(url);
+                    }
+
+                    ProfilePropName::Fmt => {
+                        let fmt = OutputFormat::from_str(params.value.as_str())?;
+                        profile.output_format = Some(fmt);
                     }
                 }
 
@@ -1836,13 +1951,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(name) = params.name {
                         match name {
                             ProfilePropName::ProjectId => {
-                                let default = Default::default();
+                                // TODO: not sure why ProjectID ever had a default that gave it a blank string.
+                                // But that's what "default" used to be here. It would be ideal to make this
+                                // Option<ProjectId>.
+                                let default = esc_api::resources::ProjectId("".to_string());
                                 let value = profile.project_id.as_ref().unwrap_or(&default);
                                 serde_json::to_writer_pretty(std::io::stdout(), value)?;
                             }
 
                             ProfilePropName::OrgId => {
-                                let default = Default::default();
+                                // TODO: same issue, not sure why it works this way
+                                let default = esc_api::resources::OrganizationId("".to_string());
                                 let value = profile.org_id.as_ref().unwrap_or(&default);
                                 serde_json::to_writer_pretty(std::io::stdout(), value)?;
                             }
@@ -1850,6 +1969,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             ProfilePropName::ApiBaseUrl => {
                                 if let Some(url) = profile.api_base_url.as_ref() {
                                     serde_json::to_writer_pretty(std::io::stdout(), url.as_str())?;
+                                }
+                            }
+
+                            ProfilePropName::Fmt => {
+                                if let Some(fmt) = profile.output_format.as_ref() {
+                                    serde_json::to_writer_pretty(std::io::stdout(), fmt.as_str())?;
                                 }
                             }
                         }
@@ -1878,6 +2003,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     ProfilePropName::ApiBaseUrl => {
                         profile.api_base_url = None;
+                    }
+
+                    ProfilePropName::Fmt => {
+                        profile.output_format = None;
                     }
                 }
 
@@ -1910,367 +2039,424 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Resources(res) => match res.resources_command {
             ResourcesCommand::Organizations(orgs) => match orgs.organizations_command {
                 OrganizationsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let org_id = client.organizations(&token).create(params.name).await?;
-
-                    print_output(opt.render_in_json, org_id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::create_organization(
+                        &client,
+                        esc_api::resources::CreateOrganizationRequest { name: params.name },
+                    )
+                    .await?;
+                    printer.print(resp)?;
                 }
 
                 OrganizationsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .organizations(&token)
-                        .update(params.id, params.name)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::update_organization(
+                        &client,
+                        params.id,
+                        esc_api::resources::UpdateOrganizationRequest { name: params.name },
+                    )
+                    .await?;
                 }
 
                 OrganizationsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client.organizations(&token).delete(params.id).await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::delete_organization(&client, params.id).await?;
                 }
 
                 OrganizationsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let org = client.organizations(&token).get(params.id).await?;
-
-                    print_output(opt.render_in_json, org)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::get_organization(&client, params.id).await?;
+                    printer.print(resp)?;
                 }
 
                 OrganizationsCommand::List(_) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let orgs = client.organizations(&token).list().await?;
-
-                    print_output(opt.render_in_json, List(orgs))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::list_organizations(&client).await?;
+                    printer.print(resp)?;
                 }
             },
 
             ResourcesCommand::Projects(projs) => match projs.projects_command {
                 ProjectsCommand::Create(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let proj_id = client
-                        .projects(&token)
-                        .create(params.org_id, params.name)
-                        .await?;
-
-                    print_output(opt.render_in_json, proj_id)?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::create_project(
+                        &client,
+                        params.org_id,
+                        esc_api::resources::CreateProjectRequest { name: params.name },
+                    )
+                    .await?;
+                    printer.print(resp)?;
                 }
 
                 ProjectsCommand::Update(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .projects(&token)
-                        .update(params.org_id, params.id, params.name)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::update_project(
+                        &client,
+                        params.org_id,
+                        params.id,
+                        esc_api::resources::UpdateProjectRequest { name: params.name },
+                    )
+                    .await?;
                 }
 
                 ProjectsCommand::Get(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let project_opt = client
-                        .projects(&token)
-                        .get(params.org_id, params.id)
-                        .await?;
-
-                    match project_opt {
-                        Some(proj) => {
-                            print_output(opt.render_in_json, proj)?;
-                        }
-
-                        _ => {
-                            eprintln!("Project doesn't exists");
-                            std::process::exit(-1);
-                        }
-                    }
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::resources::get_project(&client, params.org_id, params.id).await?;
+                    printer.print(resp)?;
                 }
 
                 ProjectsCommand::Delete(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    client
-                        .projects(&token)
-                        .delete(params.org_id, params.id)
-                        .await?;
+                    let client = client_builder.create().await?;
+                    esc_api::resources::delete_project(&client, params.org_id, params.id).await?;
                 }
 
                 ProjectsCommand::List(params) => {
-                    let token = store.access(opt.refresh_token).await?;
-                    let projs = client.projects(&token).list(params.org_id).await?;
-
-                    print_output(opt.render_in_json, List(projs))?;
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::list_projects(&client, params.org_id).await?;
+                    printer.print(resp)?;
                 }
             },
         },
 
         Command::Mesdb(mesdb) => {
-            let token = store.access(opt.refresh_token).await?;
             match mesdb.mesdb_command {
                 MesdbCommand::Clusters(clusters) => match clusters.clusters_command {
                     ClustersCommand::Create(params) => {
-                        let create_params = esc_api::command::clusters::CreateClusterParams {
-                            network_id: params.network_id,
-                            description: params.description,
-                            topology: params.topology,
-                            instance_type: params.instance_type,
-                            disk_size_gb: params.disk_size_in_gb,
-                            disk_type: params.disk_type,
-                            server_version: params.server_version,
-                            projection_level: params.projection_level,
-                            source_backup_id: params.source_backup_id,
-                            disk_iops: params.disk_iops,
-                            disk_throughput: params.disk_throughput,
-                        };
-                        let cluster_id = client
-                            .clusters(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
-                        print_output(opt.render_in_json, cluster_id)?;
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::create_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            esc_api::mesdb::CreateClusterRequest {
+                                description: params.description,
+                                disk_iops: params.disk_iops,
+                                disk_size_gb: params.disk_size_in_gb,
+                                disk_throughput: params.disk_throughput,
+                                disk_type: params.disk_type,
+                                instance_type: params.instance_type,
+                                network_id: params.network_id,
+                                projection_level: params.projection_level,
+                                server_version: params.server_version,
+                                source_backup_id: params.source_backup_id,
+                                source_node_index: None, // TODO: add source_node_index
+                                topology: params.topology,
+                            },
+                        )
+                        .await?;
+                        printer.print(resp)?;
                     }
 
                     ClustersCommand::Get(params) => {
-                        let cluster = client
-                            .clusters(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, enrich::enrich_cluster(cluster))?;
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::get_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                        printer.print(resp)?;
                     }
 
                     ClustersCommand::Delete(params) => {
-                        client
-                            .clusters(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::delete_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
                     }
 
                     ClustersCommand::Update(params) => {
-                        client
-                            .clusters(&token)
-                            .update(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    ClustersCommand::List(params) => {
-                        let clusters = client
-                            .clusters(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(
-                            opt.render_in_json,
-                            List(clusters.into_iter().map(enrich::enrich_cluster).collect()),
-                        )?;
-                    }
-
-                    ClustersCommand::Expand(params) => {
-                        client
-                            .clusters(&token)
-                            .expand(
-                                params.org_id,
-                                params.project_id,
-                                params.id,
-                                esc_api::command::clusters::ExpandDisk {
-                                    disk_size_gb: params.disk_size_in_gb,
-                                    disk_iops: params.disk_iops,
-                                    disk_throughput: params.disk_throughput,
-                                    disk_type: params.disk_type,
-                                },
-                            )
-                            .await?;
-                    }
-                },
-                MesdbCommand::Backups(clusters) => match clusters.backups_command {
-                    BackupsCommand::Create(params) => {
-                        let create_params = esc_api::command::backups::CreateBackupParams {
-                            source_cluster_id: params.source_cluster_id,
-                            description: params.description,
-                        };
-                        let backup_id = client
-                            .backups(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
-                        print_output(opt.render_in_json, backup_id)?;
-                    }
-
-                    BackupsCommand::Get(params) => {
-                        let backup = client
-                            .backups(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, backup)?;
-                    }
-
-                    BackupsCommand::Delete(params) => {
-                        client
-                            .backups(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    BackupsCommand::List(params) => {
-                        let backups = client
-                            .backups(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(backups))?;
-                    }
-                },
-            }
-        }
-
-        Command::Orchestrate(orchestrate) => {
-            let token = store.access(opt.refresh_token).await?;
-            match orchestrate.orchestrate_command {
-                OrchestrateCommand::Jobs(jobs) => match jobs.jobs_command {
-                    JobsCommand::Create(params) => {
-                        let data: esc_api::JobData = match params.job_type {
-                            CreateJobType::ScheduledBackup(args) => {
-                                esc_api::JobData::ScheduledBackup(esc_api::JobDataScheduledBackup {
-                                    description: args.description,
-                                    max_backup_count: args.max_backup_count,
-                                    cluster_id: args.cluster_id,
-                                })
-                            }
-                        };
-                        let create_params = esc_api::command::jobs::CreateJobParams {
-                            description: params.description,
-                            schedule: params.schedule,
-                            data,
-                        };
-                        let job_id = client
-                            .jobs(&token)
-                            .create(params.org_id, params.project_id, create_params)
-                            .await?;
-
-                        print_output(opt.render_in_json, job_id)?;
-                    }
-
-                    JobsCommand::Get(params) => {
-                        let job = client
-                            .jobs(&token)
-                            .get(params.org_id, params.project_id, params.id)
-                            .await?;
-
-                        print_output(opt.render_in_json, job)?;
-                    }
-
-                    JobsCommand::Delete(params) => {
-                        client
-                            .jobs(&token)
-                            .delete(params.org_id, params.project_id, params.id)
-                            .await?;
-                    }
-
-                    JobsCommand::List(params) => {
-                        let jobs = client
-                            .jobs(&token)
-                            .list(params.org_id, params.project_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(jobs))?;
-                    }
-                },
-                OrchestrateCommand::History(history) => match history.history_command {
-                    HistoryCommand::List(params) => {
-                        let items = client
-                            .history(&token)
-                            .list(params.org_id, params.project_id, params.job_id)
-                            .await?;
-
-                        print_output(opt.render_in_json, List(items))?;
-                    }
-                },
-            }
-        }
-
-        Command::Integrations(cmd) => {
-            let token = store.access(opt.refresh_token).await?;
-            match cmd.integration_command {
-                IntegrationsCommand::List(params) => {
-                    let i = client
-                        .integrations(&token)
-                        .list(params.organization_id, params.project_id)
-                        .await?;
-                    print_output(opt.render_in_json, i)?;
-                }
-                IntegrationsCommand::Create(params) => {
-                    let integration = client.integrations(&token).create(
-                        params.organization_id,
-                        params.project_id,
-                        esc_api::command::integrations::CreateIntegrationRequest{
-                            description: params.description,
-                            data: match params.data {
-                                CreateIntegrationData::OpsGenie(args) => esc_api::command::integrations::CreateIntegrationData::CreateOpsGenieIntegrationData{
-                                    api_key: args.api_key
-                                },
-                                CreateIntegrationData::Slack(args) => esc_api::command::integrations::CreateIntegrationData::CreateSlackIntegrationData{
-                                    channel_id: args.channel_id,
-                                    token: args.token,
-                                },
-                            }
-                        }
-                    ).await?;
-                    print_output(opt.render_in_json, integration)?;
-                }
-                IntegrationsCommand::Delete(params) => {
-                    client
-                        .integrations(&token)
-                        .delete(
-                            params.organization_id,
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::update_cluster(
+                            &client,
+                            params.org_id,
                             params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
-                        )
-                        .await?;
-                }
-                IntegrationsCommand::Get(params) => {
-                    let i = client
-                        .integrations(&token)
-                        .get(
-                            params.organization_id,
-                            params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
-                        )
-                        .await?;
-                    print_output(opt.render_in_json, i)?;
-                }
-                IntegrationsCommand::Update(params) => {
-                    client
-                        .integrations(&token)
-                        .update(
-                            params.organization_id,
-                            params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
-                            esc_api::command::integrations::UpdateIntegrationRequest {
-                                data: match params.data {
-                                    None => None,
-                                    Some(data) => Some(
-                                        esc_api::command::integrations::UpdateIntegrationData {
-                                            api_key: data.api_key.clone(),
-                                            channel_id: data.channel_id.clone(),
-                                            token: data.token,
-                                        },
-                                    ),
-                                },
+                            params.id,
+                            esc_api::mesdb::UpdateClusterRequest {
                                 description: params.description,
                             },
                         )
                         .await?;
-                }
-                IntegrationsCommand::TestIntegration(params) => {
-                    client
-                        .integrations(&token)
-                        .test(
-                            params.organization_id,
+                    }
+
+                    ClustersCommand::List(params) => {
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::list_clusters(
+                            &client,
+                            params.org_id,
                             params.project_id,
-                            esc_api::IntegrationId(params.integration_id),
                         )
                         .await?;
-                }
+                        printer.print(resp)?;
+                    }
+
+                    ClustersCommand::Expand(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::expand_cluster_disk(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                            esc_api::mesdb::ExpandClusterDiskRequest {
+                                disk_iops: params.disk_iops,
+                                disk_size_gb: params.disk_size_in_gb,
+                                disk_throughput: params.disk_throughput,
+                                disk_type: params.disk_type,
+                            },
+                        )
+                        .await?;
+                    }
+                },
+                MesdbCommand::Backups(clusters) => match clusters.backups_command {
+                    BackupsCommand::Create(params) => {
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::create_backup(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            esc_api::mesdb::CreateBackupRequest {
+                                description: params.description,
+                                source_cluster_id: params.source_cluster_id,
+                            },
+                        )
+                        .await?;
+                        printer.print(resp)?;
+                    }
+
+                    BackupsCommand::Get(params) => {
+                        let client = client_builder.create().await?;
+                        let resp = esc_api::mesdb::get_backup(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                        printer.print(resp)?;
+                    }
+
+                    BackupsCommand::Delete(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::delete_backup(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                    }
+
+                    BackupsCommand::List(params) => {
+                        let client = client_builder.create().await?;
+                        let resp =
+                            esc_api::mesdb::list_backups(&client, params.org_id, params.project_id)
+                                .await?;
+                        printer.print(resp)?;
+                    }
+                },
             }
         }
 
+        Command::Orchestrate(orchestrate) => match orchestrate.orchestrate_command {
+            OrchestrateCommand::Jobs(jobs) => match jobs.jobs_command {
+                JobsCommand::Create(params) => {
+                    let client = client_builder.create().await?;
+                    let data = match params.job_type {
+                        CreateJobType::ScheduledBackup(args) => {
+                            esc_api::orchestrate::JobData::ScheduledBackup(
+                                esc_api::orchestrate::ScheduledBackupData {
+                                    cluster_id: args.cluster_id,
+                                    description: args.description,
+                                    max_backup_count: args.max_backup_count,
+                                },
+                            )
+                        }
+                    };
+                    let resp = esc_api::orchestrate::create_job(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::orchestrate::CreateJobRequest {
+                            data,
+                            description: params.description,
+                            schedule: params.schedule,
+                        },
+                    )
+                    .await?;
+                    printer.print(resp)?;
+                }
+
+                JobsCommand::Get(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::orchestrate::get_job(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    printer.print(resp)?;
+                }
+
+                JobsCommand::Delete(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::orchestrate::delete_job(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                }
+
+                JobsCommand::List(params) => {
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::orchestrate::list_jobs(&client, params.org_id, params.project_id)
+                            .await?;
+                    printer.print(resp)?;
+                }
+            },
+            OrchestrateCommand::History(history) => match history.history_command {
+                HistoryCommand::List(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::orchestrate::list_history(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.job_id,
+                    )
+                    .await?;
+                    printer.print(resp)?;
+                }
+            },
+        },
+
+        Command::Integrations(cmd) => match cmd.integration_command {
+            IntegrationsCommand::List(params) => {
+                let client = client_builder.create().await?;
+                let resp = esc_api::integrate::list_integrations(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                )
+                .await?;
+                printer.print(resp)?;
+            }
+            IntegrationsCommand::Create(params) => {
+                let client = client_builder.create().await?;
+                let data: esc_api::integrate::CreateIntegrationData = match params.data {
+                    CreateIntegrationData::OpsGenie(args) => {
+                        esc_api::integrate::CreateIntegrationData::OpsGenie(
+                            esc_api::integrate::CreateOpsGenieIntegrationData {
+                                api_key: args.api_key,
+                                source: None,
+                            },
+                        )
+                    }
+                    CreateIntegrationData::Slack(args) => {
+                        esc_api::integrate::CreateIntegrationData::Slack(
+                            esc_api::integrate::CreateSlackIntegrationData {
+                                channel_id: args.channel_id,
+                                source: args.source,
+                                token: args.token,
+                            },
+                        )
+                    }
+                };
+                let resp = esc_api::integrate::create_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    esc_api::integrate::CreateIntegrationRequest {
+                        data,
+                        description: params.description,
+                    },
+                )
+                .await?;
+                printer.print(resp)?;
+            }
+            IntegrationsCommand::Delete(params) => {
+                let client = client_builder.create().await?;
+                esc_api::integrate::delete_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
+                )
+                .await?;
+            }
+            IntegrationsCommand::Get(params) => {
+                let client = client_builder.create().await?;
+                let resp = esc_api::integrate::get_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
+                )
+                .await?;
+                printer.print(resp)?;
+            }
+            IntegrationsCommand::Update(params) => {
+                use esc_api::integrate::*;
+                // TODO: rework this. It's probably saner to force the user to say the type of sink they're updating
+                let data: Option<UpdateIntegrationData> = match params.data {
+                    Some(data) => match data.api_key {
+                        Some(api_key) => {
+                            Some(UpdateIntegrationData::UpdateOpsGenieIntegrationData(
+                                UpdateOpsGenieIntegrationData {
+                                    api_key: Some(api_key),
+                                },
+                            ))
+                        }
+                        None => {
+                            if data.channel_id.is_some() || data.token.is_some() {
+                                Some(UpdateIntegrationData::UpdateSlackIntegrationData(
+                                    UpdateSlackIntegrationData {
+                                        channel_id: data.channel_id,
+                                        token: data.token,
+                                    },
+                                ))
+                            } else {
+                                None
+                            }
+                        }
+                    },
+                    None => None,
+                };
+
+                let client = client_builder.create().await?;
+                esc_api::integrate::update_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
+                    UpdateIntegrationRequest {
+                        description: params.description,
+                        data,
+                    },
+                )
+                .await?;
+            }
+            IntegrationsCommand::TestIntegration(params) => {
+                let client = client_builder.create().await?;
+                esc_api::integrate::test_integration(
+                    &client,
+                    params.organization_id,
+                    params.project_id,
+                    esc_api::integrate::IntegrationId(params.integration_id),
+                )
+                .await?;
+            }
+        },
+
         Command::GenerateBashCompletion => {
+            // clap_complete::generate_to(clap_complete::shells::Bashg, clap_app, "esc", out_dir)
             clap_app.gen_completions_to("esc", clap::Shell::Bash, &mut std::io::stdout());
         }
 

@@ -1,5 +1,8 @@
 [workspace]
 members = [
   "api",
-  "cli"
+  "base",
+  "cli",
+  "generated",
+  "store",
 ]

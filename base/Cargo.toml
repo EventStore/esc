@@ -1,0 +1,26 @@
+[package]
+name = "esc-client-base"
+version = "0.1.0"
+authors = ["Tim Simpson <timsimpson4@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+url = "2.1"
+http = "0.2"
+log = "0.4"
+validator = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "0.5"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+hyper = "0.14.11"
+
+[dev-dependencies]
+regex = "1.5.4"
+tokio = { version = "1.18", features = ["macros", "fs"] }
+
+[examples]
+name = "create-token"
+path = "examples/create-token.rs"
