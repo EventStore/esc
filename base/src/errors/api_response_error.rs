@@ -2,7 +2,7 @@ use super::problem_details::ProblemDetails;
 use reqwest::StatusCode;
 
 /// Represents an error reported by an API operation
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ApiResponseError {
     pub status_code: StatusCode,
     pub problem_details: ProblemDetails,

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 /// Represents a problem reported from the API
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProblemDetails {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
@@ -35,35 +35,5 @@ impl std::fmt::Display for ProblemDetails {
 impl std::fmt::Debug for ProblemDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> core::fmt::Result {
         writeln!(f, "{}", self)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use regex::Regex;
-
-    #[test]
-    fn problem_details_display() {
-        let mut fields = HashMap::new();
-        fields.insert("field1".to_string(), "value1".to_string());
-        fields.insert("field2".to_string(), "value2".to_string());
-        let pd = ProblemDetails {
-            detail: "Details Here".to_string(),
-            fields,
-            instance: "Instance".to_string(),
-            status: "Status".to_string(),
-            title: "Title".to_string(),
-            _type: "Type".to_string(),
-        };
-        let expected = r#"\{"detail": "Details Here", "fields": (\{"field1": "value1", "field2": "value2"\}|\{"field2": "value2", "field1": "value1"\}), "instance": "Instance", "status": "Status", "title": "Title", "type": "Type"\}"#;
-        let actual = format!("{}", pd);
-        let expected_re = Regex::new(expected).unwrap();
-        assert!(
-            expected_re.is_match(&actual),
-            "Error: expected {}, actual {}",
-            expected,
-            actual
-        );
     }
 }

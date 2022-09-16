@@ -1,12 +1,14 @@
-use esc_api_base::errors::*;
+use esc_client_base::errors::ApiResponseError;
+use esc_client_base::errors::ProblemDetails;
+use esc_client_base::errors::Result;
 
 fn get_api_error() -> std::result::Result<i32, ApiResponseError> {
     let status_code = reqwest::StatusCode::INTERNAL_SERVER_ERROR;
     let problem_details = ProblemDetails {
-        details: "Details Here".to_string(),
+        detail: Some("Details Here".to_string()),
         fields: Default::default(),
         instance: "Instance".to_string(),
-        status: "Status".to_string(),
+        status: 200,
         title: "Title".to_string(),
         _type: "Type".to_string(),
     };
@@ -33,7 +35,7 @@ fn expect_error() -> Result<u16> {
     }
 }
 
-async fn some_async_function() -> () {
+async fn some_async_function() {
     use std::time::Duration;
     use tokio::time::sleep;
     sleep(Duration::new(10, 0)).await;

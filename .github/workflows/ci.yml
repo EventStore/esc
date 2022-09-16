@@ -9,28 +9,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-11]
-        rust: [stable, beta]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v1
-      - name: Install
-        run: rustup default ${{ matrix.rust }}
-      - name: Build
-        run: cargo check
-
-  linting:
-    name: Linting
-    needs: build
-    runs-on: ubuntu-18.04
-    steps:
-      - uses: actions/checkout@v1
-      - name: Install
-        run: |
-          rustup component add clippy-preview
-          rustup component add rustfmt
-      - name: Linting
-        run: cargo clippy -- -D warnings
-      - name: Formatting
-        run: cargo fmt -- --check
+      - name: checkout
+        uses: actions/checkout@v1      
+      - name: install Just
+        run: cargo install just --version 1.2.0
+      - name: Build and Test
+        run: just ci
