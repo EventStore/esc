@@ -176,6 +176,12 @@ impl std::fmt::Display for ProjectionLevel {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestartClusterResponse {
+    pub id: String,
+}
+
 /// Either single-node or three-node-multi-zone
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Topology {
