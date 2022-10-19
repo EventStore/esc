@@ -766,6 +766,7 @@ enum ClustersCommand {
     Update(UpdateCluster),
     Delete(DeleteCluster),
     Expand(ExpandCluster),
+    Restart(RestartCluster),
 }
 
 #[derive(Debug, StructOpt)]
@@ -896,6 +897,19 @@ struct ExpandCluster {
 
     #[structopt(long, help = "Optional disk type")]
     disk_type: Option<String>,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Restarts a cluster")]
+struct RestartCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to expand")]
+    id: esc_api::ClusterId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -2208,6 +2222,17 @@ async fn call_api<'a, 'b>(
                                 disk_throughput: params.disk_throughput,
                                 disk_type: params.disk_type,
                             },
+                        )
+                        .await?;
+                    }
+
+                    ClustersCommand::Restart(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::restart_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
                         )
                         .await?;
                     }
