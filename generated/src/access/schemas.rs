@@ -25,6 +25,22 @@ impl std::fmt::Display for Action {
         }
     }
 }
+impl std::cmp::PartialEq<&str> for Action {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Action::Create => *other == "create",
+            Action::Delete => *other == "delete",
+            Action::Modify => *other == "modify",
+            Action::_None => *other == "none",
+            Action::Read => *other == "read",
+        }
+    }
+}
+impl std::cmp::PartialEq<Action> for &str {
+    fn eq(&self, other: &Action) -> bool {
+        other == self
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +105,19 @@ impl std::fmt::Display for Effect {
             Effect::Allow => write!(f, "allow"),
             Effect::Deny => write!(f, "deny"),
         }
+    }
+}
+impl std::cmp::PartialEq<&str> for Effect {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Effect::Allow => *other == "allow",
+            Effect::Deny => *other == "deny",
+        }
+    }
+}
+impl std::cmp::PartialEq<Effect> for &str {
+    fn eq(&self, other: &Effect) -> bool {
+        other == self
     }
 }
 

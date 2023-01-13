@@ -80,6 +80,18 @@ impl std::fmt::Display for JobType {
         }
     }
 }
+impl std::cmp::PartialEq<&str> for JobType {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            JobType::ScheduledBackup => *other == "ScheduledBackup",
+        }
+    }
+}
+impl std::cmp::PartialEq<JobType> for &str {
+    fn eq(&self, other: &JobType) -> bool {
+        other == self
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

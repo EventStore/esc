@@ -94,7 +94,44 @@ pub struct Network {
     pub project_id: ProjectId,
     pub provider: String,
     pub region: String,
-    pub status: String,
+    pub status: NetworkStatus,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkStatus {
+    Provisioning,
+    Defunct,
+    Available,
+    Deleting,
+    Deleted,
+}
+impl std::fmt::Display for NetworkStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NetworkStatus::Provisioning => write!(f, "provisioning"),
+            NetworkStatus::Defunct => write!(f, "defunct"),
+            NetworkStatus::Available => write!(f, "available"),
+            NetworkStatus::Deleting => write!(f, "deleting"),
+            NetworkStatus::Deleted => write!(f, "deleted"),
+        }
+    }
+}
+impl std::cmp::PartialEq<&str> for NetworkStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            NetworkStatus::Provisioning => *other == "provisioning",
+            NetworkStatus::Defunct => *other == "defunct",
+            NetworkStatus::Available => *other == "available",
+            NetworkStatus::Deleting => *other == "deleting",
+            NetworkStatus::Deleted => *other == "deleted",
+        }
+    }
+}
+impl std::cmp::PartialEq<NetworkStatus> for &str {
+    fn eq(&self, other: &NetworkStatus) -> bool {
+        other == self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -113,7 +150,50 @@ pub struct Peering {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider_peering_metadata: Option<HashMap<String, String>>,
     pub routes: Vec<String>,
-    pub status: String,
+    pub status: PeeringStatus,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PeeringStatus {
+    Provisioning,
+    Initiated,
+    Active,
+    Defunct,
+    Deleting,
+    Deleted,
+    Unknown,
+}
+impl std::fmt::Display for PeeringStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PeeringStatus::Provisioning => write!(f, "provisioning"),
+            PeeringStatus::Initiated => write!(f, "initiated"),
+            PeeringStatus::Active => write!(f, "active"),
+            PeeringStatus::Defunct => write!(f, "defunct"),
+            PeeringStatus::Deleting => write!(f, "deleting"),
+            PeeringStatus::Deleted => write!(f, "deleted"),
+            PeeringStatus::Unknown => write!(f, "unknown"),
+        }
+    }
+}
+impl std::cmp::PartialEq<&str> for PeeringStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            PeeringStatus::Provisioning => *other == "provisioning",
+            PeeringStatus::Initiated => *other == "initiated",
+            PeeringStatus::Active => *other == "active",
+            PeeringStatus::Defunct => *other == "defunct",
+            PeeringStatus::Deleting => *other == "deleting",
+            PeeringStatus::Deleted => *other == "deleted",
+            PeeringStatus::Unknown => *other == "unknown",
+        }
+    }
+}
+impl std::cmp::PartialEq<PeeringStatus> for &str {
+    fn eq(&self, other: &PeeringStatus) -> bool {
+        other == self
+    }
 }
 
 /// underlying cloud provider
@@ -131,6 +211,20 @@ impl std::fmt::Display for Provider {
             Provider::Azure => write!(f, "azure"),
             Provider::Gcp => write!(f, "gcp"),
         }
+    }
+}
+impl std::cmp::PartialEq<&str> for Provider {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Provider::Aws => *other == "aws",
+            Provider::Azure => *other == "azure",
+            Provider::Gcp => *other == "gcp",
+        }
+    }
+}
+impl std::cmp::PartialEq<Provider> for &str {
+    fn eq(&self, other: &Provider) -> bool {
+        other == self
     }
 }
 
