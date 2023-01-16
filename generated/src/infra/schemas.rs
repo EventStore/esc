@@ -2,7 +2,7 @@ use super::formats::*;
 use crate::resources::formats::ProjectId;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Command {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -12,7 +12,7 @@ pub struct Command {
     pub value: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateNetworkRequest {
     pub provider: String,
@@ -21,13 +21,13 @@ pub struct CreateNetworkRequest {
     pub region: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateNetworkResponse {
     pub id: NetworkId,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePeeringCommandsRequest {
     pub provider: String,
@@ -35,13 +35,13 @@ pub struct CreatePeeringCommandsRequest {
     pub peer_network_id: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePeeringCommandsResponse {
     pub commands: Vec<Command>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePeeringRequest {
     pub network_id: NetworkId,
@@ -52,7 +52,7 @@ pub struct CreatePeeringRequest {
     pub routes: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePeeringResponse {
     pub id: PeeringId,
@@ -60,31 +60,31 @@ pub struct CreatePeeringResponse {
 
 pub type Fields = HashMap<String, String>;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetNetworkResponse {
     pub network: Network,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetPeeringResponse {
     pub peering: Peering,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListNetworksResponse {
     pub networks: Vec<Network>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListPeeringsResponse {
     pub peerings: Vec<Peering>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Network {
     pub cidr_block: String,
@@ -97,7 +97,7 @@ pub struct Network {
     pub status: NetworkStatus,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NetworkStatus {
     Provisioning,
@@ -134,7 +134,7 @@ impl std::cmp::PartialEq<NetworkStatus> for &str {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Peering {
     pub created: String,
@@ -153,7 +153,7 @@ pub struct Peering {
     pub status: PeeringStatus,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PeeringStatus {
     Provisioning,
@@ -197,7 +197,7 @@ impl std::cmp::PartialEq<PeeringStatus> for &str {
 }
 
 /// underlying cloud provider
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Provider {
     Aws,
@@ -228,13 +228,13 @@ impl std::cmp::PartialEq<Provider> for &str {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateNetworkRequest {
     pub description: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePeeringRequest {
     pub description: String,

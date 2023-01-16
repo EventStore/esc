@@ -6,7 +6,7 @@ use chrono::DateTime;
 use chrono::Utc;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Backup {
     pub available_node_count: i32,
@@ -26,7 +26,7 @@ pub struct Backup {
     pub status: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cluster {
     pub can_expand_disk: bool,
@@ -54,7 +54,7 @@ pub struct Cluster {
     pub topology: Topology,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ClusterStatus {
     #[serde(rename = "provisioning")]
     Provisioning,
@@ -119,20 +119,20 @@ impl std::cmp::PartialEq<ClusterStatus> for &str {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBackupRequest {
     pub description: String,
     pub source_cluster_id: ClusterId,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateBackupResponse {
     pub id: BackupId,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateClusterRequest {
     pub description: String,
@@ -153,13 +153,13 @@ pub struct CreateClusterRequest {
     pub topology: Topology,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateClusterResponse {
     pub id: ClusterId,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExpandClusterDiskRequest {
     pub disk_size_gb: i32,
@@ -173,20 +173,20 @@ pub struct ExpandClusterDiskRequest {
 
 pub type Fields = HashMap<String, String>;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetBackupResponse {
     pub backup: Backup,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetClusterResponse {
     pub cluster: Cluster,
 }
 
 /// The health of the database
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Health {
     #[serde(rename = "degraded")]
     Degraded,
@@ -227,20 +227,20 @@ impl std::cmp::PartialEq<Health> for &str {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListBackupsResponse {
     pub backups: Vec<Backup>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListClustersResponse {
     pub clusters: Vec<Cluster>,
 }
 
 /// The projection level of your database. Can be off, system or user
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ProjectionLevel {
     Off,
@@ -271,14 +271,14 @@ impl std::cmp::PartialEq<ProjectionLevel> for &str {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RestartClusterResponse {
     pub id: String,
 }
 
 /// Either single-node or three-node-multi-zone
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Topology {
     #[serde(rename = "single-node")]
     SingleNode,
@@ -307,7 +307,7 @@ impl std::cmp::PartialEq<Topology> for &str {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateClusterRequest {
     pub description: String,
