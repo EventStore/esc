@@ -620,11 +620,10 @@ struct Misc {
 #[derive(Debug, StructOpt)]
 enum NotesCommand {
     Create(CreateNote),
-	Get(GetNote),
-	List(ListNotes),
+    Get(GetNote),
+    List(ListNotes),
     Update(UpdateNote),
     Delete(DeleteNote),
-
 }
 
 #[derive(Debug, StructOpt)]
@@ -650,7 +649,6 @@ struct CreateNote {
     text: String,
 }
 
-
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Gets an note")]
 struct GetNote {
@@ -662,7 +660,6 @@ struct GetNote {
     id: NoteId,
 }
 
-
 #[derive(Debug, StructOpt)]
 #[structopt(about = "List all notes")]
 struct ListNotes {
@@ -671,7 +668,6 @@ struct ListNotes {
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
     project_id: esc_api::resources::ProjectId,
 }
-
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Update a note")]
@@ -2369,7 +2365,7 @@ async fn call_api<'a, 'b>(
                     .await?;
                 }
 
-				NotesCommand::Get(params) => {
+                NotesCommand::Get(params) => {
                     let client = client_builder.create().await?;
 
                     let resp = esc_api::misc::operations::get_note(
@@ -2406,7 +2402,6 @@ async fn call_api<'a, 'b>(
                     .await?;
                 }
 
-
                 NotesCommand::List(params) => {
                     let client = client_builder.create().await?;
 
@@ -2417,8 +2412,7 @@ async fn call_api<'a, 'b>(
                     )
                     .await?;
                 }
-
-			},
+            },
         },
 
         Command::Orchestrate(orchestrate) => match orchestrate.orchestrate_command {
