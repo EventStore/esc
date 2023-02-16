@@ -12,6 +12,7 @@ mod output;
 mod utils;
 mod v1;
 
+use esc_api::misc::NoteId;
 use esc_api::{GroupId, OrgId};
 use output::OutputFormat;
 use serde::Serialize;
@@ -63,6 +64,7 @@ enum Command {
     Integrations(Integrations),
     Profiles(Profiles),
     Mesdb(Mesdb),
+    Misc(Misc),
     Orchestrate(Orchestrate),
     #[structopt(about = "Prints Bash completion script in STDOUT")]
     GenerateBashCompletion,
@@ -606,6 +608,97 @@ enum ProfilePropName {
     ProjectId,
     ApiBaseUrl,
     Fmt,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers notes management commands")]
+struct Misc {
+    #[structopt(subcommand)]
+    misc_command: MiscCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum NotesCommand {
+    Create(CreateNote),
+	Get(GetNote),
+	List(ListNotes),
+    Update(UpdateNote),
+    Delete(DeleteNote),
+
+}
+
+#[derive(Debug, StructOpt)]
+enum MiscCommand {
+    Notes(Notes),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers notes management commands")]
+struct Notes {
+    #[structopt(subcommand)]
+    notes_command: NotesCommand,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Create a note")]
+struct CreateNote {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
+    org_id: OrgId,
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
+    project_id: esc_api::resources::ProjectId,
+    #[structopt(long, short)]
+    text: String,
+}
+
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gets an note")]
+struct GetNote {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
+    org_id: OrgId,
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
+    project_id: esc_api::resources::ProjectId,
+    #[structopt(long, short, parse(try_from_str = parse_note_id))]
+    id: NoteId,
+}
+
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "List all notes")]
+struct ListNotes {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
+    org_id: OrgId,
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
+    project_id: esc_api::resources::ProjectId,
+}
+
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Update a note")]
+struct UpdateNote {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
+    org_id: OrgId,
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
+    project_id: esc_api::resources::ProjectId,
+    #[structopt(long, short)]
+    text: String,
+    #[structopt(long, short, parse(try_from_str = parse_note_id))]
+    id: NoteId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Delete a note")]
+struct DeleteNote {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster will relate to")]
+    org_id: OrgId,
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
+    project_id: esc_api::resources::ProjectId,
+    #[structopt(long, short, parse(try_from_str = parse_note_id))]
+    id: NoteId,
+}
+
+fn parse_note_id(src: &str) -> Result<NoteId, String> {
+    Ok(NoteId(src.to_string()))
 }
 
 #[derive(Debug, StructOpt)]
@@ -2261,6 +2354,72 @@ async fn call_api<'a, 'b>(
                 },
             }
         }
+
+        Command::Misc(misc) => match misc.misc_command {
+            MiscCommand::Notes(note) => match note.notes_command {
+                NotesCommand::Create(params) => {
+                    let client = client_builder.create().await?;
+
+                    let resp = esc_api::misc::operations::create_note(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::misc::CreateNoteRequest { text: params.text },
+                    )
+                    .await?;
+                }
+
+				NotesCommand::Get(params) => {
+                    let client = client_builder.create().await?;
+
+                    let resp = esc_api::misc::operations::get_note(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                }
+
+                NotesCommand::Update(params) => {
+                    let client = client_builder.create().await?;
+
+                    let resp = esc_api::misc::operations::update_note(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                        esc_api::misc::UpdateNoteRequest { text: params.text },
+                    )
+                    .await?;
+                }
+
+                NotesCommand::Delete(params) => {
+                    let client = client_builder.create().await?;
+
+                    let resp = esc_api::misc::operations::delete_note(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                }
+
+
+                NotesCommand::List(params) => {
+                    let client = client_builder.create().await?;
+
+                    let resp = esc_api::misc::operations::list_notes(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                    )
+                    .await?;
+                }
+
+			},
+        },
 
         Command::Orchestrate(orchestrate) => match orchestrate.orchestrate_command {
             OrchestrateCommand::Jobs(jobs) => match jobs.jobs_command {
