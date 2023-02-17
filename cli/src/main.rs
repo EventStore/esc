@@ -2356,7 +2356,7 @@ async fn call_api<'a, 'b>(
                 NotesCommand::Create(params) => {
                     let client = client_builder.create().await?;
 
-                    let resp = esc_api::misc::operations::create_note(
+                    let _ = esc_api::misc::operations::create_note(
                         &client,
                         params.org_id,
                         params.project_id,
@@ -2368,7 +2368,7 @@ async fn call_api<'a, 'b>(
                 NotesCommand::Get(params) => {
                     let client = client_builder.create().await?;
 
-                    let resp = esc_api::misc::operations::get_note(
+                    let _ = esc_api::misc::operations::get_note(
                         &client,
                         params.org_id,
                         params.project_id,
@@ -2380,7 +2380,7 @@ async fn call_api<'a, 'b>(
                 NotesCommand::Update(params) => {
                     let client = client_builder.create().await?;
 
-                    let resp = esc_api::misc::operations::update_note(
+                    let _ = esc_api::misc::operations::update_note(
                         &client,
                         params.org_id,
                         params.project_id,
@@ -2393,7 +2393,7 @@ async fn call_api<'a, 'b>(
                 NotesCommand::Delete(params) => {
                     let client = client_builder.create().await?;
 
-                    let resp = esc_api::misc::operations::delete_note(
+                    let _ = esc_api::misc::operations::delete_note(
                         &client,
                         params.org_id,
                         params.project_id,
@@ -2405,7 +2405,7 @@ async fn call_api<'a, 'b>(
                 NotesCommand::List(params) => {
                     let client = client_builder.create().await?;
 
-                    let resp = esc_api::misc::operations::list_notes(
+                    let _ = esc_api::misc::operations::list_notes(
                         &client,
                         params.org_id,
                         params.project_id,
