@@ -13,7 +13,7 @@ use super::resources::OrgId;
 //     Deleted,
 // }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "sink")]
 pub enum IntegrationData {
     #[serde(rename = "opsGenie")]
@@ -41,7 +41,7 @@ pub enum IntegrationData {
     Unsupported,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Integration {
     #[serde(rename = "created")]
     pub created: DateTime<Utc>,
@@ -106,7 +106,7 @@ impl ToV1 for esc_api::integrate::CreateIntegrationResponse {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GetIntegrationResponse {
     #[serde(rename = "integration")]
     pub integration: Integration,
@@ -121,7 +121,7 @@ impl ToV1 for esc_api::integrate::GetIntegrationResponse {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ListIntegrationsResponse {
     #[serde(rename = "integrations")]
     pub integrations: Vec<Integration>,

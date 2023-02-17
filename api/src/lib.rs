@@ -24,6 +24,10 @@ pub mod mesdb {
     pub use esc_client_generated::mesdb::*;
 }
 
+pub mod misc {
+    pub use esc_client_generated::misc::*;
+}
+
 pub mod orchestrate {
     pub use esc_client_generated::orchestrate::*;
 }

@@ -62,7 +62,7 @@ impl ToV1 for esc_api::mesdb::Cluster {
             provider: Provider::from_string(&self.provider),
             region: self.region,
             server_version: self.server_version,
-            status: self.status,
+            status: self.status.to_string(),
             topology: self.topology,
         };
         let mut tcp = Vec::new();

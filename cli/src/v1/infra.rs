@@ -63,7 +63,7 @@ impl ToV1 for esc_api::infra::Network {
             project_id: self.project_id,
             provider: Provider::from_string(&self.provider),
             region: self.region,
-            status: self.status,
+            status: self.status.to_string(),
         }
     }
 }
@@ -110,7 +110,7 @@ impl ToV1 for esc_api::infra::Peering {
             project_id: self.project_id,
             provider: Provider::from_string(&self.provider),
             routes: self.routes,
-            status: self.status,
+            status: self.status.to_string(),
         }
     }
 }
