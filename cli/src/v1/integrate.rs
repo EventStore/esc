@@ -41,7 +41,7 @@ pub enum IntegrationData {
     Unsupported,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Integration {
     #[serde(rename = "created")]
     pub created: DateTime<Utc>,
