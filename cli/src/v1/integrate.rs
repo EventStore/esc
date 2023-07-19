@@ -106,7 +106,7 @@ impl ToV1 for esc_api::integrate::CreateIntegrationResponse {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GetIntegrationResponse {
     #[serde(rename = "integration")]
     pub integration: Integration,
@@ -121,7 +121,7 @@ impl ToV1 for esc_api::integrate::GetIntegrationResponse {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ListIntegrationsResponse {
     #[serde(rename = "integrations")]
     pub integrations: Vec<Integration>,
