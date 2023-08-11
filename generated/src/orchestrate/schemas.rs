@@ -6,7 +6,7 @@ use chrono::DateTime;
 use chrono::Utc;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateJobRequest {
     #[serde(flatten)]
@@ -15,7 +15,7 @@ pub struct CreateJobRequest {
     pub schedule: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateJobResponse {
     pub id: JobId,
@@ -23,19 +23,19 @@ pub struct CreateJobResponse {
 
 pub type Fields = HashMap<String, String>;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetHistoryResponse {
     pub items: Vec<HistoryItem>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetJobResponse {
     pub job: Job,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryItem {
     pub details: String,
@@ -50,7 +50,7 @@ pub struct HistoryItem {
     pub status: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Job {
     #[serde(flatten)]
@@ -63,13 +63,13 @@ pub struct Job {
     pub status: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum JobData {
     ScheduledBackup(ScheduledBackupData),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum JobType {
     ScheduledBackup,
 }
@@ -80,21 +80,33 @@ impl std::fmt::Display for JobType {
         }
     }
 }
+impl std::cmp::PartialEq<&str> for JobType {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            JobType::ScheduledBackup => *other == "ScheduledBackup",
+        }
+    }
+}
+impl std::cmp::PartialEq<JobType> for &str {
+    fn eq(&self, other: &JobType) -> bool {
+        other == self
+    }
+}
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListJobsResponse {
     pub jobs: Vec<Job>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunJobResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub history_id: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledBackupData {
     pub cluster_id: ClusterId,

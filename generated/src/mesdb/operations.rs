@@ -234,6 +234,30 @@ pub async fn list_clusters(
         .await
 }
 
+/// restart a cluster
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+pub async fn restart_cluster(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+) -> Result<RestartClusterResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/commands/restart",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<(), RestartClusterResponse>(Method::PUT, url, None, None)
+        .await
+}
+
 /// Updates a cluster
 ///
 /// # Arguments

@@ -6,7 +6,7 @@ use chrono::Utc;
 use std::collections::HashMap;
 
 /// Integration for AWS CloudWatch
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AwsCloudWatchLogsIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -21,7 +21,7 @@ pub struct AwsCloudWatchLogsIntegrationData {
 }
 
 /// Integration for AWS CloudWatch metrics
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AwsCloudWatchMetricsIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -35,7 +35,7 @@ pub struct AwsCloudWatchMetricsIntegrationData {
 }
 
 /// Create AWS CloudWatch logs integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAwsCloudWatchLogsIntegrationData {
     pub access_key_id: String,
@@ -48,7 +48,7 @@ pub struct CreateAwsCloudWatchLogsIntegrationData {
 }
 
 /// Create AWS CloudWatch metrics integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAwsCloudWatchMetricsIntegrationData {
     pub access_key_id: String,
@@ -60,13 +60,26 @@ pub struct CreateAwsCloudWatchMetricsIntegrationData {
     pub source: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// Create GCP Operations Logging
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateGcpLoggingIntegrationData {
+    pub gcp_project_id: String,
+    pub gcp_service_account_private_key: String,
+    pub log_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "sink")]
 pub enum CreateIntegrationData {
     #[serde(rename = "awsCloudWatchLogs")]
     AwsCloudWatchLogs(CreateAwsCloudWatchLogsIntegrationData),
     #[serde(rename = "awsCloudWatchMetrics")]
     AwsCloudWatchMetrics(CreateAwsCloudWatchMetricsIntegrationData),
+    #[serde(rename = "gcpLogging")]
+    GcpLogging(CreateGcpLoggingIntegrationData),
     #[serde(rename = "opsGenie")]
     OpsGenie(CreateOpsGenieIntegrationData),
     #[serde(rename = "slack")]
@@ -75,21 +88,21 @@ pub enum CreateIntegrationData {
     PagerDuty(CreatePagerDutyIntegrationData),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateIntegrationRequest {
     pub data: CreateIntegrationData,
     pub description: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateIntegrationResponse {
     pub id: IntegrationId,
 }
 
 /// Create integration for the Ops Genie API integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateOpsGenieIntegrationData {
     pub api_key: String,
@@ -98,7 +111,7 @@ pub struct CreateOpsGenieIntegrationData {
 }
 
 /// Create integration for the PagerDuty API integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePagerDutyIntegrationData {
     pub auth_token: String,
@@ -109,7 +122,7 @@ pub struct CreatePagerDutyIntegrationData {
 }
 
 /// Create integration for a Slack bot used by this integration.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSlackIntegrationData {
     pub channel_id: String,
@@ -120,13 +133,23 @@ pub struct CreateSlackIntegrationData {
 
 pub type Fields = HashMap<String, String>;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// Integration for GCP Operations Logging
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GcpLoggingIntegrationData {
+    pub gcp_project_id: String,
+    pub log_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetIntegrationResponse {
     pub integration: Integration,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Integration {
     pub created: DateTime<Utc>,
@@ -139,13 +162,15 @@ pub struct Integration {
     pub updated: DateTime<Utc>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "sink")]
 pub enum IntegrationData {
     #[serde(rename = "awsCloudWatchLogs")]
     AwsCloudWatchLogs(AwsCloudWatchLogsIntegrationData),
     #[serde(rename = "awsCloudWatchMetrics")]
     AwsCloudWatchMetrics(AwsCloudWatchMetricsIntegrationData),
+    #[serde(rename = "gcpLogging")]
+    GcpLogging(GcpLoggingIntegrationData),
     #[serde(rename = "opsGenie")]
     OpsGenie(OpsGenieIntegrationData),
     #[serde(rename = "slack")]
@@ -154,13 +179,13 @@ pub enum IntegrationData {
     PagerDuty(PagerDutyIntegrationData),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationsOptionsResponse {
     pub sources: Vec<SourceSummary>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum IntegrationStatus {
     Active,
@@ -174,15 +199,28 @@ impl std::fmt::Display for IntegrationStatus {
         }
     }
 }
+impl std::cmp::PartialEq<&str> for IntegrationStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            IntegrationStatus::Active => *other == "active",
+            IntegrationStatus::Deleted => *other == "deleted",
+        }
+    }
+}
+impl std::cmp::PartialEq<IntegrationStatus> for &str {
+    fn eq(&self, other: &IntegrationStatus) -> bool {
+        other == self
+    }
+}
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListIntegrationsResponse {
     pub integrations: Vec<Integration>,
 }
 
 /// Integration for the Ops Genie API integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpsGenieIntegrationData {
     pub api_key_display: String,
@@ -190,7 +228,7 @@ pub struct OpsGenieIntegrationData {
 }
 
 /// Integration for the PagerDuty API integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PagerDutyIntegrationData {
     pub auth_token_display: String,
@@ -199,7 +237,7 @@ pub struct PagerDutyIntegrationData {
     pub source: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SinkSummary {
     pub id: String,
@@ -211,7 +249,7 @@ pub struct SinkSummary {
 }
 
 /// Integration for a Slack bot used by this integration.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SlackIntegrationData {
     pub channel_id: String,
@@ -219,7 +257,7 @@ pub struct SlackIntegrationData {
     pub source: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceSummary {
     pub enabled: bool,
@@ -229,7 +267,7 @@ pub struct SourceSummary {
 }
 
 /// Update request data for AWS CloudWatch logs
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAwsCloudWatchLogsIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -245,7 +283,7 @@ pub struct UpdateAwsCloudWatchLogsIntegrationData {
 }
 
 /// Update request data for AWS CloudWatch metrics
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAwsCloudWatchMetricsIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -260,17 +298,30 @@ pub struct UpdateAwsCloudWatchMetricsIntegrationData {
     pub secret_access_key: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// Updates GCP Operations Logging
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateGcpLoggingIntegrationData {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gcp_project_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gcp_service_account_private_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum UpdateIntegrationData {
     UpdateAwsCloudWatchLogsIntegrationData(UpdateAwsCloudWatchLogsIntegrationData),
     UpdateAwsCloudWatchMetricsIntegrationData(UpdateAwsCloudWatchMetricsIntegrationData),
+    UpdateGcpLoggingIntegrationData(UpdateGcpLoggingIntegrationData),
     UpdateOpsGenieIntegrationData(UpdateOpsGenieIntegrationData),
     UpdateSlackIntegrationData(UpdateSlackIntegrationData),
     UpdatePagerDutyIntegrationData(UpdatePagerDutyIntegrationData),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateIntegrationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -280,7 +331,7 @@ pub struct UpdateIntegrationRequest {
 }
 
 /// Integration for the Ops Genie API integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateOpsGenieIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -288,7 +339,7 @@ pub struct UpdateOpsGenieIntegrationData {
 }
 
 /// Create integration for the PagerDuty API integration
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePagerDutyIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -300,7 +351,7 @@ pub struct UpdatePagerDutyIntegrationData {
 }
 
 /// Integration for a Slack bot used by this integration.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSlackIntegrationData {
     #[serde(skip_serializing_if = "Option::is_none")]
