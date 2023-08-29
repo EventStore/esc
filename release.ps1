@@ -1,7 +1,7 @@
 [CmdletBinding()]
 Param(
   [Parameter(Mandatory=$true)]
-  [ValidateSet("windows-2019", "ubuntu-18.04", "macos-11")]
+  [ValidateSet("windows-2019", "ubuntu-20.04", "macos-11")]
   [string]$Runner,
 
   [Parameter(Mandatory=$true)]
@@ -44,7 +44,7 @@ New-Item -Path . -Name "output" -ItemType "directory" -Force
 
 switch($Runner)
 {
-  ubuntu-18.04
+  ubuntu-20.04
   {
     cargo install cargo-deb
     cargo deb --manifest-path=cli/Cargo.toml --output=output
