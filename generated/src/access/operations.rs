@@ -214,6 +214,15 @@ pub async fn get_member(
         .await
 }
 
+/// gets the state of MFA for an authenticated user
+/// # Arguments
+///
+pub async fn get_mfa_status(client: &Client) -> Result<MfaStatus> {
+    client
+        .send_request::<(), MfaStatus>(Method::GET, "/access/v1/user/mfa".to_string(), None, None)
+        .await
+}
+
 /// gets a single policy
 /// # Arguments
 ///
@@ -438,6 +447,25 @@ pub async fn update_member(
             url,
             Some(&update_member_request),
             Some(()),
+        )
+        .await
+}
+
+/// Changes mfa state for an authenticated user
+/// # Arguments
+///
+/// * `mfa_status`
+pub async fn update_mfa(
+    client: &Client,
+    // The desired status of MFA
+    mfa_status: MfaStatus,
+) -> Result<UpdateMfaResponse> {
+    client
+        .send_request::<MfaStatus, UpdateMfaResponse>(
+            Method::POST,
+            "/access/v1/user/mfa".to_string(),
+            Some(&mfa_status),
+            None,
         )
         .await
 }

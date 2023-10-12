@@ -87,6 +87,32 @@ enum AccessCommand {
     Groups(Groups),
     Invites(Invites),
     Policies(Policies),
+    Mfa(Mfa),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers MFA Management commands")]
+struct Mfa {
+    #[structopt(subcommand)]
+    mfa_command: MfaCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum MfaCommand {
+    GetStatus(GetStatus),
+    UpdateStatus(UpdateStatus),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Display current mfa status")]
+struct GetStatus {}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Update mfa status")]
+
+struct UpdateStatus {
+    #[structopt(long, short,parse(try_from_str = parse_bool), help = "desired mfa status")]
+    mfa_enabled: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1366,6 +1392,14 @@ fn parse_cidr(src: &str) -> Result<cidr::Ipv4Cidr, cidr::NetworkParseError> {
     src.parse()
 }
 
+fn parse_bool(s: &str) -> Result<bool, &'static str> {
+    match s {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err("Invalid boolean value, use 'true' or 'false'"),
+    }
+}
+
 #[derive(Debug)]
 struct StringError(String);
 
@@ -1755,6 +1789,25 @@ async fn call_api<'a, 'b>(
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_policies(&client, params.org_id).await?;
+                    printer.print(resp)?;
+                }
+            },
+            AccessCommand::Mfa(mfa) => match mfa.mfa_command {
+                MfaCommand::GetStatus(_param) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::get_mfa_status(&client).await?;
+                    printer.print(resp)?;
+                }
+                MfaCommand::UpdateStatus(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::update_mfa(
+                        &client,
+                        esc_api::access::MfaStatus {
+                            mfa_enabled: params.mfa_enabled,
+                        },
+                    )
+                    .await?;
+
                     printer.print(resp)?;
                 }
             },
