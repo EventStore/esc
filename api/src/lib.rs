@@ -12,6 +12,10 @@ pub mod access {
     pub use esc_client_generated::access::*;
 }
 
+pub mod audit {
+    pub use esc_client_generated::audit::*;
+}
+
 pub mod infra {
     pub use esc_client_generated::infra::*;
 }

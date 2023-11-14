@@ -65,6 +65,7 @@ pub struct Opt {
 #[derive(StructOpt, Debug)]
 enum Command {
     Access(Access),
+    Audit(Audit),
     Resources(Resources),
     Infra(Infra),
     Integrations(Integrations),
@@ -94,6 +95,69 @@ enum AccessCommand {
     Groups(Groups),
     Invites(Invites),
     Policies(Policies),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers audit logs (by organization and user) management commands")]
+struct Audit {
+    #[structopt(subcommand)]
+    audit_command: AuditCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum AuditCommand {
+    Organization(AuditOrganization),
+    User(AuditUser),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers organizations audit commands")]
+struct AuditOrganization {
+    #[structopt(subcommand)]
+    organization_command: AuditOrganizationCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum AuditOrganizationCommand {
+    Get(GetOrganizationAudit),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "get an organization's audit logs")]
+struct GetOrganizationAudit {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization for which to get audit logs")]
+    org_id: esc_api::resources::OrganizationId,
+    #[structopt(short, long, help = "The timestamp until when to retrieve audit logs")]
+    before: Option<String>,
+    #[structopt(short, long, help = "The timestamp as from when to retrieve audit logs")]
+    after: Option<String>,
+    #[structopt(short, long, help = "The maximum number of records to retrieve")]
+    limit: Option<String>,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Gathers user audit commands")]
+struct AuditUser {
+    #[structopt(subcommand)]
+    user_command: AuditUserCommand,
+}
+
+#[derive(Debug, StructOpt)]
+enum AuditUserCommand {
+    Get(GetUserAudit),
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "get a user's audit logs")]
+struct GetUserAudit {
+    #[structopt(short, long, help = "The timestamp until when to retrieve audit logs")]
+    before: Option<String>,
+    #[structopt(short, long, help = "The timestamp as from when to retrieve audit logs")]
+    after: Option<String>,
+    #[structopt(short, long, help = "The maximum number of records to retrieve")]
+    limit: Option<String>,
+    #[structopt(short, long, help = "The id of the organization for which to retrieve audit logs")]
+    org_id: Option<String>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1782,6 +1846,60 @@ async fn call_api<'a, 'b>(
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_policies(&client, params.org_id).await?;
+                    printer.print(resp)?;
+                }
+            },
+        },
+
+        Command::Audit(aud) => match aud.audit_command {
+            AuditCommand::Organization(orgs) => match orgs.organization_command {
+                AuditOrganizationCommand::Get(params) => {
+                    let mut before = "".to_string();
+                    let mut after = "".to_string();
+                    let mut limit = "".to_string();
+
+                    match params.before {
+                        Some(x) => before = x,
+                        None => {}
+                    }
+                    match params.after {
+                        Some(x) => after = x,
+                        None => {}
+                    }
+                    match params.limit {
+                        Some(x) => limit = x,
+                        None => {}
+                    }
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::audit::get_audit_by_org(&client, params.org_id, before, after, limit).await?;
+                    printer.print(resp)?;
+                }
+            },
+            AuditCommand::User(user) => match user.user_command {
+                AuditUserCommand::Get(params) => {
+                    let mut org_id = "".to_string();
+                    let mut before = "".to_string();
+                    let mut after = "".to_string();
+                    let mut limit = "".to_string();
+
+                    match params.before {
+                        Some(x) => before = x,
+                        None => {}
+                    }
+                    match params.after {
+                        Some(x) => after = x,
+                        None => {}
+                    }
+                    match params.limit {
+                        Some(x) => limit = x,
+                        None => {}
+                    }
+                    match params.org_id {
+                        Some(x) => org_id = x,
+                        None => {}
+                    }
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::audit::get_audit_by_user(&client, org_id, before, after, limit).await?;
                     printer.print(resp)?;
                 }
             },
