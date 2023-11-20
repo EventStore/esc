@@ -56,7 +56,7 @@ pub async fn get_audit_by_user(
     limit: String,
 ) -> Result<GetAuditResponse> {
     let mut url = "/audit/v1/user/log?".to_string();
-    if !before.is_empty(){
+    if !before.is_empty() {
         let query = format!("before={beforeDate}&", beforeDate = urlencode(before));
         url = [url, query].join("");
     }
