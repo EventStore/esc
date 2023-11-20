@@ -20,7 +20,8 @@ pub async fn get_audit_by_org(
     limit: String,
 ) -> Result<GetAuditResponse> {
     let mut url = format!(
-        "/audit/v1/organizations/{organizationId}/log?", organizationId = urlencode(org_id)
+        "/audit/v1/organizations/{organizationId}/log?",
+        organizationId = urlencode(org_id)
     );
     if before != "" {
         let query = format!("before={beforeDate}&", beforeDate = urlencode(before));
@@ -39,7 +40,6 @@ pub async fn get_audit_by_org(
         .send_request::<(), GetAuditResponse>(Method::GET, url, None, None)
         .await
 }
-
 
 /// gets audit log for a user
 /// # Arguments

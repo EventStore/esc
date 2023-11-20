@@ -129,7 +129,11 @@ struct GetOrganizationAudit {
     org_id: esc_api::resources::OrganizationId,
     #[structopt(short, long, help = "The timestamp until when to retrieve audit logs")]
     before: Option<String>,
-    #[structopt(short, long, help = "The timestamp as from when to retrieve audit logs")]
+    #[structopt(
+        short,
+        long,
+        help = "The timestamp as from when to retrieve audit logs"
+    )]
     after: Option<String>,
     #[structopt(short, long, help = "The maximum number of records to retrieve")]
     limit: Option<String>,
@@ -152,11 +156,19 @@ enum AuditUserCommand {
 struct GetUserAudit {
     #[structopt(short, long, help = "The timestamp until when to retrieve audit logs")]
     before: Option<String>,
-    #[structopt(short, long, help = "The timestamp as from when to retrieve audit logs")]
+    #[structopt(
+        short,
+        long,
+        help = "The timestamp as from when to retrieve audit logs"
+    )]
     after: Option<String>,
     #[structopt(short, long, help = "The maximum number of records to retrieve")]
     limit: Option<String>,
-    #[structopt(short, long, help = "The id of the organization for which to retrieve audit logs")]
+    #[structopt(
+        short,
+        long,
+        help = "The id of the organization for which to retrieve audit logs"
+    )]
     org_id: Option<String>,
 }
 
@@ -1871,7 +1883,14 @@ async fn call_api<'a, 'b>(
                         None => {}
                     }
                     let client = client_builder.create().await?;
-                    let resp = esc_api::audit::get_audit_by_org(&client, params.org_id, before, after, limit).await?;
+                    let resp = esc_api::audit::get_audit_by_org(
+                        &client,
+                        params.org_id,
+                        before,
+                        after,
+                        limit,
+                    )
+                    .await?;
                     printer.print(resp)?;
                 }
             },
@@ -1899,7 +1918,9 @@ async fn call_api<'a, 'b>(
                         None => {}
                     }
                     let client = client_builder.create().await?;
-                    let resp = esc_api::audit::get_audit_by_user(&client, org_id, before, after, limit).await?;
+                    let resp =
+                        esc_api::audit::get_audit_by_user(&client, org_id, before, after, limit)
+                            .await?;
                     printer.print(resp)?;
                 }
             },
