@@ -23,15 +23,15 @@ pub async fn get_audit_by_org(
         "/audit/v1/organizations/{organizationId}/log?",
         organizationId = urlencode(org_id)
     );
-    if before != "" {
+    if !before.is_empty() {
         let query = format!("before={beforeDate}&", beforeDate = urlencode(before));
         url = [url, query].join("");
     }
-    if after != "" {
+    if !after.is_empty() {
         let query = format!("after={afterDate}&", afterDate = urlencode(after));
         url = [url, query].join("");
     }
-    if limit != "" {
+    if !limit.is_empty() {
         let query = format!("limit={limitVal}&", limitVal = urlencode(limit));
         url = [url, query].join("");
     }
@@ -56,19 +56,19 @@ pub async fn get_audit_by_user(
     limit: String,
 ) -> Result<GetAuditResponse> {
     let mut url = "/audit/v1/user/log?".to_string();
-    if before != "" {
+    if !before.is_empty(){
         let query = format!("before={beforeDate}&", beforeDate = urlencode(before));
         url = [url, query].join("");
     }
-    if after != "" {
+    if !after.is_empty() {
         let query = format!("after={afterDate}&", afterDate = urlencode(after));
         url = [url, query].join("");
     }
-    if limit != "" {
+    if !limit.is_empty() {
         let query = format!("limit={limitVal}&", limitVal = urlencode(limit));
         url = [url, query].join("");
     }
-    if org_id != "" {
+    if !org_id.is_empty() {
         let query = format!("org={orgVal}&", orgVal = urlencode(org_id));
         url = [url, query].join("");
     }
