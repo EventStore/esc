@@ -17,6 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install current stable Rust compiler
+        run: |
+          rustup update
+          rustup default stable
+
       - name: Create version
         id: version
         uses: EventStore/Automations/create-version-label@master
