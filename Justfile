@@ -5,7 +5,7 @@ _default:
 
 # Runs clippy on the sources
 check:
-    cargo clippy --locked --tests
+    cargo clippy --locked --tests  -- -D warnings
 
 # removes all build artifacts
 clean:
