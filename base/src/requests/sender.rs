@@ -174,9 +174,9 @@ impl Sender {
                 source: Box::new(s),
             })?,
         };
-        Err(EscError::ApiResponse(ApiResponseError {
+        Err(EscError::ApiResponse(Box::new(ApiResponseError {
             problem_details,
             status_code,
-        }))
+        })))
     }
 }
