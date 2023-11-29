@@ -11,7 +11,7 @@ check:
 clean:
     rm -r target
 
-# builds nexus
+# builds esc
 build:
     cargo build --locked
 

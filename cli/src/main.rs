@@ -51,6 +51,13 @@ pub struct Opt {
     )]
     refresh_token: Option<String>,
 
+    #[structopt(
+        long,
+        help = "If true never prompt for authentication details",
+        global = true
+    )]
+    noninteractive: bool,
+
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -1416,21 +1423,28 @@ impl esc_api::Authorization for StaticAuthorization {
 async fn get_token(
     token_config: esc_api::TokenConfig,
     refresh_token: Option<String>,
+    noninteractive: bool,
 ) -> Result<esc_api::Token, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     match refresh_token {
         Some(refresh_token) => {
+            let otp_prompt: Option<esc_client_base::identity::operations::OtpPrompt> =
+                match noninteractive {
+                    true => None,
+                    false => Some(esc_client_store::prompt_for_otp),
+                };
             let refreshed_token = esc_client_base::identity::operations::refresh(
                 &client,
                 &token_config,
                 &refresh_token,
+                otp_prompt,
             )
             .await?;
             Ok(refreshed_token)
         }
         None => {
             let mut store = esc_client_store::token_store(token_config).await?;
-            let token = store.access(&client).await?;
+            let token = store.access(&client, noninteractive).await?;
             Ok(token)
         }
     }
@@ -1465,11 +1479,12 @@ struct ClientBuilder {
     observer: Option<Arc<dyn esc_api::RequestObserver + Send + Sync>>,
     refresh_token: Option<String>,
     token_config: esc_api::TokenConfig,
+    noninteractive: bool,
 }
 
 impl ClientBuilder {
     pub async fn create(self) -> Result<esc_api::Client, Box<dyn std::error::Error>> {
-        let token = get_token(self.token_config, self.refresh_token).await?;
+        let token = get_token(self.token_config, self.refresh_token, self.noninteractive).await?;
         let authorization = StaticAuthorization {
             authorization_header: token.authorization_header(),
         };
@@ -1554,6 +1569,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         observer,
         refresh_token: opt.refresh_token.clone(),
         token_config: token_config.clone(),
+        noninteractive: opt.noninteractive,
     };
 
     let silence_errors = !opt.output_format.is_v1();
@@ -1676,18 +1692,28 @@ async fn call_api<'a, 'b>(
                     let client = reqwest::Client::new();
                     let mut store = esc_client_store::token_store(token_config).await?;
 
-                    let token = match params.email {
-                        Some(email) => match params.unsafe_password {
-                            Some(password) => store.create_token(&client, email, password).await,
-                            None => {
-                                store
-                                    .create_token_from_prompt_password_only(&client, email)
-                                    .await
-                            }
-                        },
-                        None => store.create_token_from_prompt(&client).await,
-                    }?;
-                    println!("{}", token.refresh_token().unwrap().as_str());
+                    match client_builder.noninteractive {
+                        true => {
+                            println!("--noninteractive mode set, cannot prompt for password");
+                            std::process::exit(-1)
+                        }
+                        false => {
+                            let token = match params.email {
+                                Some(email) => match params.unsafe_password {
+                                    Some(password) => {
+                                        store.create_token(&client, email, password).await
+                                    }
+                                    None => {
+                                        store
+                                            .create_token_from_prompt_password_only(&client, email)
+                                            .await
+                                    }
+                                },
+                                None => store.create_token_from_prompt(&client).await,
+                            }?;
+                            println!("{}", token.refresh_token().unwrap().as_str());
+                        }
+                    }
                 }
                 TokensCommand::Display(_params) => {
                     let store = esc_client_store::token_store(token_config).await?;
@@ -1697,6 +1723,7 @@ async fn call_api<'a, 'b>(
                         println!("{}", token.refresh_token().unwrap());
                     } else {
                         println!("No active refresh token");
+                        std::process::exit(-1)
                     }
                 }
             },

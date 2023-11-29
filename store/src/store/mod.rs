@@ -4,5 +4,6 @@ pub mod token_file;
 pub mod token_store;
 pub mod token_validator;
 
+pub use token_store::prompt_for_otp;
 pub use token_store::TokenStore;
 pub use token_validator::TokenValidator;

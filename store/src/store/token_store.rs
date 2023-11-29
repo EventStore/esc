@@ -36,7 +36,11 @@ impl TokenStore {
     }
 
     // Grabs the active Token after refreshing it if it's expired
-    pub async fn access(&mut self, client: &reqwest::Client) -> Result<Token> {
+    pub async fn access(
+        &mut self,
+        client: &reqwest::Client,
+        noninteractive: bool,
+    ) -> Result<Token> {
         let previous_token = self.token_file.load().await?;
         match previous_token {
             Some(previous_token) => match self.validator.parse_token_claims(&previous_token) {
@@ -61,7 +65,12 @@ impl TokenStore {
                     .source(Box::new(e))),
                 },
             },
-            None => self.create_token_from_prompt(client).await,
+            None => match noninteractive {
+                true => Err(StoreError::new(
+                    "No previous token was found and interactive mode is disabled.",
+                )),
+                false => self.create_token_from_prompt(client).await,
+            },
         }
     }
 
@@ -95,17 +104,27 @@ impl TokenStore {
         email: String,
         password: String,
     ) -> Result<Token> {
-        let new_token = operations::create(client, &self.token_config, &email, &password)
-            .await
-            .map_err(|err| {
-                StoreError::new("can't create token - the call to the identity API failed")
-                    .source(Box::new(err))
-            })?;
-
+        let result = operations::create(
+            client,
+            &self.token_config,
+            &email,
+            &password,
+            Some(prompt_for_otp),
+        )
+        .await;
+        let new_token = match result {
+            Ok(token) => Ok(token),
+            Err(err) => {
+                println!("error calling identity: {}", err);
+                Err(
+                    StoreError::new("can't refresh the token: the call to the identity API failed")
+                        .source(Box::new(err)),
+                )
+            }
+        }?;
         let new_token = self.token_file.save(new_token).await.map_err(|err| {
             StoreError::new("can't create token - saving the token failed").source(Box::new(err))
         })?;
-
         info!("Created initial token");
 
         Ok(new_token)
@@ -124,19 +143,35 @@ impl TokenStore {
                 ))
             }
         };
-        let refreshed_token = operations::refresh(client, &self.token_config, refresh_token)
-            .await
-            .map_err(|err| {
-                StoreError::new("can't refresh the token: the call to the identity API failed")
-                    .source(Box::new(err))
-            })?;
+        let result = operations::refresh(
+            client,
+            &self.token_config,
+            refresh_token,
+            Some(prompt_for_otp),
+        )
+        .await;
+        let refreshed_token = match result {
+            Ok(token) => Ok(token),
+            Err(err) => {
+                println!("error calling identity: {}", err);
+                Err(
+                    StoreError::new("can't refresh the token: the call to the identity API failed")
+                        .source(Box::new(err)),
+                )
+            }
+        }?;
         let token = token.update_access_token(refreshed_token.access_token());
         self.token_file.save(token).await
     }
 
     // loads the active token, then calls the refresh API to update it, then
     // writes it back to the file
-    pub async fn refresh_active_token(&mut self, client: &reqwest::Client) -> Result<Token> {
+    pub async fn refresh_active_token(
+        &mut self,
+        client: &reqwest::Client,
+        noninteractive: bool,
+        _three: i32,
+    ) -> Result<Token> {
         let previous_token = self.token_file.load().await.map_err(|err| {
             StoreError::new("can't refresh the token: the token file could not be loaded")
                 .details(format!("token file = {:?}", self.token_file))
@@ -147,7 +182,12 @@ impl TokenStore {
                 self.refresh_active_token_provided_token(client, previous_token)
                     .await
             }
-            None => self.create_token_from_prompt(client).await,
+            None => match noninteractive {
+                false => self.create_token_from_prompt(client).await,
+                true => Err(StoreError::new(
+                    "No token was found and interactive mode is disabled.",
+                )),
+            },
         }
     }
 
@@ -163,6 +203,16 @@ fn read_email_from_user() -> std::result::Result<String, Box<dyn std::error::Err
         Ok(line)
     } else {
         Err(Box::new(TokenStoreError::InvalidEmail()))
+    }
+}
+
+pub fn prompt_for_otp() -> std::result::Result<String, String> {
+    let mut editor = rustyline::Editor::<()>::new();
+    let result =
+        editor.readline("Enter your one time password from your authenticator app or device: ");
+    match result {
+        Ok(line) => Ok(line),
+        Err(err) => Err(format!("Error reading line interactively: {}", err)),
     }
 }
 
