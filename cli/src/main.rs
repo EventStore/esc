@@ -1444,7 +1444,7 @@ async fn get_token(
         }
         None => {
             let mut store = esc_client_store::token_store(token_config).await?;
-            let token = store.access(&client).await?;
+            let token = store.access(&client, noninteractive).await?;
             Ok(token)
         }
     }
@@ -1692,26 +1692,28 @@ async fn call_api<'a, 'b>(
                     let client = reqwest::Client::new();
                     let mut store = esc_client_store::token_store(token_config).await?;
 
-                    let token = match params.email {
-                        Some(email) => match params.unsafe_password {
-                            Some(password) => store.create_token(&client, email, password).await,
-                            None => match client_builder.noninteractive {
-                                true => {
-                                    println!(
-                                        "--noninteractive mode set, cannot prompt for password"
-                                    );
-                                    std::process::exit(-1)
-                                }
-                                false => {
-                                    store
-                                        .create_token_from_prompt_password_only(&client, email)
-                                        .await
-                                }
-                            },
-                        },
-                        None => store.create_token_from_prompt(&client).await,
-                    }?;
-                    println!("{}", token.refresh_token().unwrap().as_str());
+                    match client_builder.noninteractive {
+                        true => {
+                            println!("--noninteractive mode set, cannot prompt for password");
+                            std::process::exit(-1)
+                        }
+                        false => {
+                            let token = match params.email {
+                                Some(email) => match params.unsafe_password {
+                                    Some(password) => {
+                                        store.create_token(&client, email, password).await
+                                    }
+                                    None => {
+                                        store
+                                            .create_token_from_prompt_password_only(&client, email)
+                                            .await
+                                    }
+                                },
+                                None => store.create_token_from_prompt(&client).await,
+                            }?;
+                            println!("{}", token.refresh_token().unwrap().as_str());
+                        }
+                    }
                 }
                 TokensCommand::Display(_params) => {
                     let store = esc_client_store::token_store(token_config).await?;

@@ -36,7 +36,11 @@ impl TokenStore {
     }
 
     // Grabs the active Token after refreshing it if it's expired
-    pub async fn access(&mut self, client: &reqwest::Client) -> Result<Token> {
+    pub async fn access(
+        &mut self,
+        client: &reqwest::Client,
+        noninteractive: bool,
+    ) -> Result<Token> {
         let previous_token = self.token_file.load().await?;
         match previous_token {
             Some(previous_token) => match self.validator.parse_token_claims(&previous_token) {
@@ -61,7 +65,12 @@ impl TokenStore {
                     .source(Box::new(e))),
                 },
             },
-            None => self.create_token_from_prompt(client).await,
+            None => match noninteractive {
+                true => Err(StoreError::new(
+                    "No previous token was found and interactive mode is disabled.",
+                )),
+                false => self.create_token_from_prompt(client).await,
+            },
         }
     }
 
@@ -160,7 +169,8 @@ impl TokenStore {
     pub async fn refresh_active_token(
         &mut self,
         client: &reqwest::Client,
-        allow_prompt: bool,
+        noninteractive: bool,
+        _three: i32,
     ) -> Result<Token> {
         let previous_token = self.token_file.load().await.map_err(|err| {
             StoreError::new("can't refresh the token: the token file could not be loaded")
@@ -172,9 +182,9 @@ impl TokenStore {
                 self.refresh_active_token_provided_token(client, previous_token)
                     .await
             }
-            None => match allow_prompt {
-                true => self.create_token_from_prompt(client).await,
-                false => Err(StoreError::new(
+            None => match noninteractive {
+                false => self.create_token_from_prompt(client).await,
+                true => Err(StoreError::new(
                     "No token was found and interactive mode is disabled.",
                 )),
             },
