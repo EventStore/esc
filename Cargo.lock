@@ -355,6 +355,7 @@ dependencies = [
  "log",
  "regex",
  "reqwest",
+ "rustyline 8.2.0",
  "serde",
  "serde_derive",
  "serde_json",

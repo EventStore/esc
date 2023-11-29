@@ -15,6 +15,7 @@ validator = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 bytes = "0.5"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+rustyline = "8.2.0"
 hyper = "0.14.11"
 
 [dev-dependencies]

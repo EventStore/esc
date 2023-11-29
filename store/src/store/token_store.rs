@@ -95,17 +95,20 @@ impl TokenStore {
         email: String,
         password: String,
     ) -> Result<Token> {
-        let new_token = operations::create(client, &self.token_config, &email, &password)
-            .await
-            .map_err(|err| {
-                StoreError::new("can't create token - the call to the identity API failed")
-                    .source(Box::new(err))
-            })?;
-
+        let result = operations::create(client, &self.token_config, &email, &password).await;
+        let new_token = match result {
+            Ok(token) => Ok(token),
+            Err(err) => {
+                println!("error calling identity: {}", err);
+                Err(
+                    StoreError::new("can't refresh the token: the call to the identity API failed")
+                        .source(Box::new(err)),
+                )
+            }
+        }?;
         let new_token = self.token_file.save(new_token).await.map_err(|err| {
             StoreError::new("can't create token - saving the token failed").source(Box::new(err))
         })?;
-
         info!("Created initial token");
 
         Ok(new_token)
@@ -124,12 +127,17 @@ impl TokenStore {
                 ))
             }
         };
-        let refreshed_token = operations::refresh(client, &self.token_config, refresh_token)
-            .await
-            .map_err(|err| {
-                StoreError::new("can't refresh the token: the call to the identity API failed")
-                    .source(Box::new(err))
-            })?;
+        let result = operations::refresh(client, &self.token_config, refresh_token).await;
+        let refreshed_token = match result {
+            Ok(token) => Ok(token),
+            Err(err) => {
+                println!("error calling identity: {}", err);
+                Err(
+                    StoreError::new("can't refresh the token: the call to the identity API failed")
+                        .source(Box::new(err)),
+                )
+            }
+        }?;
         let token = token.update_access_token(refreshed_token.access_token());
         self.token_file.save(token).await
     }
