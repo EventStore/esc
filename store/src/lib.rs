@@ -12,6 +12,7 @@ pub mod typical;
 
 pub use config::Settings;
 pub use errors::StoreError;
+pub use store::prompt_for_otp;
 pub use store::TokenStore;
 pub use store::TokenValidator;
 

@@ -27,11 +27,14 @@ struct MfaRequiredError {
     mfa_token: Option<String>,
 }
 
+pub type OtpPrompt = fn() -> std::result::Result<String, String>;
+
 pub async fn create(
     client: &reqwest::Client,
     config: &TokenConfig,
     user_name: &str,
     password: &str,
+    otp_prompt: Option<OtpPrompt>,
 ) -> Result<Token> {
     let mut form = std::collections::HashMap::new();
 
@@ -47,14 +50,45 @@ pub async fn create(
 
     let resp = req.send().await?;
 
+    handle_initial_oauth_token_resp(client, config, otp_prompt, resp).await
+}
+
+// interprets the response from oauth/token. May take other actions if needed,
+// such as handling an MFA challenge
+async fn handle_initial_oauth_token_resp(
+    client: &reqwest::Client,
+    config: &TokenConfig,
+    otp_prompt: Option<OtpPrompt>,
+    resp: reqwest::Response,
+) -> Result<Token> {
     if resp.status().is_success() {
         let result: Token = resp.json().await?;
         Ok(result)
     } else {
         let mfa_token = get_mfa_token_or_error(resp).await?;
         challenge_mfa_and_confirm_otp(client, config, &mfa_token).await?;
-        let otp = prompt_for_otp()?;
-        create_with_otp(client, config, mfa_token, otp).await
+        match otp_prompt {
+            Some(prompt_for_otp) => {
+                let result = prompt_for_otp();
+                match result {
+                    Ok(otp) => {
+                        create_with_otp(client, config, mfa_token, otp).await
+                    },
+                    Err(err) => {
+                        Err(IdentityError {
+            message: format!("Error reading one time password: {}", err),
+            status_code: None,
+        })
+                    }
+                }
+            }
+            None => {
+                Err(IdentityError {
+                                    message: "This account has MFA enabled but the ability for this client to interactively prompt for a one time password was not enabled for this call.".to_string(),
+                                    status_code: None,
+                                })
+            }
+        }
     }
 }
 
@@ -134,19 +168,6 @@ async fn challenge_mfa_and_confirm_otp(
     }
 }
 
-fn prompt_for_otp() -> Result<String> {
-    let mut editor = rustyline::Editor::<()>::new();
-    let result =
-        editor.readline("Enter your one time password from your authenticator app or device: ");
-    match result {
-        Ok(line) => Ok(line),
-        Err(err) => Err(IdentityError {
-            message: format!("Error reading one time password: {}", err),
-            status_code: None,
-        }),
-    }
-}
-
 pub async fn create_with_otp(
     client: &reqwest::Client,
     config: &TokenConfig,
@@ -172,6 +193,7 @@ pub async fn refresh(
     client: &reqwest::Client,
     config: &TokenConfig,
     refresh_token: &str,
+    otp_prompt: Option<OtpPrompt>,
 ) -> Result<Token> {
     let url = format!("{}/oauth/token", &config.identity_url);
     let mut form = std::collections::HashMap::new();
@@ -184,9 +206,7 @@ pub async fn refresh(
 
     debug!("Token refresh on : {:?}", req);
 
-    let token: Token = parse_result(req.send().await?).await?;
+    let resp = req.send().await?;
 
-    debug!("Token expires_in: {}", token.expires_in);
-
-    Ok(token)
+    handle_initial_oauth_token_resp(client, config, otp_prompt, resp).await
 }

@@ -95,7 +95,14 @@ impl TokenStore {
         email: String,
         password: String,
     ) -> Result<Token> {
-        let result = operations::create(client, &self.token_config, &email, &password).await;
+        let result = operations::create(
+            client,
+            &self.token_config,
+            &email,
+            &password,
+            Some(prompt_for_otp),
+        )
+        .await;
         let new_token = match result {
             Ok(token) => Ok(token),
             Err(err) => {
@@ -127,7 +134,13 @@ impl TokenStore {
                 ))
             }
         };
-        let result = operations::refresh(client, &self.token_config, refresh_token).await;
+        let result = operations::refresh(
+            client,
+            &self.token_config,
+            refresh_token,
+            Some(prompt_for_otp),
+        )
+        .await;
         let refreshed_token = match result {
             Ok(token) => Ok(token),
             Err(err) => {
@@ -144,7 +157,11 @@ impl TokenStore {
 
     // loads the active token, then calls the refresh API to update it, then
     // writes it back to the file
-    pub async fn refresh_active_token(&mut self, client: &reqwest::Client) -> Result<Token> {
+    pub async fn refresh_active_token(
+        &mut self,
+        client: &reqwest::Client,
+        allow_prompt: bool,
+    ) -> Result<Token> {
         let previous_token = self.token_file.load().await.map_err(|err| {
             StoreError::new("can't refresh the token: the token file could not be loaded")
                 .details(format!("token file = {:?}", self.token_file))
@@ -155,7 +172,12 @@ impl TokenStore {
                 self.refresh_active_token_provided_token(client, previous_token)
                     .await
             }
-            None => self.create_token_from_prompt(client).await,
+            None => match allow_prompt {
+                true => self.create_token_from_prompt(client).await,
+                false => Err(StoreError::new(
+                    "No token was found and interactive mode is disabled.",
+                )),
+            },
         }
     }
 
@@ -171,6 +193,16 @@ fn read_email_from_user() -> std::result::Result<String, Box<dyn std::error::Err
         Ok(line)
     } else {
         Err(Box::new(TokenStoreError::InvalidEmail()))
+    }
+}
+
+pub fn prompt_for_otp() -> std::result::Result<String, String> {
+    let mut editor = rustyline::Editor::<()>::new();
+    let result =
+        editor.readline("Enter your one time password from your authenticator app or device: ");
+    match result {
+        Ok(line) => Ok(line),
+        Err(err) => Err(format!("Error reading line interactively: {}", err)),
     }
 }
 
