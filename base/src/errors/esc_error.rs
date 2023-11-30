@@ -48,6 +48,7 @@ impl EscError {
     /// Returns the operation error as a Result. The purpose of this is to
     /// make it possible to use the question mark to fetch the actual API
     /// error, and pass back the other error if it was something else.
+    #[allow(clippy::result_large_err)]
     pub fn api_response(self) -> std::result::Result<ApiResponseError, EscError> {
         match self {
             EscError::ApiResponse(err) => Ok(err),

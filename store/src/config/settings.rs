@@ -62,7 +62,7 @@ impl Settings {
                 .source(Box::new(err))
         })?;
 
-        let settings_file = main_settings_file(&settings_dir);
+        let settings_file = main_settings_file(settings_dir);
         tokio::fs::write(settings_file.as_path(), &bytes)
             .await
             .map_err(|err| {

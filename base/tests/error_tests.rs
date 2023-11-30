@@ -2,6 +2,7 @@ use esc_client_base::errors::ApiResponseError;
 use esc_client_base::errors::ProblemDetails;
 use esc_client_base::errors::Result;
 
+#[allow(clippy::result_large_err)]
 fn get_api_error() -> std::result::Result<i32, ApiResponseError> {
     let status_code = reqwest::StatusCode::INTERNAL_SERVER_ERROR;
     let problem_details = ProblemDetails {
@@ -19,11 +20,13 @@ fn get_api_error() -> std::result::Result<i32, ApiResponseError> {
     Err(err)
 }
 
+#[allow(clippy::result_large_err)]
 fn return_error() -> Result<i32> {
     get_api_error()?;
     panic!("get_api_error should have failed");
 }
 
+#[allow(clippy::result_large_err)]
 fn expect_error() -> Result<u16> {
     let result = return_error();
     match result {
