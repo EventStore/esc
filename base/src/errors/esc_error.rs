@@ -49,10 +49,10 @@ impl EscError {
     /// make it possible to use the question mark to fetch the actual API
     /// error, and pass back the other error if it was something else.
     #[allow(clippy::result_large_err)]
-    pub fn api_response(self) -> std::result::Result<Box<ApiResponseError>, EscError> {
+    pub fn api_response(self) -> std::result::Result<Box<ApiResponseError>, Box<EscError>> {
         match self {
             EscError::ApiResponse(err) => Ok(Box::new(err)),
-            EscError::Other(_) => Err(self),
+            EscError::Other(_) => Err(Box::new(self)),
         }
     }
 }
