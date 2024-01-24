@@ -14,7 +14,11 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v1      
+        uses: actions/checkout@v1
+      - name: Install current stable Rust compiler
+        run: |
+          rustup update
+          rustup default stable
       - name: install Just
         uses: extractions/setup-just@v1
         with:

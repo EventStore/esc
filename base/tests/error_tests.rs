@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use esc_client_base::errors::ApiResponseError;
 use esc_client_base::errors::ProblemDetails;
 use esc_client_base::errors::Result;

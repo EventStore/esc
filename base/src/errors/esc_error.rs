@@ -3,7 +3,7 @@ use super::communication_error::CommunicationError;
 
 /// Represents any error that can come back from an API operation
 pub enum EscError {
-    ApiResponse(ApiResponseError),
+    ApiResponse(Box<ApiResponseError>),
     Other(CommunicationError),
 }
 
@@ -49,7 +49,7 @@ impl EscError {
     /// make it possible to use the question mark to fetch the actual API
     /// error, and pass back the other error if it was something else.
     #[allow(clippy::result_large_err)]
-    pub fn api_response(self) -> std::result::Result<ApiResponseError, EscError> {
+    pub fn api_response(self) -> std::result::Result<Box<ApiResponseError>, EscError> {
         match self {
             EscError::ApiResponse(err) => Ok(err),
             EscError::Other(_) => Err(self),
@@ -65,7 +65,7 @@ impl From<CommunicationError> for EscError {
 
 impl From<ApiResponseError> for EscError {
     fn from(err: ApiResponseError) -> Self {
-        Self::ApiResponse(err)
+        Self::ApiResponse(Box::new(err))
     }
 }
 
