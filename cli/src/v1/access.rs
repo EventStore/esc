@@ -172,3 +172,17 @@ impl ToV1 for esc_api::access::ListPoliciesResponse {
         self
     }
 }
+
+impl ToV1 for esc_api::access::MfaStatus {
+    type V1Type = Self;
+    fn to_v1(self) -> Self::V1Type {
+        self
+    }
+}
+
+impl ToV1 for esc_api::access::UpdateMfaResponse {
+    type V1Type = Self;
+    fn to_v1(self) -> Self::V1Type {
+        self
+    }
+}
