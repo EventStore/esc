@@ -849,6 +849,8 @@ enum ClustersCommand {
     Update(UpdateCluster),
     Delete(DeleteCluster),
     Expand(ExpandCluster),
+    Resize(ResizeCluster),
+    Upgrade(UpgradeCluster),
 }
 
 #[derive(Debug, StructOpt)]
@@ -985,6 +987,41 @@ struct ExpandCluster {
 
     #[structopt(long, help = "Optional disk type")]
     disk_type: Option<String>,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Resize a cluster")]
+struct ResizeCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to resize")]
+    id: esc_api::ClusterId,
+
+    #[structopt(long, help = "The target instance size. (C4, M8, etc)")]
+    target_size: String,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Upgrade a cluster")]
+struct UpgradeCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to upgrade")]
+    id: esc_api::ClusterId,
+
+    #[structopt(
+        long,
+        help = "The target tag you want to upgrade to. This must include the full version (23.10.1)."
+    )]
+    target_tag: String,
 }
 
 #[derive(Debug, StructOpt)]
@@ -2381,6 +2418,34 @@ async fn call_api<'a, 'b>(
                                 disk_size_gb: params.disk_size_in_gb,
                                 disk_throughput: params.disk_throughput,
                                 disk_type: params.disk_type,
+                            },
+                        )
+                        .await?;
+                    }
+
+                    ClustersCommand::Resize(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::resize_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                            esc_api::mesdb::ResizeClusterRequest {
+                                target_size: params.target_size,
+                            },
+                        )
+                        .await?;
+                    }
+
+                    ClustersCommand::Upgrade(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::upgrade_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                            esc_api::mesdb::UpgradeClusterRequest {
+                                target_tag: params.target_tag,
                             },
                         )
                         .await?;

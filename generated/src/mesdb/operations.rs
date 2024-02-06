@@ -234,6 +234,38 @@ pub async fn list_clusters(
         .await
 }
 
+/// resize a cluster
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+/// * `resize_cluster_request`
+pub async fn resize_cluster(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+    // describes how to resize the cluster
+    resize_cluster_request: ResizeClusterRequest,
+) -> Result<ResizeClusterResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/commands/resize",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<ResizeClusterRequest, ResizeClusterResponse>(
+            Method::PUT,
+            url,
+            Some(&resize_cluster_request),
+            None,
+        )
+        .await
+}
+
 /// restart a cluster
 ///
 /// # Arguments
@@ -286,6 +318,38 @@ pub async fn update_cluster(
             url,
             Some(&update_cluster_request),
             Some(()),
+        )
+        .await
+}
+
+/// upgrades a cluster
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+/// * `upgrade_cluster_request`
+pub async fn upgrade_cluster(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+    // describes how to upgrade the cluster
+    upgrade_cluster_request: UpgradeClusterRequest,
+) -> Result<UpgradeClusterResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/commands/upgrade",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<UpgradeClusterRequest, UpgradeClusterResponse>(
+            Method::PUT,
+            url,
+            Some(&upgrade_cluster_request),
+            None,
         )
         .await
 }
