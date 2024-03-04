@@ -862,7 +862,10 @@ struct CreateCluster {
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
     project_id: esc_api::resources::ProjectId,
 
-    #[structopt(long, help = "The optional id of the project in which the source backup is located. This parameter is required for cross-project backup restores")]
+    #[structopt(
+        long,
+        help = "The optional id of the project in which the source backup is located. This parameter is required for cross-project backup restores"
+    )]
     source_project_id: Option<String>,
 
     #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
