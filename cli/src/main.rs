@@ -862,6 +862,9 @@ struct CreateCluster {
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster will relate to")]
     project_id: esc_api::resources::ProjectId,
 
+    #[structopt(long, help = "The optional id of the project in which the source backup is located. This parameter is required for cross-project backup restores")]
+    source_project_id: Option<String>,
+
     #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
     network_id: esc_api::infra::NetworkId,
 
@@ -2348,6 +2351,7 @@ async fn call_api<'a, 'b>(
                                 projection_level: params.projection_level,
                                 server_version: params.server_version,
                                 source_backup_id: params.source_backup_id,
+                                source_project_id: params.source_project_id,
                                 source_node_index: None, // TODO: add source_node_index
                                 topology: params.topology,
                                 protected: params.protected,

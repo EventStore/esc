@@ -85,6 +85,8 @@ pub struct CreateClusterRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_backup_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_project_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source_node_index: Option<i32>,
     pub topology: Topology,
     #[serde(skip_serializing_if = "Option::is_none")]
