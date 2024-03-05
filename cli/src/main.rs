@@ -2354,7 +2354,7 @@ async fn call_api<'a, 'b>(
                                 projection_level: params.projection_level,
                                 server_version: params.server_version,
                                 source_backup_id: params.source_backup_id,
-                                source_project_id: params.source_project_id,
+                                source_backup_project_id: params.source_project_id,
                                 source_node_index: None, // TODO: add source_node_index
                                 topology: params.topology,
                                 protected: params.protected,
