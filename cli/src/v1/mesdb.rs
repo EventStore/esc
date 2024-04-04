@@ -144,7 +144,7 @@ impl ToV1 for esc_api::mesdb::Backup {
             size_gb: self.size_gb as usize,
             source_cluster_description: self.source_cluster_description,
             source_cluster_id: self.source_cluster_id,
-            status: self.status,
+            status: self.status.to_string(),
         }
     }
 }
