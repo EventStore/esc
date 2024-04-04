@@ -213,6 +213,30 @@ pub async fn list_backups(
         .await
 }
 
+/// List versions this cluster can upgrade to
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+pub async fn list_cluster_upgrade_versions(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+) -> Result<ListClusterUpgradeVersionsResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/upgrade-versions",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<(), ListClusterUpgradeVersionsResponse>(Method::GET, url, None, None)
+        .await
+}
+
 /// List clusters
 ///
 /// # Arguments

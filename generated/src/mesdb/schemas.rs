@@ -23,7 +23,45 @@ pub struct Backup {
     pub size_gb: i32,
     pub source_cluster_id: ClusterId,
     pub source_cluster_description: String,
-    pub status: String,
+    pub status: BackupStatus,
+}
+
+/// The status of the cluster
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BackupStatus {
+    Creating,
+    Available,
+    Deleted,
+    Deleting,
+    Defunct,
+}
+impl std::fmt::Display for BackupStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BackupStatus::Creating => write!(f, "creating"),
+            BackupStatus::Available => write!(f, "available"),
+            BackupStatus::Deleted => write!(f, "deleted"),
+            BackupStatus::Deleting => write!(f, "deleting"),
+            BackupStatus::Defunct => write!(f, "defunct"),
+        }
+    }
+}
+impl std::cmp::PartialEq<&str> for BackupStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            BackupStatus::Creating => *other == "creating",
+            BackupStatus::Available => *other == "available",
+            BackupStatus::Deleted => *other == "deleted",
+            BackupStatus::Deleting => *other == "deleting",
+            BackupStatus::Defunct => *other == "defunct",
+        }
+    }
+}
+impl std::cmp::PartialEq<BackupStatus> for &str {
+    fn eq(&self, other: &BackupStatus) -> bool {
+        other == self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -50,9 +88,110 @@ pub struct Cluster {
     pub region: String,
     pub server_version: String,
     pub server_version_tag: String,
-    pub status: Status,
+    pub status: ClusterStatus,
     pub topology: Topology,
     pub protected: bool,
+}
+
+/// The status of the cluster
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ClusterStatus {
+    #[serde(rename = "provisioning")]
+    Provisioning,
+    #[serde(rename = "disks available")]
+    DisksAvailable,
+    #[serde(rename = "expanding disks")]
+    ExpandingDisks,
+    #[serde(rename = "restarting")]
+    Restarting,
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "defunct")]
+    Defunct,
+    #[serde(rename = "inconsistent")]
+    Inconsistent,
+    #[serde(rename = "upgrading")]
+    Upgrading,
+    #[serde(rename = "deleting instances")]
+    DeletingInstances,
+    #[serde(rename = "instances deleted")]
+    InstancesDeleted,
+    #[serde(rename = "deleting disks")]
+    DeletingDisks,
+    #[serde(rename = "deleted")]
+    Deleted,
+    #[serde(rename = "resizing")]
+    Resizing,
+    #[serde(rename = "stopping")]
+    Stopping,
+    #[serde(rename = "updating configuration")]
+    UpdatingConfiguration,
+    #[serde(rename = "compute available")]
+    ComputeAvailable,
+    #[serde(rename = "installing")]
+    Installing,
+}
+impl std::fmt::Display for ClusterStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ClusterStatus::Provisioning => write!(f, "provisioning"),
+            ClusterStatus::DisksAvailable => write!(f, "disks available"),
+            ClusterStatus::ExpandingDisks => write!(f, "expanding disks"),
+            ClusterStatus::Restarting => write!(f, "restarting"),
+            ClusterStatus::Available => write!(f, "available"),
+            ClusterStatus::Defunct => write!(f, "defunct"),
+            ClusterStatus::Inconsistent => write!(f, "inconsistent"),
+            ClusterStatus::Upgrading => write!(f, "upgrading"),
+            ClusterStatus::DeletingInstances => write!(f, "deleting instances"),
+            ClusterStatus::InstancesDeleted => write!(f, "instances deleted"),
+            ClusterStatus::DeletingDisks => write!(f, "deleting disks"),
+            ClusterStatus::Deleted => write!(f, "deleted"),
+            ClusterStatus::Resizing => write!(f, "resizing"),
+            ClusterStatus::Stopping => write!(f, "stopping"),
+            ClusterStatus::UpdatingConfiguration => write!(f, "updating configuration"),
+            ClusterStatus::ComputeAvailable => write!(f, "compute available"),
+            ClusterStatus::Installing => write!(f, "installing"),
+        }
+    }
+}
+impl std::cmp::PartialEq<&str> for ClusterStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            ClusterStatus::Provisioning => *other == "provisioning",
+            ClusterStatus::DisksAvailable => *other == "disks available",
+            ClusterStatus::ExpandingDisks => *other == "expanding disks",
+            ClusterStatus::Restarting => *other == "restarting",
+            ClusterStatus::Available => *other == "available",
+            ClusterStatus::Defunct => *other == "defunct",
+            ClusterStatus::Inconsistent => *other == "inconsistent",
+            ClusterStatus::Upgrading => *other == "upgrading",
+            ClusterStatus::DeletingInstances => *other == "deleting instances",
+            ClusterStatus::InstancesDeleted => *other == "instances deleted",
+            ClusterStatus::DeletingDisks => *other == "deleting disks",
+            ClusterStatus::Deleted => *other == "deleted",
+            ClusterStatus::Resizing => *other == "resizing",
+            ClusterStatus::Stopping => *other == "stopping",
+            ClusterStatus::UpdatingConfiguration => *other == "updating configuration",
+            ClusterStatus::ComputeAvailable => *other == "compute available",
+            ClusterStatus::Installing => *other == "installing",
+        }
+    }
+}
+impl std::cmp::PartialEq<ClusterStatus> for &str {
+    fn eq(&self, other: &ClusterStatus) -> bool {
+        other == self
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterUpgradeVersion {
+    pub change: UpgradeChangeType,
+    pub lts: bool,
+    pub recommended: bool,
+    pub tag: String,
+    pub version: String,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -85,12 +224,12 @@ pub struct CreateClusterRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_backup_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source_backup_project_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source_node_index: Option<i32>,
     pub topology: Topology,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protected: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_backup_project_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -179,6 +318,12 @@ pub struct ListClustersResponse {
     pub clusters: Vec<Cluster>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListClusterUpgradeVersionsResponse {
+    pub versions: Vec<ClusterUpgradeVersion>,
+}
+
 /// The projection level of your database. Can be off, system or user
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -229,76 +374,6 @@ pub struct RestartClusterResponse {
     pub id: String,
 }
 
-/// The status of the cluster
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum Status {
-    #[serde(rename = "provisioning")]
-    Provisioning,
-    #[serde(rename = "disks available")]
-    DisksAvailable,
-    #[serde(rename = "expanding disks")]
-    ExpandingDisks,
-    #[serde(rename = "restarting")]
-    Restarting,
-    #[serde(rename = "available")]
-    Available,
-    #[serde(rename = "defunct")]
-    Defunct,
-    #[serde(rename = "inconsistent")]
-    Inconsistent,
-    #[serde(rename = "upgrading")]
-    Upgrading,
-    #[serde(rename = "deleting instances")]
-    DeletingInstances,
-    #[serde(rename = "instances deleted")]
-    InstancesDeleted,
-    #[serde(rename = "deleting disks")]
-    DeletingDisks,
-    #[serde(rename = "deleted")]
-    Deleted,
-}
-impl std::fmt::Display for Status {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Status::Provisioning => write!(f, "provisioning"),
-            Status::DisksAvailable => write!(f, "disks available"),
-            Status::ExpandingDisks => write!(f, "expanding disks"),
-            Status::Restarting => write!(f, "restarting"),
-            Status::Available => write!(f, "available"),
-            Status::Defunct => write!(f, "defunct"),
-            Status::Inconsistent => write!(f, "inconsistent"),
-            Status::Upgrading => write!(f, "upgrading"),
-            Status::DeletingInstances => write!(f, "deleting instances"),
-            Status::InstancesDeleted => write!(f, "instances deleted"),
-            Status::DeletingDisks => write!(f, "deleting disks"),
-            Status::Deleted => write!(f, "deleted"),
-        }
-    }
-}
-impl std::cmp::PartialEq<&str> for Status {
-    fn eq(&self, other: &&str) -> bool {
-        match self {
-            Status::Provisioning => *other == "provisioning",
-            Status::DisksAvailable => *other == "disks available",
-            Status::ExpandingDisks => *other == "expanding disks",
-            Status::Restarting => *other == "restarting",
-            Status::Available => *other == "available",
-            Status::Defunct => *other == "defunct",
-            Status::Inconsistent => *other == "inconsistent",
-            Status::Upgrading => *other == "upgrading",
-            Status::DeletingInstances => *other == "deleting instances",
-            Status::InstancesDeleted => *other == "instances deleted",
-            Status::DeletingDisks => *other == "deleting disks",
-            Status::Deleted => *other == "deleted",
-        }
-    }
-}
-impl std::cmp::PartialEq<Status> for &str {
-    fn eq(&self, other: &Status) -> bool {
-        other == self
-    }
-}
-
 /// Either single-node or three-node-multi-zone
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Topology {
@@ -336,6 +411,38 @@ pub struct UpdateClusterRequest {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protected: Option<bool>,
+}
+
+/// The type of change in an upgrade
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpgradeChangeType {
+    Downgrade,
+    Major,
+    Patch,
+}
+impl std::fmt::Display for UpgradeChangeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UpgradeChangeType::Downgrade => write!(f, "downgrade"),
+            UpgradeChangeType::Major => write!(f, "major"),
+            UpgradeChangeType::Patch => write!(f, "patch"),
+        }
+    }
+}
+impl std::cmp::PartialEq<&str> for UpgradeChangeType {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            UpgradeChangeType::Downgrade => *other == "downgrade",
+            UpgradeChangeType::Major => *other == "major",
+            UpgradeChangeType::Patch => *other == "patch",
+        }
+    }
+}
+impl std::cmp::PartialEq<UpgradeChangeType> for &str {
+    fn eq(&self, other: &UpgradeChangeType) -> bool {
+        other == self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
