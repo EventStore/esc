@@ -146,3 +146,22 @@ You can display your current refresh token with:
 ```
 esc access tokens display
 ```
+
+
+### List members of an organization.
+
+```
+esc access members list
+```
+
+### Enable a member of an organization
+
+```
+esc access members update --id <member-id> --active true
+```
+
+### Disable a member of an organization
+
+```
+esc access members update --id <member-id> --active false
+```

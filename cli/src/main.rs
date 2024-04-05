@@ -317,6 +317,7 @@ enum GroupsCommand {
 enum MembersCommand {
     Get(GetMember),
     List(ListMembers),
+    Update(UpdateMember),
 }
 
 #[derive(StructOpt, Debug)]
@@ -334,6 +335,24 @@ struct GetMember {
 struct ListMembers {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the members relate to")]
     org_id: OrgId,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Update a member")]
+struct UpdateMember {
+    #[structopt(long, short, parse(try_from_str = parse_member_id), help = "The member id")]
+    id: MemberId,
+
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the member will relate to")]
+    org_id: OrgId,
+
+    #[structopt(
+        long,
+        short,
+        parse(try_from_str),
+        help = "Specifies whether the member is active."
+    )]
+    active: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1952,6 +1971,19 @@ async fn call_api<'a, 'b>(
                     let resp =
                         esc_api::access::get_member(&client, params.org_id, params.id).await?;
                     printer.print(resp)?;
+                }
+
+                MembersCommand::Update(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::access::update_member(
+                        &client,
+                        params.org_id,
+                        params.id,
+                        esc_api::access::UpdateMemberRequest {
+                            active: params.active,
+                        },
+                    )
+                    .await?;
                 }
             },
         },
