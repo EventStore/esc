@@ -318,6 +318,7 @@ enum MembersCommand {
     Get(GetMember),
     List(ListMembers),
     Update(UpdateMember),
+    Delete(DeleteMember),
 }
 
 #[derive(StructOpt, Debug)]
@@ -353,6 +354,16 @@ struct UpdateMember {
         help = "Specifies whether the member is active."
     )]
     active: bool,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Deletes a Member")]
+struct DeleteMember {
+    #[structopt(long, short, parse(try_from_str = parse_member_id))]
+    id: MemberId,
+
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1984,6 +1995,11 @@ async fn call_api<'a, 'b>(
                         },
                     )
                     .await?;
+                }
+
+                MembersCommand::Delete(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_member(&client, params.org_id, params.id).await?;
                 }
             },
         },

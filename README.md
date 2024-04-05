@@ -165,3 +165,9 @@ esc access members update --id <member-id> --active true
 ```
 esc access members update --id <member-id> --active false
 ```
+
+### Deletes a member from an organization
+
+```
+esc access members delete --id <member-id>
+```
