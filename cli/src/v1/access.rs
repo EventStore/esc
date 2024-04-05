@@ -199,6 +199,13 @@ impl ToV1 for esc_api::access::Member {
     }
 }
 
+impl ToV1 for esc_api::access::GetMemberResponse {
+    type V1Type = Member;
+    fn to_v1(self) -> Self::V1Type {
+        self.member.to_v1()
+    }
+}
+
 impl ToV1 for esc_api::access::ListMembersResponse {
     type V1Type = List<Member>;
     fn to_v1(self) -> Self::V1Type {
