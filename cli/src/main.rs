@@ -12,7 +12,7 @@ mod output;
 mod utils;
 mod v1;
 
-use esc_api::{GroupId, OrgId};
+use esc_api::{GroupId, MemberId, OrgId};
 use output::OutputFormat;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -315,7 +315,18 @@ enum GroupsCommand {
 
 #[derive(StructOpt, Debug)]
 enum MembersCommand {
+    Get(GetMember),
     List(ListMembers),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Read information about a Member")]
+struct GetMember {
+    #[structopt(long, short, parse(try_from_str = parse_member_id))]
+    id: MemberId,
+
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
+    org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1467,6 +1478,10 @@ fn parse_policy_id(src: &str) -> Result<esc_api::PolicyId, String> {
     Ok(esc_api::PolicyId(src.to_string()))
 }
 
+fn parse_member_id(src: &str) -> Result<esc_api::MemberId, String> {
+    Ok(esc_api::MemberId(src.to_string()))
+}
+
 fn parse_provider(src: &str) -> Result<esc_api::infra::Provider, String> {
     parse_enum(&PROVIDERS, src)
 }
@@ -1929,6 +1944,13 @@ async fn call_api<'a, 'b>(
                 MembersCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_members(&client, params.org_id).await?;
+                    printer.print(resp)?;
+                }
+
+                MembersCommand::Get(params) => {
+                    let client = client_builder.create().await?;
+                    let resp =
+                        esc_api::access::get_member(&client, params.org_id, params.id).await?;
                     printer.print(resp)?;
                 }
             },

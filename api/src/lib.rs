@@ -39,6 +39,7 @@ pub mod resources {
 // All of the following using statements are just to keep compatability with the
 // test code. In the future they'll be scrapped.
 pub use access::GroupId;
+pub use access::MemberId;
 pub use access::PolicyId;
 pub use esc_client_base::Client as EscRequestSender;
 pub use infra::NetworkId;
