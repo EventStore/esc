@@ -172,3 +172,37 @@ impl ToV1 for esc_api::access::ListPoliciesResponse {
         self
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Member {
+    pub id: esc_api::access::MemberId,
+    #[serde(rename = "organizationId")]
+    pub org_id: OrgId,
+    pub active: bool,
+    pub created: String,
+    pub email: String,
+    pub name: String,
+}
+
+impl ToV1 for esc_api::access::Member {
+    type V1Type = Member;
+    fn to_v1(self) -> Self::V1Type {
+        Member {
+            created: self.created,
+            id: self.id,
+            name: self.name,
+            org_id: self.organization_id.to_v1(),
+            active: self.active,
+            email: self.email,
+        }
+    }
+}
+
+impl ToV1 for esc_api::access::ListMembersResponse {
+    type V1Type = List<Member>;
+    fn to_v1(self) -> Self::V1Type {
+        let l: Vec<Member> = self.members.into_iter().map(|m| m.to_v1()).collect();
+        List(l)
+    }
+}

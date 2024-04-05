@@ -210,7 +210,7 @@ pub struct Member {
     pub email: String,
     pub id: MemberId,
     pub name: String,
-    pub organization_id: String,
+    pub organization_id: OrganizationId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

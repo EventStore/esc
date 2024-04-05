@@ -95,6 +95,7 @@ enum AccessCommand {
     Groups(Groups),
     Invites(Invites),
     Policies(Policies),
+    Members(Members),
 }
 
 #[derive(Debug, StructOpt)]
@@ -210,6 +211,13 @@ struct Groups {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers members management commands")]
+struct Members {
+    #[structopt(subcommand)]
+    members_command: MembersCommand,
+}
+
+#[derive(StructOpt, Debug)]
 #[structopt(about = "Gathers invites management commands")]
 struct Invites {
     #[structopt(subcommand)]
@@ -303,6 +311,18 @@ enum GroupsCommand {
     Get(GetGroup),
     Delete(DeleteGroup),
     List(ListGroups),
+}
+
+#[derive(StructOpt, Debug)]
+enum MembersCommand {
+    List(ListMembers),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "List members")]
+struct ListMembers {
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the members relate to")]
+    org_id: OrgId,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1901,6 +1921,14 @@ async fn call_api<'a, 'b>(
                 PoliciesCommand::List(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::access::list_policies(&client, params.org_id).await?;
+                    printer.print(resp)?;
+                }
+            },
+
+            AccessCommand::Members(members) => match members.members_command {
+                MembersCommand::List(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::access::list_members(&client, params.org_id).await?;
                     printer.print(resp)?;
                 }
             },
