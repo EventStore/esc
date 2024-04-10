@@ -55,6 +55,12 @@ pub struct ListProjectsResponse {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MfaStatus {
+    pub mfa_enabled: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Organization {
     pub created: DateTime<Utc>,
     pub id: OrganizationId,
@@ -69,6 +75,12 @@ pub struct Project {
     pub id: ProjectId,
     pub name: String,
     pub organization_id: OrganizationId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMfaResponse {
+    pub mfa_enabled: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

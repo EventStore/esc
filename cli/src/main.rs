@@ -317,6 +317,8 @@ enum GroupsCommand {
 enum MembersCommand {
     Get(GetMember),
     List(ListMembers),
+    Update(UpdateMember),
+    Delete(DeleteMember),
 }
 
 #[derive(StructOpt, Debug)]
@@ -333,6 +335,34 @@ struct GetMember {
 #[structopt(about = "List members")]
 struct ListMembers {
     #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the members relate to")]
+    org_id: OrgId,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Update a member")]
+struct UpdateMember {
+    #[structopt(long, short, parse(try_from_str = parse_member_id), help = "The member id")]
+    id: MemberId,
+
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the member will relate to")]
+    org_id: OrgId,
+
+    #[structopt(
+        long,
+        short,
+        parse(try_from_str),
+        help = "Specifies whether the member is active."
+    )]
+    active: bool,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Deletes a Member")]
+struct DeleteMember {
+    #[structopt(long, short, parse(try_from_str = parse_member_id))]
+    id: MemberId,
+
+    #[structopt(long, short, parse(try_from_str = parse_org_id), default_value = "")]
     org_id: OrgId,
 }
 
@@ -749,6 +779,7 @@ enum OrganizationsCommand {
     Get(GetOrganization),
     Delete(DeleteOrganization),
     List(ListOrganizations),
+    GetMfaStatus(GetOrganizationMfaStatus),
 }
 
 #[derive(Debug, StructOpt)]
@@ -772,6 +803,13 @@ struct UpdateOrganization {
 #[structopt(about = "read an organization's information")]
 struct GetOrganization {
     #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read information from")]
+    id: OrgId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "read an organization's MFA status")]
+struct GetOrganizationMfaStatus {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read MFA status of")]
     id: OrgId,
 }
 
@@ -1953,6 +1991,24 @@ async fn call_api<'a, 'b>(
                         esc_api::access::get_member(&client, params.org_id, params.id).await?;
                     printer.print(resp)?;
                 }
+
+                MembersCommand::Update(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::access::update_member(
+                        &client,
+                        params.org_id,
+                        params.id,
+                        esc_api::access::UpdateMemberRequest {
+                            active: params.active,
+                        },
+                    )
+                    .await?;
+                }
+
+                MembersCommand::Delete(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::access::delete_member(&client, params.org_id, params.id).await?;
+                }
             },
         },
 
@@ -2337,6 +2393,12 @@ async fn call_api<'a, 'b>(
                 OrganizationsCommand::List(_) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_organizations(&client).await?;
+                    printer.print(resp)?;
+                }
+
+                OrganizationsCommand::GetMfaStatus(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::get_mfa_status(&client, params.id).await?;
                     printer.print(resp)?;
                 }
             },
