@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use esc_api::resources::MfaStatus;
 use std::fmt::Formatter;
 
 use super::common::{List, ToV1};
@@ -56,6 +57,15 @@ impl ToV1 for esc_api::resources::ListOrganizationsResponse {
     type V1Type = List<Organization>;
     fn to_v1(self) -> Self::V1Type {
         List(self.organizations.into_iter().map(|o| o.to_v1()).collect())
+    }
+}
+
+impl ToV1 for esc_api::resources::MfaStatus {
+    type V1Type = MfaStatus;
+    fn to_v1(self) -> Self::V1Type {
+        MfaStatus {
+            mfa_enabled: self.mfa_enabled,
+        }
     }
 }
 

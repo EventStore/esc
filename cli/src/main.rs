@@ -779,6 +779,7 @@ enum OrganizationsCommand {
     Get(GetOrganization),
     Delete(DeleteOrganization),
     List(ListOrganizations),
+    GetMfaStatus(GetOrganizationMfaStatus),
 }
 
 #[derive(Debug, StructOpt)]
@@ -802,6 +803,13 @@ struct UpdateOrganization {
 #[structopt(about = "read an organization's information")]
 struct GetOrganization {
     #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read information from")]
+    id: OrgId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "read an organization's MFA status")]
+struct GetOrganizationMfaStatus {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read MFA status of")]
     id: OrgId,
 }
 
@@ -2385,6 +2393,12 @@ async fn call_api<'a, 'b>(
                 OrganizationsCommand::List(_) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::list_organizations(&client).await?;
+                    printer.print(resp)?;
+                }
+
+                OrganizationsCommand::GetMfaStatus(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::get_mfa_status(&client, params.id).await?;
                     printer.print(resp)?;
                 }
             },

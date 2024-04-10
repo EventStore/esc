@@ -86,6 +86,21 @@ pub async fn delete_project(
         .await
 }
 
+/// Gets the mfa status of an organization
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization
+pub async fn get_mfa_status(client: &Client, organization_id: OrganizationId) -> Result<MfaStatus> {
+    let url = format!(
+        "/resources/v1/organizations/{organizationId}/mfa",
+        organizationId = urlencode(organization_id),
+    );
+    client
+        .send_request::<(), MfaStatus>(Method::GET, url, None, None)
+        .await
+}
+
 /// Gets a single organization by ID.
 ///
 /// # Arguments
@@ -155,6 +170,26 @@ pub async fn list_projects(
     );
     client
         .send_request::<(), ListProjectsResponse>(Method::GET, url, None, None)
+        .await
+}
+
+/// Changes the status of MFA for an organization
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization
+/// * `mfa_status`
+pub async fn update_mfa(
+    client: &Client,
+    organization_id: OrganizationId,
+    // The desired status of MFA
+    mfa_status: MfaStatus,
+) -> Result<UpdateMfaResponse> {
+    let url = format!(
+        "/resources/v1/organizations/{organizationId}/mfa",
+        organizationId = urlencode(organization_id),
+    );
+    client
+        .send_request::<MfaStatus, UpdateMfaResponse>(Method::POST, url, Some(&mfa_status), None)
         .await
 }
 
