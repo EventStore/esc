@@ -1,6 +1,6 @@
 # Event Store Cloud CLI
 
-`esc` in a command-line tool that allows to access Event Store Cloud API in the comfort of your terminal.
+`esc` is a command-line tool that allows to access Event Store Cloud API in the comfort of your terminal.
 
 ## Authentication
 
