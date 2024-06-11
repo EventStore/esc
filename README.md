@@ -133,6 +133,20 @@ You can find out more about each option by entering:
 esc mesdb clusters create --help
 ```
 
+### Stop a cluster
+
+```
+esc mesdb clusters stop --org-id <org-id> --project-id <project-id> --id <cluster-id>
+```
+
+
+### Start a cluster
+
+```
+esc mesdb clusters start --org-id <org-id> --project-id <project-id> --id <cluster-id>
+```
+
+
 ### Create a refresh token.
 
 (example: for use with terraform)

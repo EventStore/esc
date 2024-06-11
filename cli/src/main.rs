@@ -935,6 +935,8 @@ enum ClustersCommand {
     Update(UpdateCluster),
     Delete(DeleteCluster),
     Expand(ExpandCluster),
+    Stop(StopCluster),
+    Start(StartCluster),
     Resize(ResizeCluster),
     Upgrade(UpgradeCluster),
 }
@@ -1095,6 +1097,32 @@ struct ResizeCluster {
 
     #[structopt(long, help = "The target instance size. (C4, M8, etc)")]
     target_size: String,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Stops a cluster")]
+struct StopCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to resize")]
+    id: esc_api::ClusterId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Starts a cluster")]
+struct StartCluster {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the cluster relates to")]
+    org_id: OrgId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the cluster relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to resize")]
+    id: esc_api::ClusterId,
 }
 
 #[derive(Debug, StructOpt)]
@@ -2582,6 +2610,28 @@ async fn call_api<'a, 'b>(
                             esc_api::mesdb::ResizeClusterRequest {
                                 target_size: params.target_size,
                             },
+                        )
+                        .await?;
+                    }
+
+                    ClustersCommand::Stop(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::stop_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
+                        )
+                        .await?;
+                    }
+
+                    ClustersCommand::Start(params) => {
+                        let client = client_builder.create().await?;
+                        esc_api::mesdb::start_cluster(
+                            &client,
+                            params.org_id,
+                            params.project_id,
+                            params.id,
                         )
                         .await?;
                     }

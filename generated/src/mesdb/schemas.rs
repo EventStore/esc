@@ -82,6 +82,7 @@ pub struct Cluster {
     pub health: Health,
     pub network_id: NetworkId,
     pub organization_id: OrganizationId,
+    pub patch_available: bool,
     pub project_id: ProjectId,
     pub projection_level: ProjectionLevel,
     pub provider: String,
@@ -91,6 +92,15 @@ pub struct Cluster {
     pub status: ClusterStatus,
     pub topology: Topology,
     pub protected: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterCreateVersion {
+    pub lts: bool,
+    pub recommended: bool,
+    pub tag: String,
+    pub version: String,
 }
 
 /// The status of the cluster
@@ -314,6 +324,12 @@ pub struct ListBackupsResponse {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ListClusterCreateVersionsResponse {
+    pub versions: Vec<ClusterCreateVersion>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListClustersResponse {
     pub clusters: Vec<Cluster>,
 }
@@ -371,6 +387,18 @@ pub struct ResizeClusterResponse {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RestartClusterResponse {
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartClusterResponse {
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StopClusterResponse {
     pub id: String,
 }
 

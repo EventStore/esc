@@ -213,30 +213,6 @@ pub async fn list_backups(
         .await
 }
 
-/// List versions this cluster can upgrade to
-///
-/// # Arguments
-///
-/// * `organization_id` - The id of the organization the cluster is owned by
-/// * `project_id` - The id of the project the cluster is organized by
-/// * `cluster_id` - The id of the cluster
-pub async fn list_cluster_upgrade_versions(
-    client: &Client,
-    organization_id: OrganizationId,
-    project_id: ProjectId,
-    cluster_id: ClusterId,
-) -> Result<ListClusterUpgradeVersionsResponse> {
-    let url = format!(
-        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/upgrade-versions",
-        organizationId = urlencode(organization_id),
-        projectId = urlencode(project_id),
-        clusterId = urlencode(cluster_id),
-    );
-    client
-        .send_request::<(), ListClusterUpgradeVersionsResponse>(Method::GET, url, None, None)
-        .await
-}
-
 /// List clusters
 ///
 /// # Arguments
@@ -255,6 +231,48 @@ pub async fn list_clusters(
     );
     client
         .send_request::<(), ListClustersResponse>(Method::GET, url, None, None)
+        .await
+}
+
+/// List versions of servers that can be created
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+pub async fn list_versions_for_cluster_create(
+    client: &Client,
+    organization_id: OrganizationId,
+) -> Result<ListClusterCreateVersionsResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/clusters/versions",
+        organizationId = urlencode(organization_id),
+    );
+    client
+        .send_request::<(), ListClusterCreateVersionsResponse>(Method::GET, url, None, None)
+        .await
+}
+
+/// List versions this cluster can upgrade to
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+pub async fn list_versions_for_cluster_upgrade(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+) -> Result<ListClusterUpgradeVersionsResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/upgrade/versions",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<(), ListClusterUpgradeVersionsResponse>(Method::GET, url, None, None)
         .await
 }
 
@@ -311,6 +329,54 @@ pub async fn restart_cluster(
     );
     client
         .send_request::<(), RestartClusterResponse>(Method::PUT, url, None, None)
+        .await
+}
+
+/// starts a cluster
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+pub async fn start_cluster(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+) -> Result<StartClusterResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/commands/start",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<(), StartClusterResponse>(Method::PUT, url, None, None)
+        .await
+}
+
+/// stops a cluster
+///
+/// # Arguments
+///
+/// * `organization_id` - The id of the organization the cluster is owned by
+/// * `project_id` - The id of the project the cluster is organized by
+/// * `cluster_id` - The id of the cluster
+pub async fn stop_cluster(
+    client: &Client,
+    organization_id: OrganizationId,
+    project_id: ProjectId,
+    cluster_id: ClusterId,
+) -> Result<StopClusterResponse> {
+    let url = format!(
+        "/mesdb/v1/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/commands/stop",
+        organizationId = urlencode(organization_id),
+        projectId = urlencode(project_id),
+        clusterId = urlencode(cluster_id),
+    );
+    client
+        .send_request::<(), StopClusterResponse>(Method::PUT, url, None, None)
         .await
 }
 
