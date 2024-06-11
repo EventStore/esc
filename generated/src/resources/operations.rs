@@ -193,7 +193,7 @@ pub async fn update_mfa(
         .await
 }
 
-/// Deletes an organization by ID.
+/// Updates an organization by ID.
 ///
 /// # Arguments
 ///
@@ -204,17 +204,17 @@ pub async fn update_organization(
     organization_id: OrganizationId,
     // describes new organization
     update_organization_request: UpdateOrganizationRequest,
-) -> Result<GetOrganizationResponse> {
+) -> Result<()> {
     let url = format!(
         "/resources/v1/organizations/{organizationId}",
         organizationId = urlencode(organization_id),
     );
     client
-        .send_request::<UpdateOrganizationRequest, GetOrganizationResponse>(
+        .send_request::<UpdateOrganizationRequest, ()>(
             Method::PUT,
             url,
             Some(&update_organization_request),
-            None,
+            Some(()),
         )
         .await
 }
