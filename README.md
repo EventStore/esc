@@ -147,6 +147,12 @@ You can display your current refresh token with:
 esc access tokens display
 ```
 
+### Update Organization MFA requirement
+
+```
+escp resources organizations update-mfa-status --enabled=true
+```
+
 
 ### List members of an organization.
 

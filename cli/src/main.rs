@@ -12,6 +12,7 @@ mod output;
 mod utils;
 mod v1;
 
+use esc_api::resources::MfaStatus;
 use esc_api::{GroupId, MemberId, OrgId};
 use output::OutputFormat;
 use serde::Serialize;
@@ -780,6 +781,7 @@ enum OrganizationsCommand {
     Delete(DeleteOrganization),
     List(ListOrganizations),
     GetMfaStatus(GetOrganizationMfaStatus),
+    UpdateMfaStatus(UpdateOrganizationMfaStatus),
 }
 
 #[derive(Debug, StructOpt)]
@@ -811,6 +813,21 @@ struct GetOrganization {
 struct GetOrganizationMfaStatus {
     #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to read MFA status of")]
     id: OrgId,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "updates an organization's MFA status")]
+struct UpdateOrganizationMfaStatus {
+    #[structopt(short, long, parse(try_from_str = parse_org_id), default_value = "", help = "The id of the organization you want to update MFA status for")]
+    id: OrgId,
+
+    #[structopt(
+        long,
+        short,
+        parse(try_from_str),
+        help = "Specifies whether MFA is requied for the org."
+    )]
+    enabled: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -2399,6 +2416,19 @@ async fn call_api<'a, 'b>(
                 OrganizationsCommand::GetMfaStatus(params) => {
                     let client = client_builder.create().await?;
                     let resp = esc_api::resources::get_mfa_status(&client, params.id).await?;
+                    printer.print(resp)?;
+                }
+
+                OrganizationsCommand::UpdateMfaStatus(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::resources::update_mfa(
+                        &client,
+                        params.id,
+                        MfaStatus {
+                            mfa_enabled: params.enabled,
+                        },
+                    )
+                    .await?;
                     printer.print(resp)?;
                 }
             },
