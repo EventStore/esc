@@ -1044,6 +1044,9 @@ struct CreateCluster {
     )]
     source_project_id: Option<String>,
 
+    #[structopt(long, help = "The ID of an ACL if one is being used")]
+    acl_id: Option<String>,
+
     #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
     network_id: esc_api::infra::NetworkId,
 
@@ -1087,6 +1090,9 @@ struct CreateCluster {
     #[structopt(long, help = "Throughput in Mb/s for disk (only AWS)")]
     pub disk_throughput: Option<i32>,
 
+    #[structopt(long, help = "If set, this cluster will be publicly accessible")]
+    pub public_access: Option<bool>,
+
     #[structopt(long, help = "The protected flag prevents from accidental deletion")]
     protected: Option<bool>,
 }
@@ -1125,6 +1131,9 @@ struct UpdateCluster {
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
     id: esc_api::ClusterId,
+
+    #[structopt(long, help = "The ACL id used by a cluster")]
+    acl_id: Option<String>,
 
     #[structopt(long, help = "A human-readable description of the cluster")]
     description: Option<String>,
@@ -2673,6 +2682,7 @@ async fn call_api<'a, 'b>(
                             params.org_id,
                             params.project_id,
                             esc_api::mesdb::CreateClusterRequest {
+                                acl_id: params.acl_id,
                                 description: params.description,
                                 disk_iops: params.disk_iops,
                                 disk_size_gb: params.disk_size_in_gb,
@@ -2687,6 +2697,7 @@ async fn call_api<'a, 'b>(
                                 source_node_index: None, // TODO: add source_node_index
                                 topology: params.topology,
                                 protected: params.protected,
+                                public_access: params.public_access,
                             },
                         )
                         .await?;
@@ -2724,6 +2735,7 @@ async fn call_api<'a, 'b>(
                             params.project_id,
                             params.id,
                             esc_api::mesdb::UpdateClusterRequest {
+                                acl_id: params.acl_id,
                                 description: params.description,
                                 protected: params.protected,
                             },

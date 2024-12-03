@@ -67,6 +67,8 @@ impl std::cmp::PartialEq<BackupStatus> for &str {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cluster {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acl_id: Option<String>,
     pub can_expand_disk: bool,
     pub cloud_integrated_authentication: bool,
     pub created: DateTime<Utc>,
@@ -85,13 +87,15 @@ pub struct Cluster {
     pub patch_available: bool,
     pub project_id: ProjectId,
     pub projection_level: ProjectionLevel,
+    pub protected: bool,
     pub provider: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_access: Option<bool>,
     pub region: String,
     pub server_version: String,
     pub server_version_tag: String,
     pub status: ClusterStatus,
     pub topology: Topology,
-    pub protected: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -220,6 +224,8 @@ pub struct CreateBackupResponse {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateClusterRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acl_id: Option<String>,
     pub description: String,
     pub disk_size_gb: i32,
     pub disk_type: String,
@@ -238,6 +244,8 @@ pub struct CreateClusterRequest {
     pub topology: Topology,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protected: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_access: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_backup_project_id: Option<String>,
 }
@@ -435,6 +443,8 @@ impl std::cmp::PartialEq<Topology> for &str {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateClusterRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acl_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
