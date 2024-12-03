@@ -4,12 +4,36 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct Acl {
+    pub cidr_blocks: Vec<String>,
+    pub created: String,
+    pub description: String,
+    pub id: AclId,
+    pub project_id: ProjectId,
+    pub status: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Command {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_name: Option<String>,
     pub language: String,
     pub title: String,
     pub value: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAclRequest {
+    pub cidr_blocks: Vec<String>,
+    pub description: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAclResponse {
+    pub id: AclId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -62,6 +86,12 @@ pub type Fields = HashMap<String, String>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GetAclResponse {
+    pub acl: Acl,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetNetworkResponse {
     pub network: Network,
 }
@@ -70,6 +100,12 @@ pub struct GetNetworkResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetPeeringResponse {
     pub peering: Peering,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListAclsResponse {
+    pub acls: Vec<Acl>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -97,6 +133,7 @@ pub struct Network {
     pub status: NetworkStatus,
 }
 
+/// The status of the network
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NetworkStatus {
@@ -153,6 +190,7 @@ pub struct Peering {
     pub status: PeeringStatus,
 }
 
+/// The status of the peering
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PeeringStatus {
@@ -226,6 +264,15 @@ impl std::cmp::PartialEq<Provider> for &str {
     fn eq(&self, other: &Provider) -> bool {
         other == self
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAclRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cidr_blocks: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
