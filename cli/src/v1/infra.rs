@@ -57,7 +57,7 @@ impl ToV1 for esc_api::infra::Network {
     type V1Type = Network;
     fn to_v1(self) -> Self::V1Type {
         Network {
-            cidr_block: self.cidr_block,
+            cidr_block: self.cidr_block.unwrap(),
             description: self.description,
             id: self.id,
             project_id: self.project_id,

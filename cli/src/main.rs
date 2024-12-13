@@ -12,6 +12,7 @@ mod output;
 mod utils;
 mod v1;
 
+use cidr::Cidr;
 use esc_api::resources::MfaStatus;
 use esc_api::{GroupId, MemberId, OrgId};
 use output::OutputFormat;
@@ -512,8 +513,8 @@ struct CreateAcl {
     #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the acl will relate to")]
     project_id: esc_api::resources::ProjectId,
 
-    #[structopt(long, help = "The CIDR blocks who will have access.")]
-    cidr_blocks: Vec<String>,
+    #[structopt(long, parse(try_from_str = parse_cidr_input), help = "The CIDR blocks who will have access. Format: \"<cidr>,<optional_comment>\"")]
+    cidr_blocks: Vec<esc_api::infra::AclCidrBlock>,
 
     #[structopt(long, help = "Human-readable description of the acl")]
     description: String,
@@ -567,8 +568,8 @@ struct UpdateAcl {
     #[structopt(long, short, parse(try_from_str = parse_acl_id), help = "An acl's id")]
     id: esc_api::infra::AclId,
 
-    #[structopt(long, help = "The CIDR blocks who will have access.")]
-    cidr_blocks: Option<Vec<String>>,
+    #[structopt(long, parse(try_from_str = parse_cidr_input), help = "The CIDR blocks who will have access. Format: \"<cidr>,<optional_comment>\"")]
+    cidr_blocks: Vec<esc_api::infra::AclCidrBlock>,
 
     #[structopt(long, help = "A human-readable acl's description")]
     description: Option<String>,
@@ -603,13 +604,16 @@ struct CreateNetwork {
     provider: esc_api::infra::Provider,
 
     #[structopt(long, parse(try_from_str = parse_cidr), help = "Classless Inter-Domain Routing block (CIDR)")]
-    cidr_block: cidr::Ipv4Cidr,
+    cidr_block: Option<cidr::Ipv4Cidr>,
 
     #[structopt(long, help = "Human-readable description of the network")]
     description: String,
 
     #[structopt(long, help = "Cloud provider region")]
     region: String,
+
+    #[structopt(long, help = "Networks with public access enabled can have clusters with public access enabled, whereas networks without can only be accessed via peering. Defaults to false.")]
+    public_access: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -1682,6 +1686,28 @@ fn parse_projection_level(src: &str) -> Result<esc_api::mesdb::ProjectionLevel, 
     parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
+fn parse_cidr_input(s: &str) -> Result<esc_api::infra::AclCidrBlock, String> {
+    if s.contains(',') {
+        let (cidr, comment) = s.split_once(',').ok_or(format!("Invalid CIDR input: {}", s))?;
+        let cidr = cidr.parse::<cidr::Ipv4Cidr>().map_err(|e| format!("Invalid CIDR input: {}", e))?;
+        Ok(esc_api::infra::AclCidrBlock { cidr_block: cidr_to_string(cidr), comment: Some(comment.to_string()) })
+    } else {
+        let cidr = s.parse::<cidr::Ipv4Cidr>().map_err(|e| format!("Invalid CIDR input: {}", e))?;
+        Ok(esc_api::infra::AclCidrBlock { cidr_block: cidr_to_string(cidr), comment: None })
+    }
+}
+
+// When a CIDR is a host address, the output of Ipv4Cidr::to_string() is a
+// single IP address. This is used to ensure that the output remains in CIDR
+// notation.
+fn cidr_to_string(cidr: cidr::Ipv4Cidr) -> String {
+    if cidr.is_host_address() {
+        format!("{}/32", cidr.to_string())
+    } else {
+        cidr.to_string()
+    }
+}
+
 fn parse_enum<A: Clone>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
         Some(p) => Ok(p.clone()),
@@ -1708,7 +1734,7 @@ fn parse_invite_id(src: &str) -> Result<esc_api::access::InviteId, String> {
 }
 
 fn parse_cidr(src: &str) -> Result<cidr::Ipv4Cidr, cidr::NetworkParseError> {
-    src.parse()
+    src.parse::<cidr::Ipv4Cidr>()
 }
 
 #[derive(Debug)]
@@ -2282,7 +2308,7 @@ async fn call_api<'a, 'b>(
                         params.project_id,
                         params.id,
                         esc_api::infra::UpdateAclRequest {
-                            cidr_blocks: params.cidr_blocks,
+                            cidr_blocks: Some(params.cidr_blocks),
                             description: params.description,
                         },
                     )
@@ -2291,16 +2317,21 @@ async fn call_api<'a, 'b>(
             },
             InfraCommand::Networks(networks) => match networks.networks_command {
                 NetworksCommand::Create(params) => {
+                    let cidr_block = match params.cidr_block {
+                        Some(cidr) => Some(cidr.to_string()),
+                        None => None,
+                    };
                     let client = client_builder.create().await?;
                     let resp = esc_api::infra::create_network(
                         &client,
                         params.org_id,
                         params.project_id,
                         esc_api::infra::CreateNetworkRequest {
-                            cidr_block: params.cidr_block.to_string(),
+                            cidr_block: cidr_block,
                             description: params.description,
                             provider: params.provider.to_string(),
                             region: params.region,
+                            public_access: params.public_access,
                         },
                     )
                     .await?;

@@ -5,12 +5,50 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Acl {
-    pub cidr_blocks: Vec<String>,
+    pub cidr_blocks: Vec<AclCidrBlock>,
     pub created: String,
     pub description: String,
     pub id: AclId,
     pub project_id: ProjectId,
-    pub status: String,
+    pub status: AclStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AclCidrBlock {
+    pub cidr_block: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AclStatus {
+    Active,
+    Deleted,
+}
+impl std::fmt::Display for AclStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AclStatus::Active => write!(f, "active"),
+            AclStatus::Deleted => write!(f, "deleted"),
+        }
+    }
+}
+impl std::cmp::PartialEq<&str> for AclStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            AclStatus::Active => *other == "active",
+            AclStatus::Deleted => *other == "deleted",
+        }
+    }
+}
+impl std::cmp::PartialEq<AclStatus> for &str {
+    fn eq(&self, other: &AclStatus) -> bool {
+        other == self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -26,7 +64,7 @@ pub struct Command {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAclRequest {
-    pub cidr_blocks: Vec<String>,
+    pub cidr_blocks: Vec<AclCidrBlock>,
     pub description: String,
 }
 
@@ -39,9 +77,11 @@ pub struct CreateAclResponse {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateNetworkRequest {
-    pub provider: String,
-    pub cidr_block: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cidr_block: Option<String>,
     pub description: String,
+    pub provider: String,
+    pub public_access: bool,
     pub region: String,
 }
 
@@ -123,12 +163,14 @@ pub struct ListPeeringsResponse {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Network {
-    pub cidr_block: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cidr_block: Option<String>,
     pub created: String,
     pub description: String,
     pub id: NetworkId,
     pub project_id: ProjectId,
     pub provider: String,
+    pub public_access: bool,
     pub region: String,
     pub status: NetworkStatus,
 }
@@ -270,7 +312,7 @@ impl std::cmp::PartialEq<Provider> for &str {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAclRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cidr_blocks: Option<Vec<String>>,
+    pub cidr_blocks: Option<Vec<AclCidrBlock>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }

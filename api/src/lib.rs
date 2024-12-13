@@ -45,6 +45,8 @@ pub use esc_client_base::Client as EscRequestSender;
 pub use infra::NetworkId;
 pub use infra::PeeringId;
 pub use infra::Provider;
+pub use infra::Acl;
+pub use infra::AclCidrBlock;
 pub use integrate::IntegrationId;
 pub use mesdb::BackupId;
 pub use mesdb::ClusterId;
