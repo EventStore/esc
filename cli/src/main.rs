@@ -1690,10 +1690,10 @@ fn parse_cidr_input(s: &str) -> Result<esc_api::infra::AclCidrBlock, String> {
     if s.contains(',') {
         let (cidr, comment) = s.split_once(',').ok_or(format!("Invalid CIDR input: {}", s))?;
         let cidr = cidr.parse::<cidr::Ipv4Cidr>().map_err(|e| format!("Invalid CIDR input: {}", e))?;
-        Ok(esc_api::infra::AclCidrBlock { cidr_block: cidr_to_string(cidr), comment: Some(comment.to_string()) })
+        Ok(esc_api::infra::AclCidrBlock { address: cidr_to_string(cidr), comment: Some(comment.to_string()) })
     } else {
         let cidr = s.parse::<cidr::Ipv4Cidr>().map_err(|e| format!("Invalid CIDR input: {}", e))?;
-        Ok(esc_api::infra::AclCidrBlock { cidr_block: cidr_to_string(cidr), comment: None })
+        Ok(esc_api::infra::AclCidrBlock { address: cidr_to_string(cidr), comment: None })
     }
 }
 

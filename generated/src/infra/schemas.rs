@@ -18,7 +18,7 @@ pub struct Acl {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AclCidrBlock {
-    pub cidr_block: String,
+    pub address: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
 }
