@@ -12,6 +12,7 @@ mod output;
 mod utils;
 mod v1;
 
+use cidr::Cidr;
 use esc_api::resources::MfaStatus;
 use esc_api::{GroupId, MemberId, OrgId};
 use output::OutputFormat;
@@ -482,8 +483,96 @@ struct Infra {
 
 #[derive(StructOpt, Debug)]
 enum InfraCommand {
+    Acls(Acls),
     Networks(Networks),
     Peerings(Peerings),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Gathers acls management commands")]
+struct Acls {
+    #[structopt(subcommand)]
+    acls_command: AclsCommand,
+}
+
+#[derive(StructOpt, Debug)]
+enum AclsCommand {
+    Create(CreateAcl),
+    Delete(DeleteAcl),
+    Get(GetAcl),
+    List(ListAcls),
+    Update(UpdateAcl),
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Create an acl")]
+struct CreateAcl {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the acl will relate to")]
+    org_id: esc_api::resources::OrganizationId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the acl will relate to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, parse(try_from_str = parse_cidr_input), help = "The CIDR blocks who will have access. Format: \"<cidr>,<optional_comment>\"")]
+    cidr_blocks: Vec<esc_api::infra::AclCidrBlock>,
+
+    #[structopt(long, help = "Human-readable description of the acl")]
+    description: String,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Deletes an acl")]
+struct DeleteAcl {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the acl relates to")]
+    org_id: esc_api::resources::OrganizationId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the acl relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_acl_id), help = "A acl's id")]
+    id: esc_api::infra::AclId,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Reads an acl information")]
+struct GetAcl {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the acl relates to")]
+    org_id: esc_api::resources::OrganizationId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the acl relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_acl_id), help = "An acl's id")]
+    id: esc_api::infra::AclId,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "List acls of an organization, given a project")]
+struct ListAcls {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the acls relate to")]
+    org_id: esc_api::resources::OrganizationId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the acls relate to")]
+    project_id: esc_api::resources::ProjectId,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "Updates an acl")]
+struct UpdateAcl {
+    #[structopt(long, parse(try_from_str = parse_org_id), default_value = "", help = "The organization id the acl relates to")]
+    org_id: esc_api::resources::OrganizationId,
+
+    #[structopt(long, parse(try_from_str = parse_project_id), default_value = "", help = "The project id the acl relates to")]
+    project_id: esc_api::resources::ProjectId,
+
+    #[structopt(long, short, parse(try_from_str = parse_acl_id), help = "An acl's id")]
+    id: esc_api::infra::AclId,
+
+    #[structopt(long, parse(try_from_str = parse_cidr_input), help = "The CIDR blocks who will have access. Format: \"<cidr>,<optional_comment>\"")]
+    cidr_blocks: Vec<esc_api::infra::AclCidrBlock>,
+
+    #[structopt(long, help = "A human-readable acl's description")]
+    description: Option<String>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -515,13 +604,19 @@ struct CreateNetwork {
     provider: esc_api::infra::Provider,
 
     #[structopt(long, parse(try_from_str = parse_cidr), help = "Classless Inter-Domain Routing block (CIDR)")]
-    cidr_block: cidr::Ipv4Cidr,
+    cidr_block: Option<cidr::Ipv4Cidr>,
 
     #[structopt(long, help = "Human-readable description of the network")]
     description: String,
 
     #[structopt(long, help = "Cloud provider region")]
     region: String,
+
+    #[structopt(
+        long,
+        help = "Networks with public access enabled can have clusters with public access enabled, whereas networks without can only be accessed via peering. Defaults to false."
+    )]
+    public_access: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -956,6 +1051,9 @@ struct CreateCluster {
     )]
     source_project_id: Option<String>,
 
+    #[structopt(long, help = "The ID of an ACL if one is being used")]
+    acl_id: Option<String>,
+
     #[structopt(long, parse(try_from_str = parse_network_id), help = "The network id the cluster will be set on")]
     network_id: esc_api::infra::NetworkId,
 
@@ -999,6 +1097,9 @@ struct CreateCluster {
     #[structopt(long, help = "Throughput in Mb/s for disk (only AWS)")]
     pub disk_throughput: Option<i32>,
 
+    #[structopt(long, help = "If set, this cluster will be publicly accessible")]
+    pub public_access: Option<bool>,
+
     #[structopt(long, help = "The protected flag prevents from accidental deletion")]
     protected: Option<bool>,
 }
@@ -1037,6 +1138,9 @@ struct UpdateCluster {
 
     #[structopt(long, short, parse(try_from_str = parse_cluster_id), help = "Id of the cluster you want to update")]
     id: esc_api::ClusterId,
+
+    #[structopt(long, help = "The ACL id used by a cluster")]
+    acl_id: Option<String>,
 
     #[structopt(long, help = "A human-readable description of the cluster")]
     description: Option<String>,
@@ -1533,6 +1637,10 @@ fn parse_project_id(src: &str) -> Result<esc_api::resources::ProjectId, String> 
     Ok(esc_api::resources::ProjectId(src.to_string()))
 }
 
+fn parse_acl_id(src: &str) -> Result<esc_api::infra::AclId, String> {
+    Ok(esc_api::infra::AclId(src.to_string()))
+}
+
 fn parse_network_id(src: &str) -> Result<esc_api::infra::NetworkId, String> {
     Ok(esc_api::infra::NetworkId(src.to_string()))
 }
@@ -1581,6 +1689,40 @@ fn parse_projection_level(src: &str) -> Result<esc_api::mesdb::ProjectionLevel, 
     parse_enum(&CLUSTER_PROJECTION_LEVELS, src)
 }
 
+fn parse_cidr_input(s: &str) -> Result<esc_api::infra::AclCidrBlock, String> {
+    if s.contains(',') {
+        let (cidr, comment) = s
+            .split_once(',')
+            .ok_or(format!("Invalid CIDR input: {}", s))?;
+        let cidr = cidr
+            .parse::<cidr::Ipv4Cidr>()
+            .map_err(|e| format!("Invalid CIDR input: {}", e))?;
+        Ok(esc_api::infra::AclCidrBlock {
+            address: cidr_to_string(cidr),
+            comment: Some(comment.to_string()),
+        })
+    } else {
+        let cidr = s
+            .parse::<cidr::Ipv4Cidr>()
+            .map_err(|e| format!("Invalid CIDR input: {}", e))?;
+        Ok(esc_api::infra::AclCidrBlock {
+            address: cidr_to_string(cidr),
+            comment: None,
+        })
+    }
+}
+
+// When a CIDR is a host address, the output of Ipv4Cidr::to_string() is a
+// single IP address. This is used to ensure that the output remains in CIDR
+// notation.
+fn cidr_to_string(cidr: cidr::Ipv4Cidr) -> String {
+    if cidr.is_host_address() {
+        format!("{}/32", cidr)
+    } else {
+        cidr.to_string()
+    }
+}
+
 fn parse_enum<A: Clone>(env: &'static HashMap<&'static str, A>, src: &str) -> Result<A, String> {
     match env.get(src) {
         Some(p) => Ok(p.clone()),
@@ -1607,7 +1749,7 @@ fn parse_invite_id(src: &str) -> Result<esc_api::access::InviteId, String> {
 }
 
 fn parse_cidr(src: &str) -> Result<cidr::Ipv4Cidr, cidr::NetworkParseError> {
-    src.parse()
+    src.parse::<cidr::Ipv4Cidr>()
 }
 
 #[derive(Debug)]
@@ -1638,6 +1780,16 @@ impl Printer {
             } else {
                 println!("{:?}", value);
             }
+        }
+        Ok(())
+    }
+
+    pub fn print_json_only<A: std::fmt::Debug + Serialize>(
+        &self,
+        value: A,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if self.render_as_v1 {
+            serde_json::to_writer_pretty(std::io::stdout(), &value)?;
         }
         Ok(())
     }
@@ -2121,18 +2273,77 @@ async fn call_api<'a, 'b>(
         },
 
         Command::Infra(infra) => match infra.infra_command {
+            InfraCommand::Acls(acls) => match acls.acls_command {
+                AclsCommand::Create(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::create_acl(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        esc_api::infra::CreateAclRequest {
+                            cidr_blocks: params.cidr_blocks,
+                            description: params.description,
+                        },
+                    )
+                    .await?;
+                    printer.print_json_only(resp)?;
+                }
+                AclsCommand::Delete(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::infra::delete_acl(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                }
+                AclsCommand::Get(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::get_acl(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                    )
+                    .await?;
+                    printer.print_json_only(resp)?;
+                }
+                AclsCommand::List(params) => {
+                    let client = client_builder.create().await?;
+                    let resp = esc_api::infra::list_acls(&client, params.org_id, params.project_id)
+                        .await?;
+                    printer.print_json_only(resp)?;
+                }
+                AclsCommand::Update(params) => {
+                    let client = client_builder.create().await?;
+                    esc_api::infra::update_acl(
+                        &client,
+                        params.org_id,
+                        params.project_id,
+                        params.id,
+                        esc_api::infra::UpdateAclRequest {
+                            cidr_blocks: Some(params.cidr_blocks),
+                            description: params.description,
+                        },
+                    )
+                    .await?;
+                }
+            },
             InfraCommand::Networks(networks) => match networks.networks_command {
                 NetworksCommand::Create(params) => {
+                    let cidr_block = params.cidr_block.map(|cidr| cidr.to_string());
                     let client = client_builder.create().await?;
                     let resp = esc_api::infra::create_network(
                         &client,
                         params.org_id,
                         params.project_id,
                         esc_api::infra::CreateNetworkRequest {
-                            cidr_block: params.cidr_block.to_string(),
+                            cidr_block,
                             description: params.description,
                             provider: params.provider.to_string(),
                             region: params.region,
+                            public_access: params.public_access,
                         },
                     )
                     .await?;
@@ -2514,6 +2725,7 @@ async fn call_api<'a, 'b>(
                             params.org_id,
                             params.project_id,
                             esc_api::mesdb::CreateClusterRequest {
+                                acl_id: params.acl_id,
                                 description: params.description,
                                 disk_iops: params.disk_iops,
                                 disk_size_gb: params.disk_size_in_gb,
@@ -2528,6 +2740,7 @@ async fn call_api<'a, 'b>(
                                 source_node_index: None, // TODO: add source_node_index
                                 topology: params.topology,
                                 protected: params.protected,
+                                public_access: params.public_access,
                             },
                         )
                         .await?;
@@ -2565,6 +2778,7 @@ async fn call_api<'a, 'b>(
                             params.project_id,
                             params.id,
                             esc_api::mesdb::UpdateClusterRequest {
+                                acl_id: params.acl_id,
                                 description: params.description,
                                 protected: params.protected,
                             },

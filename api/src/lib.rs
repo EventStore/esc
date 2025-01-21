@@ -42,6 +42,8 @@ pub use access::GroupId;
 pub use access::MemberId;
 pub use access::PolicyId;
 pub use esc_client_base::Client as EscRequestSender;
+pub use infra::Acl;
+pub use infra::AclCidrBlock;
 pub use infra::NetworkId;
 pub use infra::PeeringId;
 pub use infra::Provider;
