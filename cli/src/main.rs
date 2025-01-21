@@ -1717,7 +1717,7 @@ fn parse_cidr_input(s: &str) -> Result<esc_api::infra::AclCidrBlock, String> {
 // notation.
 fn cidr_to_string(cidr: cidr::Ipv4Cidr) -> String {
     if cidr.is_host_address() {
-        format!("{}/32", cidr.to_string())
+        format!("{}/32", cidr)
     } else {
         cidr.to_string()
     }
@@ -2332,17 +2332,14 @@ async fn call_api<'a, 'b>(
             },
             InfraCommand::Networks(networks) => match networks.networks_command {
                 NetworksCommand::Create(params) => {
-                    let cidr_block = match params.cidr_block {
-                        Some(cidr) => Some(cidr.to_string()),
-                        None => None,
-                    };
+                    let cidr_block = params.cidr_block.map(|cidr| cidr.to_string());
                     let client = client_builder.create().await?;
                     let resp = esc_api::infra::create_network(
                         &client,
                         params.org_id,
                         params.project_id,
                         esc_api::infra::CreateNetworkRequest {
-                            cidr_block: cidr_block,
+                            cidr_block,
                             description: params.description,
                             provider: params.provider.to_string(),
                             region: params.region,
